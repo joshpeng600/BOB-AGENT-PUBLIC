@@ -1,0 +1,40 @@
+{
+  "exp_id": "exp_XXX",
+  "base_commit": "FULL_40_CHARACTER_SHA",
+  "objective": {
+    "name": "same_user_bpr",
+    "formula": "mean(-log(sigmoid(score_positive-score_negative)))"
+  },
+  "sampling": {
+    "unit": "same_user_positive_negative_pair",
+    "negatives_per_positive": 1,
+    "seed": 0,
+    "skip_all_positive_users": true,
+    "skip_all_negative_users": true,
+    "required_logging": ["pair_count", "eligible_users", "total_users", "user_coverage"]
+  },
+  "input_output": {
+    "features": "int32[rows,fields]",
+    "labels": "float32[rows] binary",
+    "user_ids": "string[rows] ordered",
+    "scores": "finite float[rows] in input order"
+  },
+  "hyperparameters": {
+    "embedding_dim": 16,
+    "learning_rate": 0.001,
+    "l2": 0.000001,
+    "batch_size": 8192,
+    "epochs": 40,
+    "patience": 4,
+    "max_batches": null
+  },
+  "resources": {
+    "estimated_minutes": null,
+    "estimated_peak_memory_mb": null,
+    "measurement_status": "must_be_measured_by_B_on_target_data_and_machine"
+  },
+  "failure_conditions": [],
+  "fallback": "pointwise_fm",
+  "code_commit": "FULL_40_CHARACTER_SHA",
+  "validation_claim": "unverified_until_E_valid_evaluation"
+}

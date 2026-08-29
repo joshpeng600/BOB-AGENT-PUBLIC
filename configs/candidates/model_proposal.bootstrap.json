@@ -1,0 +1,41 @@
+{
+  "proposal": "D bootstrap model and training contract",
+  "inputs": {
+    "features": "int32 array [rows, fields] using global feature indexes",
+    "labels": "float32 binary array [rows]",
+    "user_ids": "ordered string array [rows], required for BPR only"
+  },
+  "outputs": {
+    "predict_scores": "finite float array [rows], same order as input",
+    "checkpoint": "NPZ without pickle containing V, W, b, Adam state, step and JSON metadata"
+  },
+  "bpr": {
+    "formula": "L = mean(-log(sigmoid(s(u,i_positive)-s(u,j_negative))))",
+    "sampling_unit": "positive and negative impressions from the same user",
+    "hyperparameters": {
+      "negatives_per_positive": [1, 2, 4],
+      "seed": [0, 1, 2]
+    },
+    "failure_conditions": [
+      "no user has both positive and negative rows",
+      "non-binary or misaligned labels",
+      "non-finite validation metric"
+    ],
+    "risks": [
+      "uniform negative sampling may overweight users with many positives",
+      "BPR aligns more directly with GAUC than nDCG@5",
+      "pair count and eligible-user coverage must be logged"
+    ]
+  },
+  "resources": {
+    "dependencies": "NumPy only",
+    "smoke_test": "max_batches=5",
+    "expected_memory": "FM parameters plus one sampled pair-index array; exact size depends on encoded dimension"
+  },
+  "handoff_to_B": {
+    "pointwise_entry": "src.training.fit_pointwise",
+    "bpr_entry": "src.training.bpr.fit_bpr_epoch",
+    "model_entry": "src.models.FactorizationMachine",
+    "runner_responsibility": "B owns the valid-only experiment CLI and artifact manifest"
+  }
+}
