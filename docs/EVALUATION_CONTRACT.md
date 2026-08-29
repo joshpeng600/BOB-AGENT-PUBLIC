@@ -53,13 +53,14 @@ One row must correspond to one official split row. Preserve official order.
 Repeated `(user_id, video_id)` pairs are valid; `row_id` is the unique alignment
 key. Scores may be any finite real values because only relative ranking matters.
 
-## Metrics contract for A
+## Metrics contract for A and E
 
-Each iteration copies `contracts/metrics.template.json` and fills every field.
-A records the hypothesis and baseline experiment before execution, then records the
-actual code diff, metrics, errors, recovery, manual interventions, tokens,
-wall-clock time, iterations, GPU hours, full `commit_sha`, `worktree_clean`, config,
-data hash, seed, and protected hashes after execution.
+Each iteration copies `contracts/metrics.template.json`. A freezes the hypothesis,
+baseline experiment, and success rule before execution. E independently records the
+actual code diff, validation metrics, errors, recovery, manual interventions,
+tokens, wall-clock time, iterations, GPU hours, full `commit_sha`,
+`worktree_clean`, config, data hash, seed, and protected hashes after B produces
+immutable predictions.
 
 ## Independent audit
 

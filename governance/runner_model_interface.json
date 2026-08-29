@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "decision": "B_RUNNER_ADAPTS_D_NATIVE_INTERFACE",
+  "approved_by_role": "A",
+  "base_commit_sha": "195b2b719999d4160a7d1b178f67477e0150d1cf",
+  "runner_owner": "B",
+  "model_owner": "D",
+  "model_entry": "src.models.FactorizationMachine",
+  "factory_required_for_factorization_machine": false,
+  "canonical_model_fields": [
+    "name",
+    "embedding_dim",
+    "learning_rate",
+    "l2"
+  ],
+  "canonical_training_fields": [
+    "seed",
+    "batch_size",
+    "epochs",
+    "patience",
+    "max_batches"
+  ],
+  "legacy_runner_aliases_to_remove": [
+    "k",
+    "lr",
+    "batch",
+    "max_epochs"
+  ],
+  "required_manifest_fields": [
+    "experiment_id",
+    "commit_sha"
+  ],
+  "implementation_status": "PENDING_B"
+}

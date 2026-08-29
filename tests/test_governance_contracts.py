@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import subprocess
 import unittest
 
 from scripts.check_repository_contracts import (
@@ -45,6 +46,23 @@ class GovernanceContractTests(unittest.TestCase):
         }
         self.assertTrue(contract_field_violations(old))
         self.assertEqual(contract_field_violations(current), [])
+
+    def test_all_protected_text_is_checked_out_with_lf(self):
+        paths = [
+            entry["path"]
+            for entry in json.loads(
+                (ROOT / "governance" / "protected_files.json").read_text(encoding="utf-8")
+            )["files"]
+        ] + ["governance/protected_files.json", "protected_manifest.json"]
+        result = subprocess.run(
+            ["git", "check-attr", "eol", "--", *paths],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        for path in paths:
+            self.assertIn(f"{path}: eol: lf", result.stdout)
 
 
 if __name__ == "__main__":

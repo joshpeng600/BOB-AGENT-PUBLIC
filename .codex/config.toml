@@ -3,17 +3,17 @@ description = "Track 2 controller, policy owner, and repository integrator."
 config_file = "agents/A.toml"
 
 [agents.B]
-description = "Validation, contract-test, and baseline verification owner."
+description = "Harness implementation, approved-run execution, and reliability owner."
 config_file = "agents/B.toml"
 
 [agents.C]
-description = "Feature-proposal owner with no model or approval authority."
+description = "Data-contract, leakage, and feature owner with no model or approval authority."
 config_file = "agents/C.toml"
 
 [agents.D]
-description = "Model-proposal owner with no feature or approval authority."
+description = "Model, loss, sampler, and training owner with no evaluation or approval authority."
 config_file = "agents/D.toml"
 
 [agents.E]
-description = "Approved-run executor and reproducibility reporter."
+description = "Independent evaluator, audit-evidence owner, and final release gate."
 config_file = "agents/E.toml"

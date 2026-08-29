@@ -1,10 +1,18 @@
 {
   "schema_version": 1,
-  "state": "READY_FOR_VALIDATION",
+  "state": "EXP_001_APPROVED_PENDING_B",
   "owner": "A",
   "next_receiver": "B",
-  "base_commit_sha": "b9480c355f1f802cc3bd8449ff65cfff5a68ae37",
-  "blocked_by": [],
+  "base_commit_sha": "195b2b719999d4160a7d1b178f67477e0150d1cf",
+  "blocked_by": [
+    "B must migrate runner and validator evidence fields to experiment_id/commit_sha",
+    "B must adapt the runner to D's canonical configuration and FactorizationMachine interface",
+    "GitHub required status checks must be enabled and observed before merging"
+  ],
+  "active_experiment_id": "exp_001",
+  "experiment_spec_path": "experiments/exp_001.json",
+  "approved_baseline_config_path": "configs/approved/baseline_fm.json",
+  "post_merge_action": "replace base_commit_sha with the final merged main SHA after this A PR is merged",
   "starter_contract_verified": true,
   "protected_hashes_pinned": true,
   "contract_fields": {

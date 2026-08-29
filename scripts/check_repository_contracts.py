@@ -77,7 +77,14 @@ def contract_field_violations(document: Any) -> list[str]:
 def main() -> int:
     failures: list[str] = []
 
-    all_json = list(json_files([ROOT / "governance", ROOT / "coordination", ROOT / "configs", ROOT / "contracts", ROOT / "reports"]))
+    all_json = list(json_files([
+        ROOT / "governance",
+        ROOT / "coordination",
+        ROOT / "configs",
+        ROOT / "contracts",
+        ROOT / "experiments",
+        ROOT / "reports",
+    ]))
     for path in all_json:
         try:
             document = json.loads(path.read_text(encoding="utf-8"))

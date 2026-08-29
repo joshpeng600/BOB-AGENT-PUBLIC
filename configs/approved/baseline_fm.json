@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "contract_type": "approved_config",
+  "experiment_id": "baseline_fm",
+  "commit_sha": "195b2b719999d4160a7d1b178f67477e0150d1cf",
+  "status": "APPROVED",
+  "model": {
+    "name": "factorization_machine",
+    "embedding_dim": 16,
+    "learning_rate": 0.001,
+    "l2": 0.000001
+  },
+  "objective": {
+    "name": "pointwise_binary_cross_entropy"
+  },
+  "training": {
+    "seed": 0,
+    "batch_size": 8192,
+    "epochs": 40,
+    "patience": 4,
+    "max_batches": null
+  },
+  "data_mode": "train_valid_only",
+  "allowed_splits": [
+    "train",
+    "valid"
+  ],
+  "maximum_development_date": 20220428,
+  "evaluation_split": "valid",
+  "expected_validation_primary": 0.6016,
+  "runner_interface": "governance/runner_model_interface.json"
+}

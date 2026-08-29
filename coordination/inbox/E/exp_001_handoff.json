@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "contract_type": "handoff",
+  "experiment_id": "exp_001",
+  "commit_sha": "195b2b719999d4160a7d1b178f67477e0150d1cf",
+  "from_role": "A",
+  "to_role": "E",
+  "status": "WAIT_FOR_IMMUTABLE_B_OUTPUT",
+  "required_changes": [
+    "accept only experiment_id and commit_sha in formal evidence",
+    "reject exp_id/base_commit/commit/frozen_commit aliases",
+    "independently evaluate validation predictions without altering them",
+    "record GAUC, nDCG@5, primary, protected hashes, and manual intervention count"
+  ],
+  "experiment_spec": "experiments/exp_001.json"
+}

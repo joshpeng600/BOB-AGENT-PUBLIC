@@ -16,7 +16,7 @@ This repository is a five-member, five-agent workspace. The bootstrap phase buil
 
 1. Never modify files under `starter/` during ordinary work. Canonical restoration is allowed only with explicit human authorization, a matching record in `governance/manual_interventions.jsonl`, exact source/hash verification, and A-reviewed protected-hash updates.
 2. `starter/evaluate.py`, `starter/data.py`, `starter/submit.py`, and `starter/baseline_scores.json` are protected by SHA-256 pins in both `governance/protected_files.json` and `protected_manifest.json`. Preserve `.gitattributes`; protected text uses canonical LF across platforms.
-3. Never read, score, tune on, select from, or report test labels or test metrics during an ordinary experiment. Test evaluation requires `tools/final_approval.py` to verify a frozen full commit SHA, a clean worktree, matching protected hashes, and explicit recorded human approval through the release-only final-approval workflow.
+3. Never read, score, tune on, select from, or report test labels or test metrics during an ordinary experiment. Test evaluation requires `tools/final_approval.py` to verify a full `commit_sha`, a clean worktree, matching protected hashes, and explicit recorded human approval through the release-only final-approval workflow.
 4. Validation is the only split used for feature, model, threshold, or hyperparameter decisions.
 5. Every artifact and reported metric must bind to the complete 40-character Git commit SHA that produced it. The canonical field is `commit_sha`; `base_commit`, abbreviated SHAs, branch names, and tags are forbidden substitutes.
 6. The canonical experiment identifier field is `experiment_id`; `exp_id` is not accepted.
@@ -26,13 +26,13 @@ This repository is a five-member, five-agent workspace. The bootstrap phase buil
 
 ## Roles and write authority
 
-- A — controller and integrator. Owns `AGENTS.md`, `governance/`, `.github/`, `.codex/`, approved-config promotion, and repository integration. A may review all areas but may not silently rewrite another role's result.
-- B — validation and contracts. Owns `tests/` and validator implementation under `scripts/`; confirms task semantics, date split, baseline reproduction, prediction schema, and CI behavior. B does not propose research changes.
-- C — feature proposals. Writes feature proposals and candidate feature configs only; no model-family changes, protected-file edits, or approval/promotion.
-- D — model proposals. Writes model proposals and candidate model configs only; no feature-definition changes, protected-file edits, or approval/promotion.
-- E — execution and reproducibility. Runs approved experiments and writes manifests, metrics, and run reports; does not change evaluation logic or approve its own run.
+- A — planning, approval, and integration. Owns experiment specifications, `AGENTS.md`, `governance/`, `.github/`, `.codex/`, approved-config promotion, and repository integration. A does not implement or evaluate its own research change.
+- B — harness implementation, approved-run execution, and reliability. Owns the runner, preflight, validators, `tests/`, retry/rollback behavior, manifests, and reproducible execution. B does not approve its own configuration or independently change the scientific scope.
+- C — data and features. Owns data contracts, leakage checks, feature definitions, and feature proposals. C does not change model/training logic, protected files, or approval state.
+- D — models and training. Owns model implementations, loss functions, samplers, training loops, checkpoints, and model proposals. D does not change official evaluation, data boundaries, protected files, or approval state.
+- E — independent evaluation and final release gate. Owns immutable prediction evaluation, metrics verification, audit evidence, and human-approved final release. E does not train models, modify candidate outputs, or approve its own evaluation exception.
 
-Model, training, and feature work belongs outside E's evaluation tooling.
+Model and training work belongs to D; harness and execution belong to B; feature/data work belongs to C; all remain outside E's evaluation tooling.
 
 Agents write only in their owned area unless A records an exception in `governance/manual_interventions.jsonl`. All proposals enter through `coordination/inbox/<ROLE>/` and retain author, `experiment_id`, full `commit_sha`, and decision state.
 

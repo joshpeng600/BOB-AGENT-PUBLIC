@@ -1,21 +1,42 @@
 {
   "schema_version": 1,
   "contract_type": "experiment_spec",
-  "experiment_id": "exp-YYYYMMDD-NNN",
-  "author_role": "C|D",
+  "experiment_id": "exp_NNN",
+  "author_role": "A",
   "created_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
-  "commit_sha": "0000000000000000000000000000000000000000",
+  "commit_sha": "REPLACE_WITH_FULL_40_CHARACTER_SHA",
+  "status": "PROPOSED|APPROVED_FOR_IMPLEMENTATION",
+  "change_type": "loss_only|feature_only|model_only",
+  "hypothesis": "One falsifiable validation-only hypothesis",
+  "scope": {
+    "single_variable": "exactly one independently attributable change",
+    "new_features_allowed": false,
+    "model_family_change_allowed": false,
+    "official_evaluator_change_allowed": false
+  },
   "task": {
     "ranking_scope": "within_user",
     "label": "long_view",
-    "split": "canonical_date_split",
-    "evaluation_split": "validation",
-    "metrics": ["GAUC", "nDCG@5"],
-    "primary": "mean(GAUC,nDCG@5)"
+    "training_splits": ["train", "valid"],
+    "maximum_development_date": 20220428,
+    "evaluation_split": "valid",
+    "metrics": ["GAUC", "nDCG@5", "primary"],
+    "primary_definition": "mean(GAUC,nDCG@5)",
+    "test_access_allowed": false
   },
-  "feature_proposal_id": "feature-id",
-  "model_proposal_id": "model-id",
-  "parameters": {},
+  "baseline": {
+    "approved_config": "configs/approved/baseline_fm.json",
+    "validation_primary": 0.6016,
+    "minimum_improvement": 0.002
+  },
+  "implementation_config": "configs/candidates/example.json",
+  "role_deliverables": {
+    "C": [],
+    "D": [],
+    "B": [],
+    "E": []
+  },
+  "run_command": [],
   "max_runtime_seconds": 3600,
-  "status": "candidate"
+  "automatic_repair_attempts": 1
 }
