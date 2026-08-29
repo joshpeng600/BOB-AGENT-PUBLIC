@@ -5,7 +5,7 @@
   "approved_against_commit_sha": "ab0da74d91cb71606ae99f3b4d7874be28839e1c",
   "from_role": "A",
   "to_role": "B",
-  "status": "ACTION_REQUIRED_AFTER_A_PR_MERGE",
+  "status": "ACTION_REQUIRED",
   "branch": "B-Part",
   "branch_sync_commands": [
     "git fetch origin",

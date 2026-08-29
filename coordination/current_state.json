@@ -1,12 +1,10 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_GOVERNANCE_PR_PENDING_HUMAN_MERGE",
+  "state": "EXP_001_IMPLEMENTATION_ALLOWED",
   "owner": "A",
-  "next_receiver": "HUMAN_FOR_MERGE",
+  "next_receiver": "B",
   "approved_against_commit_sha": "ab0da74d91cb71606ae99f3b4d7874be28839e1c",
-  "blocked_by": [
-    "A governance PR requires all four Actions checks to pass, human review, and human merge before B implementation begins"
-  ],
+  "blocked_by": [],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
   "approved_baseline_config_path": "configs/approved/baseline_fm.json",
@@ -20,7 +18,7 @@
   },
   "stage_gates": {
     "IMPLEMENTATION_ALLOWED": {
-      "status": "PENDING_HUMAN_MERGE",
+      "status": "ALLOWED",
       "permits": "B runner, validator, and tests using no real data"
     },
     "SYNTHETIC_SMOKE_ALLOWED": {
@@ -33,7 +31,7 @@
     }
   },
   "role_statuses": {
-    "B": "ACTION_REQUIRED_AFTER_A_PR_MERGE",
+    "B": "ACTION_REQUIRED",
     "C": "PAIR_FEASIBILITY_CONFIRMATION_REQUESTED",
     "D": "INTERFACE_CONFIRMATION_REQUESTED",
     "E": "WAIT_FOR_IMMUTABLE_B_OUTPUT"
