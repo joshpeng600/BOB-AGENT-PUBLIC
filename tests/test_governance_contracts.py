@@ -5,6 +5,7 @@ import unittest
 
 from scripts.check_repository_contracts import (
     contract_field_violations,
+    contract_sha_format_violations,
     experiment_violations,
     provenance_violations,
 )
@@ -46,6 +47,42 @@ class GovernanceContractTests(unittest.TestCase):
         }
         self.assertTrue(contract_field_violations(old))
         self.assertEqual(contract_field_violations(current), [])
+
+    def test_approval_contract_uses_approved_against_sha(self):
+        old = {
+            "contract_type": "experiment_spec",
+            "experiment_id": "exp_001",
+            "commit_sha": "a" * 40,
+        }
+        current = {
+            "contract_type": "experiment_spec",
+            "experiment_id": "exp_001",
+            "approved_against_commit_sha": "a" * 40,
+        }
+        self.assertTrue(contract_field_violations(old))
+        self.assertEqual(contract_field_violations(current), [])
+
+    def test_proposal_implementation_sha_is_optional(self):
+        proposal = {
+            "contract_type": "model_proposal",
+            "experiment_id": "exp_001",
+            "approved_against_commit_sha": "a" * 40,
+            "implementation_commit_sha": None,
+        }
+        self.assertEqual(contract_field_violations(proposal), [])
+        self.assertEqual(contract_sha_format_violations(proposal), [])
+
+    def test_concrete_approval_sha_must_be_full_and_non_placeholder(self):
+        short = {
+            "contract_type": "handoff",
+            "experiment_id": "exp_001",
+            "approved_against_commit_sha": "abc123",
+        }
+        placeholder = {**short, "approved_against_commit_sha": "0" * 40}
+        current = {**short, "approved_against_commit_sha": "a" * 40}
+        self.assertTrue(contract_sha_format_violations(short))
+        self.assertTrue(contract_sha_format_violations(placeholder))
+        self.assertEqual(contract_sha_format_violations(current), [])
 
     def test_all_protected_text_is_checked_out_with_lf(self):
         paths = [

@@ -7,8 +7,10 @@
   "worktree_clean": true,
   "started_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
   "finished_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
-  "executor_role": "E",
-  "approved_config_path": "configs/approved/example.json",
+  "executor_role": "B",
+  "experiment_spec_path": "experiments/exp_NNN.json",
+  "config_path": "configs/candidates/example.json",
+  "config_hash": "REPLACE_WITH_CONFIG_SHA256",
   "config": {
     "model": "REPLACE_ME"
   },
@@ -17,6 +19,7 @@
     "split": "valid",
     "hash": "REPLACE_WITH_DATA_SHA256"
   },
+  "data_hash": "REPLACE_WITH_DATA_SHA256",
   "seed": 0,
   "dev_max_date": 20220428,
   "environment": {
@@ -31,6 +34,8 @@
     "starter/baseline_scores.json": "950f98181770c030a68bdddab7be3c0abbf060531f54455a6a6f81a4cb003324"
   },
   "commands": [],
+  "prediction_hash": "REPLACE_WITH_PREDICTION_SHA256",
+  "checkpoint_hash": "REPLACE_WITH_CHECKPOINT_SHA256",
   "artifacts": [],
   "status": "completed|failed|stopped"
 }

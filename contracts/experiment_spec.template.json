@@ -4,7 +4,7 @@
   "experiment_id": "exp_NNN",
   "author_role": "A",
   "created_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
-  "commit_sha": "REPLACE_WITH_FULL_40_CHARACTER_SHA",
+  "approved_against_commit_sha": "REPLACE_WITH_FULL_40_CHARACTER_SHA",
   "status": "PROPOSED|APPROVED_FOR_IMPLEMENTATION",
   "change_type": "loss_only|feature_only|model_only",
   "hypothesis": "One falsifiable validation-only hypothesis",
@@ -25,9 +25,11 @@
     "test_access_allowed": false
   },
   "baseline": {
+    "baseline_experiment_id": "baseline_fm",
     "approved_config": "configs/approved/baseline_fm.json",
     "validation_primary": 0.6016,
-    "minimum_improvement": 0.002
+    "minimum_improvement": 0.002,
+    "success_rule": "candidate_primary - baseline_primary > 0.002"
   },
   "implementation_config": "configs/candidates/example.json",
   "role_deliverables": {

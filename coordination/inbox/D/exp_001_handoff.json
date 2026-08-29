@@ -2,16 +2,18 @@
   "schema_version": 1,
   "contract_type": "handoff",
   "experiment_id": "exp_001",
-  "commit_sha": "195b2b719999d4160a7d1b178f67477e0150d1cf",
+  "approved_against_commit_sha": "ab0da74d91cb71606ae99f3b4d7874be28839e1c",
   "from_role": "A",
   "to_role": "D",
-  "status": "IMPLEMENTATION_REQUIRED",
+  "status": "INTERFACE_CONFIRMATION_REQUESTED",
   "single_change": "replace pointwise binary cross-entropy with same-user BPR",
   "required_output": [
-    "one reproducible training and prediction path",
-    "unchanged feature set and FactorizationMachine family",
-    "pair count, eligible users, total users, and user coverage logs",
-    "no official evaluator changes"
+    "confirm FactorizationMachine construction parameters embedding_dim and seed",
+    "confirm pointwise BCE and same-user BPR training APIs already present",
+    "confirm checkpoint state and restore contract",
+    "confirm pair count, eligible users, total users, and user coverage outputs",
+    "report only an actual contract gap; do not reimplement existing model/training code",
+    "do not modify the official evaluator"
   ],
   "configuration": "configs/candidates/bpr_fm.json",
   "experiment_spec": "experiments/exp_001.json"

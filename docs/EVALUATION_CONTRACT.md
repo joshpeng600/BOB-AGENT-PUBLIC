@@ -14,7 +14,7 @@ python3 -m tools.safe_evaluate \
 ```
 
 The gate writes GAUC, nDCG@5, primary, rows, users, evaluator hash,
-prediction hash, commit, and worktree state. It rejects the run before calling
+prediction hash, runtime `commit_sha`, `evaluator_role=E`, and worktree state. It rejects the run before calling
 the official evaluator if any contract fails.
 
 ## Rejection conditions
@@ -43,7 +43,9 @@ by SHA-256 and are rejected.
 
 ## Prediction contract for B
 
-B provides one CSV with exactly four columns:
+B owns training and valid-only execution. Its run manifest uses
+`executor_role=B` and the clean runtime `commit_sha`. B provides one immutable
+CSV with exactly four columns:
 
 ```text
 row_id,user_id,video_id,score
@@ -56,11 +58,26 @@ key. Scores may be any finite real values because only relative ranking matters.
 ## Metrics contract for A and E
 
 Each iteration copies `contracts/metrics.template.json`. A freezes the hypothesis,
-baseline experiment, and success rule before execution. E independently records the
+baseline experiment, approval baseline (`approved_against_commit_sha`), and strict
+success rule `candidate_primary - baseline_primary > 0.002` before execution. E independently records the
 actual code diff, validation metrics, errors, recovery, manual interventions,
 tokens, wall-clock time, iterations, GPU hours, full `commit_sha`,
 `worktree_clean`, config, data hash, seed, and protected hashes after B produces
 immutable predictions.
+
+An A-approved experiment starts through the spec, never a filename-derived ID:
+
+```bash
+python tools/run_experiment.py \
+  --experiment-spec experiments/exp_001.json \
+  --config configs/candidates/bpr_fm.json \
+  ...
+```
+
+`experiment_id` comes only from an `APPROVED_FOR_IMPLEMENTATION` spec whose
+`implementation_config` matches the supplied config. Smoke runs use explicitly
+synthetic fixtures and do not establish metric conclusions. Missing dependencies
+stop with failed evidence; the runner must not install them automatically.
 
 ## Independent audit
 

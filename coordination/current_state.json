@@ -1,23 +1,43 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_APPROVED_PENDING_B",
+  "state": "EXP_001_GOVERNANCE_PR_PENDING_HUMAN_MERGE",
   "owner": "A",
-  "next_receiver": "B",
-  "base_commit_sha": "195b2b719999d4160a7d1b178f67477e0150d1cf",
+  "next_receiver": "HUMAN_FOR_MERGE",
+  "approved_against_commit_sha": "ab0da74d91cb71606ae99f3b4d7874be28839e1c",
   "blocked_by": [
-    "B must migrate runner and validator evidence fields to experiment_id/commit_sha",
-    "B must adapt the runner to D's canonical configuration and FactorizationMachine interface",
-    "GitHub required status checks must be enabled and observed before merging"
+    "A governance PR requires human review and merge before B implementation begins",
+    "GitHub required status checks must be verified as enforced or replaced by a recorded human-approved gate"
   ],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
   "approved_baseline_config_path": "configs/approved/baseline_fm.json",
-  "post_merge_action": "replace base_commit_sha with the final merged main SHA after this A PR is merged",
   "starter_contract_verified": true,
   "protected_hashes_pinned": true,
   "contract_fields": {
     "experiment_identifier": "experiment_id",
+    "approval_baseline": "approved_against_commit_sha",
+    "implementation_reference": "implementation_commit_sha",
     "producing_git_commit": "commit_sha"
+  },
+  "stage_gates": {
+    "IMPLEMENTATION_ALLOWED": {
+      "status": "PENDING_HUMAN_MERGE",
+      "permits": "B runner, validator, and tests using no real data"
+    },
+    "SYNTHETIC_SMOKE_ALLOWED": {
+      "status": "PENDING_B_IMPLEMENTATION_AND_CLEAN_CHECKS",
+      "permits": "explicit synthetic fixtures only; no metric conclusion"
+    },
+    "REAL_VALID_RUN_ALLOWED": {
+      "status": "PENDING_C_PAIR_CONFIRMATION_B_FROZEN_COMMIT_AND_REQUIRED_CHECKS",
+      "permits": "train/valid only; test remains forbidden"
+    }
+  },
+  "role_statuses": {
+    "B": "ACTION_REQUIRED_AFTER_A_PR_MERGE",
+    "C": "PAIR_FEASIBILITY_CONFIRMATION_REQUESTED",
+    "D": "INTERFACE_CONFIRMATION_REQUESTED",
+    "E": "WAIT_FOR_IMMUTABLE_B_OUTPUT"
   },
   "last_completed_iteration": null,
   "consecutive_no_improve": 0
