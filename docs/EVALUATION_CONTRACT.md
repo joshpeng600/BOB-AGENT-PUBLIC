@@ -36,6 +36,11 @@ The authoritative values live in `protected_manifest.json`. Do not update the
 manifest to conceal an accidental edit. Restore the official Starter Kit file
 instead.
 
+Protected text is checked with CRLF normalized to LF, so a Windows checkout
+does not fail solely because of line endings. `.gitattributes` also requests LF
+for source and evidence files. All non-line-ending byte changes remain covered
+by SHA-256 and are rejected.
+
 ## Prediction contract for B
 
 B provides one CSV with exactly four columns:

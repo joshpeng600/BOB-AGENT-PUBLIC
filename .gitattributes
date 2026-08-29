@@ -1,0 +1,15 @@
+# Keep source and evidence text stable across macOS, Linux, and Windows.
+*.py text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.csv text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# These official files are hash-protected and must have canonical LF checkouts.
+starter/evaluate.py text eol=lf
+starter/data.py text eol=lf
+starter/submit.py text eol=lf
+starter/baseline_scores.json text eol=lf
+protected_manifest.json text eol=lf
