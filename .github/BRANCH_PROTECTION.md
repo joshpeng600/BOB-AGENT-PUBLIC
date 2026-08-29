@@ -10,3 +10,9 @@ Repository administrators must configure a GitHub branch ruleset for `main` with
 - block force pushes, deletion, and bypasses (including administrators where supported).
 
 The repository files describe and test this policy, but GitHub branch protection is the enforcement point that prevents direct pushes. A repository administrator must enable it before bootstrap can be declared complete.
+
+Verification must inspect the active `main` ruleset or branch-protection page.
+A successful historical Actions run alone is not proof that a check is required.
+If the repository plan or permissions prevent enforcement, keep the repository
+visibility unchanged, report `HUMAN_DECISION_REQUIRED`, and record any temporary
+human-approved substitute in `governance/manual_interventions.jsonl`.

@@ -1,12 +1,15 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "decision": "B_RUNNER_ADAPTS_D_NATIVE_INTERFACE",
   "approved_by_role": "A",
-  "base_commit_sha": "195b2b719999d4160a7d1b178f67477e0150d1cf",
+  "approved_against_commit_sha": "ab0da74d91cb71606ae99f3b4d7874be28839e1c",
   "runner_owner": "B",
   "model_owner": "D",
   "model_entry": "src.models.FactorizationMachine",
   "factory_required_for_factorization_machine": false,
+  "experiment_spec_argument": "--experiment-spec",
+  "experiment_id_source": "approved experiment_spec only",
+  "implementation_config_match_required": true,
   "canonical_model_fields": [
     "name",
     "embedding_dim",
@@ -28,7 +31,21 @@
   ],
   "required_manifest_fields": [
     "experiment_id",
-    "commit_sha"
+    "run_id",
+    "commit_sha",
+    "worktree_clean",
+    "commands",
+    "executor_role",
+    "protected_hashes",
+    "data_hash",
+    "config_hash",
+    "prediction_hash",
+    "checkpoint_hash"
   ],
+  "executor_role": "B",
+  "objective_routes": {
+    "pointwise_binary_cross_entropy": "src.training.fit_pointwise",
+    "same_user_bpr": "src.training.bpr.fit_bpr_epoch"
+  },
   "implementation_status": "PENDING_B"
 }

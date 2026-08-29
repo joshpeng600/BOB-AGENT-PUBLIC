@@ -2,7 +2,7 @@
   "schema_version": 1,
   "contract_type": "approved_config",
   "experiment_id": "baseline_fm",
-  "commit_sha": "195b2b719999d4160a7d1b178f67477e0150d1cf",
+  "approved_against_commit_sha": "ab0da74d91cb71606ae99f3b4d7874be28839e1c",
   "status": "APPROVED",
   "model": {
     "name": "factorization_machine",

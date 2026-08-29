@@ -1,14 +1,33 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "experiment_identifier": "experiment_id",
-  "producing_git_commit": "commit_sha",
   "full_commit_sha_pattern": "^[0-9a-f]{40}$",
   "baseline_reference": "baseline_experiment_id",
+  "sha_fields": {
+    "approved_against_commit_sha": "The full code-baseline SHA used for A approval; it must be an ancestor of later implementation/run commits and is not required to equal their HEAD.",
+    "implementation_commit_sha": "The full SHA of C/D implementation being proposed or reviewed; optional when a proposal has no code implementation.",
+    "commit_sha": "The full clean HEAD that actually produced run, prediction, checkpoint, metric, or final-approval evidence."
+  },
+  "contract_type_sha_field": {
+    "experiment_spec": "approved_against_commit_sha",
+    "approved_config": "approved_against_commit_sha",
+    "handoff": "approved_against_commit_sha",
+    "decision_request": "approved_against_commit_sha",
+    "feature_proposal": "approved_against_commit_sha",
+    "model_proposal": "approved_against_commit_sha",
+    "run_manifest": "commit_sha",
+    "metrics": "commit_sha",
+    "final_approval": "commit_sha"
+  },
+  "optional_contract_fields": {
+    "feature_proposal": ["implementation_commit_sha"],
+    "model_proposal": ["implementation_commit_sha"]
+  },
   "forbidden_aliases": [
     "exp_id",
     "base_commit",
     "commit",
     "frozen_commit"
   ],
-  "decision": "Use explicit experiment_id and commit_sha in every formal JSON contract. baseline_experiment_id refers to an experiment, never a Git revision."
+  "decision": "Use experiment_id as the sole experiment identifier and the contract-type SHA field above. baseline_experiment_id refers to an experiment, never a Git revision."
 }

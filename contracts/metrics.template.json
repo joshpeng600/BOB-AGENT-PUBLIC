@@ -6,6 +6,7 @@
   "baseline_experiment_id": null,
   "commit_sha": "REPLACE_WITH_FULL_40_CHARACTER_SHA",
   "worktree_clean": true,
+  "evaluator_role": "E",
   "status": "completed",
   "hypothesis": "Describe the expected validation improvement",
   "code_diff": "Describe the actual code change",

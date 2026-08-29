@@ -18,6 +18,18 @@ TEST_SCORE_KEYS = re.compile(
     re.IGNORECASE,
 )
 FORBIDDEN_CONTRACT_FIELDS = {"exp_id", "base_commit", "commit", "frozen_commit"}
+CONTRACT_SHA_FIELDS = {
+    "experiment_spec": "approved_against_commit_sha",
+    "approved_config": "approved_against_commit_sha",
+    "handoff": "approved_against_commit_sha",
+    "decision_request": "approved_against_commit_sha",
+    "feature_proposal": "approved_against_commit_sha",
+    "model_proposal": "approved_against_commit_sha",
+    "run_manifest": "commit_sha",
+    "metrics": "commit_sha",
+    "final_approval": "commit_sha",
+}
+OPTIONAL_IMPLEMENTATION_SHA_CONTRACTS = {"feature_proposal", "model_proposal"}
 
 
 def json_files(paths: Iterable[Path]) -> Iterable[Path]:
@@ -69,8 +81,39 @@ def contract_field_violations(document: Any) -> list[str]:
     if isinstance(document, dict) and document.get("contract_type"):
         if not isinstance(document.get("experiment_id"), str):
             violations.append("$.experiment_id: required for every formal contract")
-        if not isinstance(document.get("commit_sha"), str):
-            violations.append("$.commit_sha: required for every formal contract")
+        contract_type = document.get("contract_type")
+        required_sha_field = CONTRACT_SHA_FIELDS.get(contract_type)
+        if required_sha_field and not isinstance(document.get(required_sha_field), str):
+            violations.append(
+                f"$.{required_sha_field}: required for {contract_type} contract"
+            )
+        if contract_type in OPTIONAL_IMPLEMENTATION_SHA_CONTRACTS:
+            implementation_sha = document.get("implementation_commit_sha")
+            if implementation_sha is not None and not isinstance(implementation_sha, str):
+                violations.append(
+                    "$.implementation_commit_sha: must be null or a full SHA string"
+                )
+    return violations
+
+
+def contract_sha_format_violations(document: Any) -> list[str]:
+    """Validate populated SHA fields in concrete formal contracts."""
+    if not isinstance(document, dict) or not document.get("contract_type"):
+        return []
+    violations: list[str] = []
+    contract_type = document.get("contract_type")
+    fields: list[str] = []
+    required = CONTRACT_SHA_FIELDS.get(contract_type)
+    if required:
+        fields.append(required)
+    if contract_type in OPTIONAL_IMPLEMENTATION_SHA_CONTRACTS:
+        fields.append("implementation_commit_sha")
+    for field in fields:
+        value = document.get(field)
+        if field == "implementation_commit_sha" and value is None:
+            continue
+        if not isinstance(value, str) or not FULL_SHA.fullmatch(value) or value == "0" * 40:
+            violations.append(f"$.{field}: must be a non-placeholder lowercase 40-character SHA")
     return violations
 
 
@@ -96,6 +139,10 @@ def main() -> int:
             failures.extend(f"{path.relative_to(ROOT)}: {item}" for item in experiment_violations(document))
         failures.extend(f"{path.relative_to(ROOT)}: {item}" for item in contract_field_violations(document))
         if not path.is_relative_to(ROOT / "contracts"):
+            failures.extend(
+                f"{path.relative_to(ROOT)}: {item}"
+                for item in contract_sha_format_violations(document)
+            )
             failures.extend(provenance_violations(document, path.relative_to(ROOT)))
 
     interventions = ROOT / "governance" / "manual_interventions.jsonl"

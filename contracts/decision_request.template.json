@@ -5,7 +5,7 @@
   "request_id": "decision-YYYYMMDD-NNN",
   "requested_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
   "requested_by_role": "A|B|C|D|E",
-  "commit_sha": "0000000000000000000000000000000000000000",
+  "approved_against_commit_sha": "REPLACE_WITH_FULL_40_CHARACTER_SHA",
   "trigger": "protected_file|test_access|no_improvement|repair_exhausted|timeout|contract_conflict|leakage|role_conflict|history_rewrite",
   "summary": "decision needed",
   "evidence_paths": [],

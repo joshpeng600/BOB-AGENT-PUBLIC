@@ -18,7 +18,7 @@ This repository is a five-member, five-agent workspace. The bootstrap phase buil
 2. `starter/evaluate.py`, `starter/data.py`, `starter/submit.py`, and `starter/baseline_scores.json` are protected by SHA-256 pins in both `governance/protected_files.json` and `protected_manifest.json`. Preserve `.gitattributes`; protected text uses canonical LF across platforms.
 3. Never read, score, tune on, select from, or report test labels or test metrics during an ordinary experiment. Test evaluation requires `tools/final_approval.py` to verify a full `commit_sha`, a clean worktree, matching protected hashes, and explicit recorded human approval through the release-only final-approval workflow.
 4. Validation is the only split used for feature, model, threshold, or hyperparameter decisions.
-5. Every artifact and reported metric must bind to the complete 40-character Git commit SHA that produced it. The canonical field is `commit_sha`; `base_commit`, abbreviated SHAs, branch names, and tags are forbidden substitutes.
+5. Git provenance uses contract-specific fields. Approval records (`experiment_spec`, approved configs, current state, and A handoffs) use `approved_against_commit_sha`; C/D proposals may add `implementation_commit_sha` when they reference implemented code; run/evaluation evidence uses `commit_sha`, which must equal the clean HEAD that produced the evidence. All populated SHA fields are complete lowercase 40-character SHAs. `exp_id`, `base_commit`, `commit`, and `frozen_commit` are forbidden aliases.
 6. The canonical experiment identifier field is `experiment_id`; `exp_id` is not accepted.
 7. Do not commit data, credentials, predictions, checkpoints, virtual environments, or generated artifacts.
 8. Do not weaken prediction/audit checks merely to make tests pass, and never claim PASS when required evidence is absent.
@@ -34,7 +34,13 @@ This repository is a five-member, five-agent workspace. The bootstrap phase buil
 
 Model and training work belongs to D; harness and execution belong to B; feature/data work belongs to C; all remain outside E's evaluation tooling.
 
-Agents write only in their owned area unless A records an exception in `governance/manual_interventions.jsonl`. All proposals enter through `coordination/inbox/<ROLE>/` and retain author, `experiment_id`, full `commit_sha`, and decision state.
+Agents write only in their owned area unless A records an exception in `governance/manual_interventions.jsonl`. All proposals enter through `coordination/inbox/<ROLE>/` and retain author, `experiment_id`, the SHA field required by `governance/contract_fields.json`, and decision state.
+
+## Experiment stage gates
+
+- `IMPLEMENTATION_ALLOWED`: A's governance baseline is merged to `main`, protected hashes pass, and the role branch is synchronized with `origin/main`. This gate permits code and synthetic-fixture work only; it never permits test access.
+- `SYNTHETIC_SMOKE_ALLOWED`: implementation is committed on a clean worktree and repository contracts, protected files, and unit tests pass. Synthetic smoke results prove interface operability only and are not metric evidence.
+- `REAL_VALID_RUN_ALLOWED`: the governance PR is human-merged, C confirms the development-data date/hash and same-user pair feasibility, B freezes a clean full-SHA implementation, baseline and candidate use the same B commit/data/features/seed/budget, and required GitHub checks are enforced or a human-approved substitute is recorded. Test access remains forbidden.
 
 ## Git rules
 

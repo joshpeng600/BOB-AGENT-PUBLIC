@@ -2,15 +2,17 @@
   "schema_version": 1,
   "contract_type": "handoff",
   "experiment_id": "exp_001",
-  "commit_sha": "195b2b719999d4160a7d1b178f67477e0150d1cf",
+  "approved_against_commit_sha": "ab0da74d91cb71606ae99f3b4d7874be28839e1c",
   "from_role": "A",
   "to_role": "E",
   "status": "WAIT_FOR_IMMUTABLE_B_OUTPUT",
   "required_changes": [
-    "accept only experiment_id and commit_sha in formal evidence",
+    "pre-review manifest and evidence schema while waiting; do not score before immutable B valid predictions exist",
+    "accept experiment_id and runtime commit_sha in evaluation evidence and record evaluator_role=E",
     "reject exp_id/base_commit/commit/frozen_commit aliases",
     "independently evaluate validation predictions without altering them",
-    "record GAUC, nDCG@5, primary, protected hashes, and manual intervention count"
+    "record GAUC, nDCG@5, primary, protected hashes, and manual intervention count",
+    "do not repair the runner, training, configuration, or candidate predictions"
   ],
   "experiment_spec": "experiments/exp_001.json"
 }

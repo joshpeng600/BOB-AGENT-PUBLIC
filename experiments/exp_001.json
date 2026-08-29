@@ -4,9 +4,10 @@
   "experiment_id": "exp_001",
   "author_role": "A",
   "created_at_utc": "2026-08-29T14:41:22Z",
-  "commit_sha": "195b2b719999d4160a7d1b178f67477e0150d1cf",
+  "approved_against_commit_sha": "ab0da74d91cb71606ae99f3b4d7874be28839e1c",
   "status": "APPROVED_FOR_IMPLEMENTATION",
   "change_type": "loss_only",
+  "objective": "same_user_bpr",
   "hypothesis": "Training the same FM so that each user's positive impressions rank above that user's negative impressions may improve validation ranking metrics.",
   "scope": {
     "single_variable": "objective: pointwise_binary_cross_entropy -> same_user_bpr",
@@ -32,9 +33,12 @@
     "test_access_allowed": false
   },
   "baseline": {
+    "baseline_experiment_id": "baseline_fm",
     "approved_config": "configs/approved/baseline_fm.json",
     "validation_primary": 0.6016,
-    "minimum_improvement": 0.002
+    "minimum_improvement": 0.002,
+    "success_rule": "candidate_primary - baseline_primary > 0.002",
+    "candidate_primary_must_be_greater_than": 0.6036
   },
   "implementation_config": "configs/candidates/bpr_fm.json",
   "role_deliverables": {
@@ -50,10 +54,12 @@
       "do not modify the official evaluator"
     ],
     "B": [
+      "accept --experiment-spec and obtain experiment_id only from this approved spec",
       "adapt the runner to D's canonical config and FactorizationMachine interface",
       "emit experiment_id and commit_sha in manifests",
       "run one synthetic smoke before the real valid-only run",
-      "allow at most one infrastructure-only retry",
+      "allow at most one allowlisted transient-infrastructure retry with identical inputs",
+      "do not install dependencies automatically",
       "rollback to configs/approved/baseline_fm.json on contract, leakage, NaN, timeout, or repeated infrastructure failure"
     ],
     "E": [
@@ -65,6 +71,8 @@
   "run_command": [
     "python",
     "tools/run_experiment.py",
+    "--experiment-spec",
+    "experiments/exp_001.json",
     "--config",
     "configs/candidates/bpr_fm.json",
     "--data-dir",
