@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import re
 import sys
 from pathlib import Path
@@ -9,86 +10,311 @@ from typing import Any
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tools.common import ValidationError, read_json
+from tools.common import VALID_END, ValidationError, read_json
 
 
-REQUIRED_FIELDS = {
-    "experiment-spec": (
-        "exp_id", "base_commit", "hypothesis", "single_variable", "allowed_files",
-        "forbidden_files", "data_mode", "seeds", "smoke_batches", "max_minutes", "success", "status",
+FULL_SHA = re.compile(r"[0-9a-f]{40}")
+SHA256 = re.compile(r"[0-9a-f]{64}")
+EXPERIMENT_ID = re.compile(r"exp[-_][A-Za-z0-9][A-Za-z0-9_-]*")
+FORBIDDEN_ALIASES = {"exp_id", "base_commit", "commit", "frozen_commit"}
+
+REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
+    "experiment_spec": (
+        "schema_version", "contract_type", "experiment_id", "author_role",
+        "created_at_utc", "approved_against_commit_sha", "status", "change_type",
+        "hypothesis", "scope", "task", "baseline", "implementation_config",
+        "role_deliverables", "run_command", "max_runtime_seconds",
+        "automatic_repair_attempts",
     ),
-    "feature-proposal": (
-        "exp_id", "raw_columns", "time_boundary", "train_only_statistics", "missing_values",
-        "dimension", "leakage_checks", "expected_impact", "code_commit",
+    "feature_proposal": (
+        "schema_version", "contract_type", "experiment_id", "proposal_id",
+        "author_role", "created_at_utc", "approved_against_commit_sha",
+        "implementation_commit_sha", "name", "hypothesis", "inputs", "transform",
+        "leakage_review", "ablation_plan", "status",
     ),
-    "model-proposal": (
-        "exp_id", "objective", "sampling_unit", "inputs", "outputs", "hyperparameters",
-        "resource_estimate", "failure_conditions", "fallback", "code_commit",
+    "model_proposal": (
+        "schema_version", "contract_type", "experiment_id", "proposal_id",
+        "author_role", "created_at_utc", "approved_against_commit_sha",
+        "implementation_commit_sha", "name", "hypothesis", "model_family",
+        "objective", "sampling", "input_output", "hyperparameters",
+        "dependency_changes", "resource_estimate", "failure_conditions", "fallback",
+        "validation_claim", "status",
     ),
-    "run-manifest": (
-        "exp_id", "commit", "dirty", "config_hash", "data_hash", "seed", "started_at",
-        "ended_at", "exit_code", "checkpoint_hash", "prediction_hash", "log_path", "manual_intervention",
-        "command",
+    "run_manifest": (
+        "schema_version", "contract_type", "experiment_id", "run_id", "commit_sha",
+        "worktree_clean", "started_at_utc", "finished_at_utc", "executor_role",
+        "experiment_spec_path", "config_path", "config_hash", "config", "data",
+        "data_hash", "seed", "dev_max_date", "environment", "protected_hashes",
+        "commands", "prediction_hash", "checkpoint_hash", "artifacts", "status",
     ),
     "metrics": (
-        "exp_id", "commit", "valid", "baseline_delta", "seed_summary", "prediction_checks",
-        "protected_hashes", "compliance", "recommendation",
+        "schema_version", "contract_type", "experiment_id", "run_id",
+        "baseline_experiment_id", "commit_sha", "worktree_clean", "evaluator_role",
+        "status", "hypothesis", "code_diff", "split", "metrics", "errors",
+        "recovery", "manual_interventions", "tokens", "wall_time_seconds",
+        "iterations", "gpu_hours", "config", "data", "seed", "protected_hashes",
+        "artifact_manifest_path",
+    ),
+    "decision_request": (
+        "schema_version", "contract_type", "experiment_id", "request_id",
+        "requested_at_utc", "requested_by_role", "approved_against_commit_sha",
+        "trigger", "summary", "evidence_paths", "options", "automation_paused",
+        "status",
+    ),
+    "final_approval": (
+        "schema_version", "contract_type", "experiment_id", "commit_sha", "approved",
+        "approved_by", "approved_at", "protected_hashes",
     ),
 }
 
 ALIASES = {
-    "experiment_spec": "experiment-spec",
-    "feature_proposal": "feature-proposal",
-    "model_proposal": "model-proposal",
-    "run_manifest": "run-manifest",
+    "experiment-spec": "experiment_spec",
+    "feature-proposal": "feature_proposal",
+    "model-proposal": "model_proposal",
+    "run-manifest": "run_manifest",
+    "decision-request": "decision_request",
+    "final-approval": "final_approval",
+}
+
+
+def _canonical_type(contract_type: str) -> str:
+    return ALIASES.get(contract_type, contract_type.replace("-", "_"))
+
+
+def _require_object(value: Any, path: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValidationError(f"{path} must be an object")
+    return value
+
+
+def _require_list(value: Any, path: str) -> list[Any]:
+    if not isinstance(value, list):
+        raise ValidationError(f"{path} must be an array")
+    return value
+
+
+def _validate_sha(value: Any, path: str, *, optional: bool = False) -> None:
+    if value is None and optional:
+        return
+    if not isinstance(value, str) or not FULL_SHA.fullmatch(value) or value == "0" * 40:
+        raise ValidationError(f"{path} must be a non-zero lowercase 40-character SHA")
+
+
+def _validate_sha256(value: Any, path: str) -> None:
+    if not isinstance(value, str) or not SHA256.fullmatch(value):
+        raise ValidationError(f"{path} must be a lowercase SHA-256")
+
+
+def _reject_aliases(value: Any, path: str = "contract") -> None:
+    if isinstance(value, dict):
+        for raw_key, child in value.items():
+            key = str(raw_key)
+            if key in FORBIDDEN_ALIASES:
+                raise ValidationError(f"forbidden legacy field at {path}.{key}")
+            _reject_aliases(child, f"{path}.{key}")
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            _reject_aliases(child, f"{path}[{index}]")
+
+
+def _reject_test_requests(value: Any, path: str = "contract") -> None:
+    risky = {"score_test", "test_scoring", "evaluate_test", "use_test", "load_test_labels"}
+    split_keys = {"split", "evaluation_split", "eval_split", "score_split"}
+    split_list_keys = {"splits", "training_splits", "evaluation_splits", "allowed_splits"}
+    if isinstance(value, dict):
+        for raw_key, child in value.items():
+            key, child_path = str(raw_key).lower(), f"{path}.{raw_key}"
+            if key in risky and child is True:
+                raise ValidationError(f"test request denied at {child_path}")
+            if key in split_keys and str(child).lower() == "test":
+                raise ValidationError(f"test split denied at {child_path}")
+            if key in split_list_keys:
+                entries = child if isinstance(child, list) else [child]
+                if any(str(entry).lower() == "test" for entry in entries):
+                    raise ValidationError(f"test split denied at {child_path}")
+            _reject_test_requests(child, child_path)
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            _reject_test_requests(child, f"{path}[{index}]")
+
+
+def _validate_common(contract_type: str, document: dict[str, Any]) -> None:
+    if document.get("contract_type") != contract_type:
+        raise ValidationError(
+            f"contract_type must be {contract_type!r}, got {document.get('contract_type')!r}"
+        )
+    if not isinstance(document.get("schema_version"), int) or document["schema_version"] < 1:
+        raise ValidationError("schema_version must be a positive integer")
+    experiment_id = document.get("experiment_id")
+    if not isinstance(experiment_id, str) or not EXPERIMENT_ID.fullmatch(experiment_id):
+        raise ValidationError("experiment_id must start with exp- or exp_")
+    sha_field = {
+        "experiment_spec": "approved_against_commit_sha",
+        "feature_proposal": "approved_against_commit_sha",
+        "model_proposal": "approved_against_commit_sha",
+        "decision_request": "approved_against_commit_sha",
+        "run_manifest": "commit_sha",
+        "metrics": "commit_sha",
+        "final_approval": "commit_sha",
+    }[contract_type]
+    _validate_sha(document.get(sha_field), sha_field)
+    if contract_type in {"feature_proposal", "model_proposal"}:
+        _validate_sha(
+            document.get("implementation_commit_sha"),
+            "implementation_commit_sha",
+            optional=True,
+        )
+    _reject_aliases(document)
+
+
+def _validate_experiment_spec(document: dict[str, Any]) -> None:
+    if document["status"] not in {"PROPOSED", "APPROVED_FOR_IMPLEMENTATION"}:
+        raise ValidationError("unsupported experiment status")
+    if not isinstance(document["hypothesis"], str) or not document["hypothesis"].strip():
+        raise ValidationError("hypothesis must be non-empty")
+    task = _require_object(document["task"], "task")
+    if task.get("ranking_scope") != "within_user" or task.get("label") != "long_view":
+        raise ValidationError("task must preserve within_user ranking and long_view")
+    if task.get("evaluation_split") != "valid" or task.get("test_access_allowed") is not False:
+        raise ValidationError("ordinary experiments must be valid-only with test denied")
+    if int(task.get("maximum_development_date", 99999999)) > VALID_END:
+        raise ValidationError("maximum_development_date exceeds 20220428")
+    if task.get("primary_definition") != "mean(GAUC,nDCG@5)":
+        raise ValidationError("primary metric definition changed")
+    baseline = _require_object(document["baseline"], "baseline")
+    if not isinstance(baseline.get("baseline_experiment_id"), str):
+        raise ValidationError("baseline_experiment_id is required")
+    if not isinstance(document["implementation_config"], str) or not document["implementation_config"]:
+        raise ValidationError("implementation_config is required")
+    if not isinstance(document["max_runtime_seconds"], int) or not 1 <= document["max_runtime_seconds"] <= 3600:
+        raise ValidationError("max_runtime_seconds must be between 1 and 3600")
+    if document["automatic_repair_attempts"] not in {0, 1}:
+        raise ValidationError("automatic_repair_attempts must be 0 or 1")
+
+
+def _validate_feature_proposal(document: dict[str, Any]) -> None:
+    if document.get("author_role") != "C":
+        raise ValidationError("feature_proposal author_role must be C")
+    review = _require_object(document["leakage_review"], "leakage_review")
+    if review.get("uses_future_information") is not False:
+        raise ValidationError("feature proposal uses future information")
+    if review.get("uses_test_information") is not False:
+        raise ValidationError("feature proposal uses test information")
+
+
+def _validate_model_proposal(document: dict[str, Any]) -> None:
+    if document.get("author_role") != "D":
+        raise ValidationError("model_proposal author_role must be D")
+    if document.get("model_family") != "factorization_machine":
+        raise ValidationError("model family change is not approved")
+    _require_object(document["objective"], "objective")
+    _require_object(document["sampling"], "sampling")
+    _require_object(document["hyperparameters"], "hyperparameters")
+
+
+def _validate_hash_map(value: Any, path: str) -> None:
+    mapping = _require_object(value, path)
+    if not mapping:
+        raise ValidationError(f"{path} must not be empty")
+    for name, digest in mapping.items():
+        _validate_sha256(digest, f"{path}.{name}")
+
+
+def _validate_run_manifest(document: dict[str, Any]) -> None:
+    if document["status"] not in {"completed", "failed", "stopped"}:
+        raise ValidationError("run_manifest status must be completed, failed, or stopped")
+    if not isinstance(document["worktree_clean"], bool):
+        raise ValidationError("worktree_clean must be boolean")
+    if document["executor_role"] != "B":
+        raise ValidationError("run_manifest executor_role must be B")
+    commands = _require_list(document["commands"], "commands")
+    if not commands or not all(isinstance(command, str) and command.strip() for command in commands):
+        raise ValidationError("commands must be a non-empty array of strings")
+    if not isinstance(document["dev_max_date"], int) or document["dev_max_date"] > VALID_END:
+        if document["status"] == "completed":
+            raise ValidationError("completed run requires dev_max_date <= 20220428")
+    _require_object(document["config"], "config")
+    data = _require_object(document["data"], "data")
+    if data.get("split") != "valid":
+        raise ValidationError("run manifest data.split must be valid")
+    artifacts = _require_list(document["artifacts"], "artifacts")
+    for index, artifact in enumerate(artifacts):
+        item = _require_object(artifact, f"artifacts[{index}]")
+        if not isinstance(item.get("path"), str) or not item["path"]:
+            raise ValidationError(f"artifacts[{index}].path is required")
+        _validate_sha256(item.get("sha256"), f"artifacts[{index}].sha256")
+    if document["status"] == "completed":
+        if document["worktree_clean"] is not True:
+            raise ValidationError("completed run must record worktree_clean=true")
+        for field in ("config_hash", "data_hash", "prediction_hash", "checkpoint_hash"):
+            _validate_sha256(document[field], field)
+        _validate_hash_map(document["protected_hashes"], "protected_hashes")
+
+
+def _validate_metrics(document: dict[str, Any]) -> None:
+    if document["evaluator_role"] != "E":
+        raise ValidationError("metrics evaluator_role must be E")
+    if document["split"] != "valid":
+        raise ValidationError("ordinary metrics split must be valid")
+    if document["status"] not in {"completed", "failed"}:
+        raise ValidationError("metrics status must be completed or failed")
+    if not isinstance(document["worktree_clean"], bool):
+        raise ValidationError("worktree_clean must be boolean")
+    metrics = _require_object(document["metrics"], "metrics")
+    if document["status"] == "completed":
+        values = [metrics.get("GAUC"), metrics.get("nDCG@5"), metrics.get("primary")]
+        if not all(isinstance(value, (int, float)) and math.isfinite(value) for value in values):
+            raise ValidationError("completed metrics must contain finite GAUC/nDCG@5/primary")
+        if not math.isclose(float(values[2]), (float(values[0]) + float(values[1])) / 2.0):
+            raise ValidationError("primary must be the arithmetic mean of GAUC and nDCG@5")
+        _validate_hash_map(document["protected_hashes"], "protected_hashes")
+
+
+def _validate_decision_request(document: dict[str, Any]) -> None:
+    if document["requested_by_role"] not in {"A", "B", "C", "D", "E"}:
+        raise ValidationError("requested_by_role is invalid")
+    if document["automation_paused"] is not True or document["status"] != "pending_human":
+        raise ValidationError("decision request must pause automation and be pending_human")
+    if not isinstance(document["summary"], str) or not document["summary"].strip():
+        raise ValidationError("decision request summary is required")
+
+
+def _validate_final_approval(document: dict[str, Any]) -> None:
+    if not isinstance(document["approved"], bool):
+        raise ValidationError("approved must be boolean")
+    if not isinstance(document["approved_by"], str) or not document["approved_by"].strip():
+        raise ValidationError("approved_by must identify a human")
+    _validate_hash_map(document["protected_hashes"], "protected_hashes")
+
+
+VALIDATORS = {
+    "experiment_spec": _validate_experiment_spec,
+    "feature_proposal": _validate_feature_proposal,
+    "model_proposal": _validate_model_proposal,
+    "run_manifest": _validate_run_manifest,
+    "metrics": _validate_metrics,
+    "decision_request": _validate_decision_request,
+    "final_approval": _validate_final_approval,
 }
 
 
 def validate_contract(contract_type: str, document: Any) -> None:
-    contract_type = ALIASES.get(contract_type, contract_type)
-    if contract_type not in REQUIRED_FIELDS:
+    canonical = _canonical_type(contract_type)
+    if canonical not in REQUIRED_FIELDS:
         raise ValidationError(f"unknown contract type: {contract_type}")
-    if not isinstance(document, dict):
-        raise ValidationError("contract root must be a JSON object")
-    missing = [field for field in REQUIRED_FIELDS[contract_type] if field not in document]
+    root = _require_object(document, "contract")
+    missing = [field for field in REQUIRED_FIELDS[canonical] if field not in root]
     if missing:
         raise ValidationError(f"missing required fields: {', '.join(missing)}")
-    empty = [
-        field for field in REQUIRED_FIELDS[contract_type]
-        if document[field] is None or document[field] == "" or document[field] == []
-    ]
-    if empty:
-        raise ValidationError(f"required fields are empty: {', '.join(empty)}")
-
-    commit_fields = [name for name in ("base_commit", "code_commit", "commit") if name in document]
-    for field in commit_fields:
-        if not isinstance(document[field], str) or not re.fullmatch(r"[0-9a-fA-F]{40}", document[field]):
-            raise ValidationError(f"{field} must be a full 40-character commit SHA")
-    if "exp_id" in document and not re.fullmatch(r"exp_[A-Za-z0-9_-]+", str(document["exp_id"])):
-        raise ValidationError("exp_id must start with 'exp_'")
-    if contract_type == "experiment-spec":
-        if document["data_mode"] != "train_valid_only":
-            raise ValidationError("experiment data_mode must be train_valid_only")
-        if not all(isinstance(seed, int) for seed in document["seeds"]):
-            raise ValidationError("seeds must be an array of integers")
-        if document["status"] not in {"PROPOSED", "APPROVED_FOR_IMPLEMENTATION"}:
-            raise ValidationError("unsupported experiment status")
-    if contract_type == "run-manifest":
-        if not isinstance(document["dirty"], bool):
-            raise ValidationError("dirty must be boolean")
-        if not isinstance(document["exit_code"], int):
-            raise ValidationError("exit_code must be integer")
-        if not isinstance(document["command"], list) or not all(
-            isinstance(part, str) and part for part in document["command"]
-        ):
-            raise ValidationError("command must be a non-empty array of strings")
-    if contract_type == "metrics" and document["recommendation"] not in {"ACCEPT", "REJECT"}:
-        raise ValidationError("metrics recommendation must be ACCEPT or REJECT")
+    _validate_common(canonical, root)
+    _reject_test_requests(root)
+    VALIDATORS[canonical](root)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Validate one of the five team JSON contracts.")
-    parser.add_argument("--type", required=True, choices=tuple(REQUIRED_FIELDS) + tuple(ALIASES))
+    choices = tuple(REQUIRED_FIELDS) + tuple(ALIASES)
+    parser = argparse.ArgumentParser(description="Validate a canonical team JSON contract.")
+    parser.add_argument("--type", required=True, choices=choices)
     parser.add_argument("--path", required=True, type=Path)
     return parser.parse_args()
 
@@ -101,7 +327,6 @@ def main() -> int:
         print("CONTRACT=FAIL", file=sys.stderr)
         print(f"ERROR={exc}", file=sys.stderr)
         return 1
-    print(f"CONTRACT_TYPE={ALIASES.get(args.type, args.type)}")
     print("CONTRACT=PASS")
     return 0
 
