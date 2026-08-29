@@ -1,1 +1,1 @@
-"""Track 2 safe experiment harness."""
+"""Shared Track 2 data, experiment, evaluation, and release-safety tools."""

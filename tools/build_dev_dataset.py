@@ -11,6 +11,52 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.common import VALID_END, ValidationError, sha256_file, write_json
+from src.data.contracts import DEV_MAX_DATE, LOG_FILES
+
+
+def build_dev_dataset(
+    data_dir: str | Path,
+    output_dir: str | Path,
+    rows_per_log: int = 1000,
+) -> dict[str, int]:
+    """Build C's bounded, ordered log sample without copying held-out rows.
+
+    This compatibility API remains separate from :func:`build`, which creates
+    the complete hashed development dataset used by B's experiment harness.
+    """
+    if rows_per_log < 1:
+        raise ValueError("rows_per_log must be at least 1")
+
+    source = Path(data_dir)
+    destination = Path(output_dir)
+    destination.mkdir(parents=True, exist_ok=True)
+    copied: dict[str, int] = {}
+    for filename in LOG_FILES:
+        count = 0
+        source_path = source / filename
+        destination_path = destination / filename
+        with (
+            source_path.open("r", encoding="utf-8-sig", newline="") as reader_handle,
+            destination_path.open("w", encoding="utf-8", newline="") as writer_handle,
+        ):
+            rows = csv.DictReader(reader_handle)
+            if rows.fieldnames is None:
+                raise ValueError(f"{filename}: missing header")
+            writer = csv.DictWriter(
+                writer_handle,
+                fieldnames=rows.fieldnames,
+                lineterminator="\n",
+            )
+            writer.writeheader()
+            for row in rows:
+                if int(row["date"]) > DEV_MAX_DATE:
+                    continue
+                writer.writerow(row)
+                count += 1
+                if count >= rows_per_log:
+                    break
+        copied[filename] = count
+    return copied
 
 
 def _copy_log(source: Path, destination: Path, max_date: int) -> dict[str, Any]:
