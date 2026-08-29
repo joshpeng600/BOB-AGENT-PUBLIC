@@ -1,6 +1,6 @@
-__pycache__/
-*.py[cod]
-.DS_Store
 .venv/
-KuaiRand-Pure/
-*.tar.gz
+baseline/KuaiRand-Pure/
+baseline/KuaiRand-Pure.tar.gz
+__pycache__/
+*.pyc
+.DS_Store
