@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "contract_type": "feature_proposal",
+  "experiment_id": "exp-YYYYMMDD-NNN",
   "proposal_id": "feature-YYYYMMDD-NNN",
   "author_role": "C",
   "created_at_utc": "YYYY-MM-DDTHH:MM:SSZ",

@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "contract_type": "decision_request",
+  "experiment_id": "exp-YYYYMMDD-NNN",
   "request_id": "decision-YYYYMMDD-NNN",
   "requested_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
   "requested_by_role": "A|B|C|D|E",

@@ -2,7 +2,11 @@ import json
 from pathlib import Path
 import unittest
 
-from scripts.check_repository_contracts import experiment_violations, provenance_violations
+from scripts.check_repository_contracts import (
+    contract_field_violations,
+    experiment_violations,
+    provenance_violations,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +35,16 @@ class GovernanceContractTests(unittest.TestCase):
         self.assertTrue(provenance_violations(bad, Path("run_manifest.json")))
         self.assertTrue(provenance_violations(placeholder, Path("metrics.json")))
         self.assertEqual(provenance_violations(good, Path("run_manifest.json")), [])
+
+    def test_canonical_contract_fields_are_enforced(self):
+        old = {"contract_type": "metrics", "exp_id": "x", "base_commit": "a" * 40}
+        current = {
+            "contract_type": "metrics",
+            "experiment_id": "x",
+            "commit_sha": "a" * 40,
+        }
+        self.assertTrue(contract_field_violations(old))
+        self.assertEqual(contract_field_violations(current), [])
 
 
 if __name__ == "__main__":

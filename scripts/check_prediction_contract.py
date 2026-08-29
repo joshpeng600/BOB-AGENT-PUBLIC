@@ -8,7 +8,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 STARTER_SUBMIT = ROOT / "starter" / "submit.py"
-CONTRACT_TEST = ROOT / "tests" / "test_prediction_contract.py"
+CONTRACT_TEST = ROOT / "tests" / "test_submission.py"
 
 
 def main() -> int:
@@ -18,7 +18,20 @@ def main() -> int:
         for path in missing:
             print(f"- {path}", file=sys.stderr)
         return 1
-    return subprocess.call([sys.executable, "-m", "pytest", "-q", str(CONTRACT_TEST)], cwd=ROOT)
+    return subprocess.call(
+        [
+            sys.executable,
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            CONTRACT_TEST.name,
+            "-v",
+        ],
+        cwd=ROOT,
+    )
 
 
 if __name__ == "__main__":

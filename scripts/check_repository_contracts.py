@@ -17,6 +17,7 @@ TEST_SCORE_KEYS = re.compile(
     r"(^|_)(test)(_|$).*(score|metric|eval)|(^|_)(score|metric|eval).*(test)(_|$)",
     re.IGNORECASE,
 )
+FORBIDDEN_CONTRACT_FIELDS = {"exp_id", "base_commit", "commit", "frozen_commit"}
 
 
 def json_files(paths: Iterable[Path]) -> Iterable[Path]:
@@ -60,6 +61,19 @@ def provenance_violations(document: Any, source: Path) -> list[str]:
     return []
 
 
+def contract_field_violations(document: Any) -> list[str]:
+    violations: list[str] = []
+    for path, key, _value in walk(document):
+        if key in FORBIDDEN_CONTRACT_FIELDS:
+            violations.append(f"{path}: deprecated contract field; use experiment_id/commit_sha")
+    if isinstance(document, dict) and document.get("contract_type"):
+        if not isinstance(document.get("experiment_id"), str):
+            violations.append("$.experiment_id: required for every formal contract")
+        if not isinstance(document.get("commit_sha"), str):
+            violations.append("$.commit_sha: required for every formal contract")
+    return violations
+
+
 def main() -> int:
     failures: list[str] = []
 
@@ -73,6 +87,7 @@ def main() -> int:
 
         if path.is_relative_to(ROOT / "configs"):
             failures.extend(f"{path.relative_to(ROOT)}: {item}" for item in experiment_violations(document))
+        failures.extend(f"{path.relative_to(ROOT)}: {item}" for item in contract_field_violations(document))
         if not path.is_relative_to(ROOT / "contracts"):
             failures.extend(provenance_violations(document, path.relative_to(ROOT)))
 

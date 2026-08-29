@@ -1,22 +1,36 @@
 {
   "schema_version": 1,
   "contract_type": "run_manifest",
+  "experiment_id": "exp-YYYYMMDD-NNN",
   "run_id": "run-YYYYMMDD-NNN",
+  "commit_sha": "REPLACE_WITH_FULL_40_CHARACTER_SHA",
+  "worktree_clean": true,
   "started_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
   "finished_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
   "executor_role": "E",
-  "commit_sha": "0000000000000000000000000000000000000000",
-  "worktree_clean": true,
-  "approved_experiment_id": "exp-YYYYMMDD-NNN",
   "approved_config_path": "configs/approved/example.json",
-  "command": ["python", "baseline.py"],
+  "config": {
+    "model": "REPLACE_ME"
+  },
+  "data": {
+    "dataset": "KuaiRand-Pure",
+    "split": "valid",
+    "hash": "REPLACE_WITH_DATA_SHA256"
+  },
+  "seed": 0,
+  "dev_max_date": 20220428,
   "environment": {
     "python": "X.Y.Z",
     "platform": "platform string",
     "requirements_sha256": "64-character SHA-256"
   },
-  "random_seeds": {},
-  "input_hashes": {},
+  "protected_hashes": {
+    "starter/evaluate.py": "ecfde28392eb14fec4f488083251df50624e1af2b86278b962daecfb42d195de",
+    "starter/data.py": "1bf54f5f3a9f590eab2f87f09a3c27422031867a20a5328d56cbd8c7db36e541",
+    "starter/submit.py": "ab01bb2b970ae2a9f2ead299f5240b71ff4126c2d9bb0e0c4de6c7e245dc148c",
+    "starter/baseline_scores.json": "950f98181770c030a68bdddab7be3c0abbf060531f54455a6a6f81a4cb003324"
+  },
+  "commands": [],
   "artifacts": [],
   "status": "completed|failed|stopped"
 }

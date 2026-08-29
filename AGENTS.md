@@ -8,18 +8,21 @@ This repository is a five-member, five-agent workspace. The bootstrap phase buil
 - Label: `long_view`.
 - Metrics: GAUC and nDCG@5.
 - Primary metric: arithmetic mean of GAUC and nDCG@5.
-- Data split: the canonical date split implemented by `starter/data.py`; agents must not replace it with random, user, or row splits.
+- Data split: train `20220408–20220421`, validation `20220422–20220428`, test `20220429–20220508`, as implemented by `starter/data.py`.
 - Reference baseline: FM validation primary score `0.6016`.
-- Evidence status: the task contract above is supplied by the Track 2 brief. It remains operationally unverified until the missing `starter/` tree is restored and B validates it.
+- The canonical task evidence is the protected seven-file `starter/` kit. Agents must not replace the date split with random, user, or row splits.
 
 ## Hard safety rules
 
-1. Never modify files under `starter/`. In particular, `starter/evaluate.py` and `starter/baseline_scores.json` are protected by SHA-256 pins in `governance/protected_files.json`.
-2. Never read, score, tune on, select from, or report test labels or test metrics during an ordinary experiment. Test evaluation requires a recorded human decision and a release-only workflow.
-3. Validation is the only split used for feature, model, threshold, or hyperparameter decisions.
-4. Every artifact and reported metric must bind to the complete 40-character Git commit SHA that produced it. Branch names, tags, and abbreviated SHAs are insufficient.
-5. Do not commit data, credentials, predictions, checkpoints, virtual environments, or generated artifacts.
-6. Do not claim a check passed when the required file, tool, data, dependency, or output is absent.
+1. Never modify files under `starter/` during ordinary work. Canonical restoration is allowed only with explicit human authorization, a matching record in `governance/manual_interventions.jsonl`, exact source/hash verification, and A-reviewed protected-hash updates.
+2. `starter/evaluate.py`, `starter/data.py`, `starter/submit.py`, and `starter/baseline_scores.json` are protected by SHA-256 pins in both `governance/protected_files.json` and `protected_manifest.json`.
+3. Never read, score, tune on, select from, or report test labels or test metrics during an ordinary experiment. Test evaluation requires a recorded human decision and the release-only final-approval workflow.
+4. Validation is the only split used for feature, model, threshold, or hyperparameter decisions.
+5. Every artifact and reported metric must bind to the complete 40-character Git commit SHA that produced it. The canonical field is `commit_sha`; `base_commit`, abbreviated SHAs, branch names, and tags are forbidden substitutes.
+6. The canonical experiment identifier field is `experiment_id`; `exp_id` is not accepted.
+7. Do not commit data, credentials, predictions, checkpoints, virtual environments, or generated artifacts.
+8. Do not weaken prediction/audit checks merely to make tests pass, and never claim PASS when required evidence is absent.
+9. Run `python3 -m unittest discover -s tests -v` before requesting review.
 
 ## Roles and write authority
 
@@ -29,7 +32,7 @@ This repository is a five-member, five-agent workspace. The bootstrap phase buil
 - D — model proposals. Writes model proposals and candidate model configs only; no feature-definition changes, protected-file edits, or approval/promotion.
 - E — execution and reproducibility. Runs approved experiments and writes manifests, metrics, and run reports; does not change evaluation logic or approve its own run.
 
-Agents write only in their owned area unless A records an exception in `governance/manual_interventions.jsonl`. All proposals enter through `coordination/inbox/<ROLE>/` and must retain author, commit SHA, and decision state.
+Agents write only in their owned area unless A records an exception in `governance/manual_interventions.jsonl`. All proposals enter through `coordination/inbox/<ROLE>/` and retain author, `experiment_id`, full `commit_sha`, and decision state.
 
 ## Git rules
 

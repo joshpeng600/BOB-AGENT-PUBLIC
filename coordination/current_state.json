@@ -1,13 +1,16 @@
 {
   "schema_version": 1,
-  "state": "BOOTSTRAP",
+  "state": "READY_FOR_VALIDATION",
   "owner": "A",
   "next_receiver": "B",
-  "blocked_by": [
-    "canonical starter directory is absent",
-    "protected SHA-256 values cannot be established",
-    "task, date split, and FM 0.6016 baseline cannot be independently verified"
-  ],
+  "base_commit_sha": "b9480c355f1f802cc3bd8449ff65cfff5a68ae37",
+  "blocked_by": [],
+  "starter_contract_verified": true,
+  "protected_hashes_pinned": true,
+  "contract_fields": {
+    "experiment_identifier": "experiment_id",
+    "producing_git_commit": "commit_sha"
+  },
   "last_completed_iteration": null,
   "consecutive_no_improve": 0
 }

@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "contract_type": "model_proposal",
+  "experiment_id": "exp-YYYYMMDD-NNN",
   "proposal_id": "model-YYYYMMDD-NNN",
   "author_role": "D",
   "created_at_utc": "YYYY-MM-DDTHH:MM:SSZ",

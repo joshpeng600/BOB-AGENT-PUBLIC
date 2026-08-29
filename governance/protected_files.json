@@ -4,16 +4,39 @@
   "fail_closed": true,
   "files": [
     {
+      "path": "starter/README.md",
+      "sha256": "c7a58e652a1aceea144e651ba9ef7a6a4f7dc13f0916e3c4ed342dce69699861",
+      "status": "PINNED"
+    },
+    {
+      "path": "starter/data.py",
+      "sha256": "1bf54f5f3a9f590eab2f87f09a3c27422031867a20a5328d56cbd8c7db36e541",
+      "status": "PINNED"
+    },
+    {
+      "path": "starter/baseline.py",
+      "sha256": "c8f7fc60178413e247e78bb231e7550eeef52101b6493fcf1a4d2b0e5fe18f8a",
+      "status": "PINNED"
+    },
+    {
       "path": "starter/evaluate.py",
-      "sha256": null,
-      "status": "MISSING_AT_BOOTSTRAP",
-      "note": "Populate from the canonical starter tree, compute SHA-256, and approve by PR. Never guess this value."
+      "sha256": "ecfde28392eb14fec4f488083251df50624e1af2b86278b962daecfb42d195de",
+      "status": "PINNED"
+    },
+    {
+      "path": "starter/submit.py",
+      "sha256": "ab01bb2b970ae2a9f2ead299f5240b71ff4126c2d9bb0e0c4de6c7e245dc148c",
+      "status": "PINNED"
+    },
+    {
+      "path": "starter/ablation_features.py",
+      "sha256": "944ff3003451d82cd4694dd2ac0a7a587e53890956cb098f8daa04537d97b457",
+      "status": "PINNED"
     },
     {
       "path": "starter/baseline_scores.json",
-      "sha256": null,
-      "status": "MISSING_AT_BOOTSTRAP",
-      "note": "Populate from the canonical starter tree, compute SHA-256, and approve by PR. Never guess this value."
+      "sha256": "950f98181770c030a68bdddab7be3c0abbf060531f54455a6a6f81a4cb003324",
+      "status": "PINNED"
     }
   ]
 }
