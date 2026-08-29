@@ -1,1 +1,1 @@
-"""Evaluation, audit, and release-safety tools owned by team member E."""
+"""Shared Track 2 data, experiment, evaluation, and release-safety tools."""
