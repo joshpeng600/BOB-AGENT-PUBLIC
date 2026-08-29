@@ -6,7 +6,7 @@
   "approved_against_commit_sha": "ab0da74d91cb71606ae99f3b4d7874be28839e1c",
   "blocked_by": [
     "A governance PR requires human review and merge before B implementation begins",
-    "GitHub required status checks must be verified as enforced or replaced by a recorded human-approved gate"
+    "GitHub private-repository ruleset enforcement requires a plan/permission decision or a recorded human-approved substitute gate"
   ],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
@@ -38,6 +38,17 @@
     "C": "PAIR_FEASIBILITY_CONFIRMATION_REQUESTED",
     "D": "INTERFACE_CONFIRMATION_REQUESTED",
     "E": "WAIT_FOR_IMMUTABLE_B_OUTPUT"
+  },
+  "github_branch_protection": {
+    "status": "HUMAN_DECISION_REQUIRED",
+    "verification": "GitHub rulesets API returned 403: upgrade to GitHub Pro or make this repository public",
+    "repository_visibility_change_authorized": false,
+    "required_checks": [
+      "protected-files / verify-protected-files",
+      "unit-tests / tests",
+      "prediction-contract / prediction-contract",
+      "repository-contracts / contracts"
+    ]
   },
   "last_completed_iteration": null,
   "consecutive_no_improve": 0
