@@ -73,8 +73,8 @@ def main() -> int:
         "evaluator_hash": protected_hashes["starter/evaluate.py"],
         "split": args.split,
         "prediction_hash": sha256_file(args.prediction),
-        "commit": git_head(),
-        "dirty_at_start": git_is_dirty(),
+        "commit_sha": git_head(),
+        "worktree_clean": not git_is_dirty(),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)

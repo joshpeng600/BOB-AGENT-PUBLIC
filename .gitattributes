@@ -8,8 +8,12 @@
 *.yaml text eol=lf
 
 # These official files are hash-protected and must have canonical LF checkouts.
+starter/README.md text eol=lf
 starter/evaluate.py text eol=lf
 starter/data.py text eol=lf
+starter/baseline.py text eol=lf
 starter/submit.py text eol=lf
+starter/ablation_features.py text eol=lf
 starter/baseline_scores.json text eol=lf
+governance/protected_files.json text eol=lf
 protected_manifest.json text eol=lf

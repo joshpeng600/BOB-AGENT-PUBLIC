@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "contract_type": "decision_request",
+  "experiment_id": "exp-YYYYMMDD-NNN",
+  "request_id": "decision-YYYYMMDD-NNN",
+  "requested_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
+  "requested_by_role": "A|B|C|D|E",
+  "commit_sha": "0000000000000000000000000000000000000000",
+  "trigger": "protected_file|test_access|no_improvement|repair_exhausted|timeout|contract_conflict|leakage|role_conflict|history_rewrite",
+  "summary": "decision needed",
+  "evidence_paths": [],
+  "options": [],
+  "automation_paused": true,
+  "status": "pending_human"
+}

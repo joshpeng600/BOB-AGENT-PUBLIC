@@ -10,9 +10,10 @@ class AuditTests(unittest.TestCase):
         self.commit = "a" * 40
         self.hashes = {"starter/evaluate.py": "b" * 64}
         self.manifest = {
+            "experiment_id": "exp001",
             "run_id": "exp001",
-            "commit": self.commit,
-            "dirty": False,
+            "commit_sha": self.commit,
+            "worktree_clean": True,
             "config": {"model": "fm"},
             "data": {"dataset": "KuaiRand-Pure", "split": "valid", "hash": "c" * 64},
             "seed": 0,
@@ -25,15 +26,15 @@ class AuditTests(unittest.TestCase):
         validate_manifest_record(self.manifest, self.commit, False, self.hashes)
 
     def test_rejects_short_commit(self):
-        self.manifest["commit"] = "abc123"
+        self.manifest["commit_sha"] = "abc123"
         with self.assertRaises(SecurityError):
             validate_manifest_record(self.manifest, self.commit, False, self.hashes)
 
     def test_rejects_dirty_state(self):
-        self.manifest["dirty"] = True
+        self.manifest["worktree_clean"] = False
         with self.assertRaises(SecurityError):
             validate_manifest_record(self.manifest, self.commit, False, self.hashes)
-        self.manifest["dirty"] = False
+        self.manifest["worktree_clean"] = True
         with self.assertRaises(SecurityError):
             validate_manifest_record(self.manifest, self.commit, True, self.hashes)
 
@@ -60,14 +61,15 @@ class FinalApprovalTests(unittest.TestCase):
         self.commit = "a" * 40
         self.hashes = {"starter/evaluate.py": "b" * 64}
         self.approval = {
-            "frozen_commit": self.commit,
+            "experiment_id": "exp001",
+            "commit_sha": self.commit,
             "approved": True,
             "approved_by": "Human Reviewer",
             "approved_at": "2026-08-29T15:00:00+08:00",
             "protected_hashes": self.hashes,
         }
 
-    def test_accepts_human_approval_for_clean_frozen_commit(self):
+    def test_accepts_human_approval_for_clean_commit_sha(self):
         validate_approval_record(self.approval, self.commit, False, self.hashes)
 
     def test_rejects_non_human_or_missing_approval(self):

@@ -53,13 +53,14 @@ One row must correspond to one official split row. Preserve official order.
 Repeated `(user_id, video_id)` pairs are valid; `row_id` is the unique alignment
 key. Scores may be any finite real values because only relative ranking matters.
 
-## Metrics contract for A
+## Metrics contract for A and E
 
-Each iteration copies `contracts/metrics.template.json` and fills every field.
-A records the hypothesis and parent run before execution, then records the
-actual code diff, metrics, errors, recovery, manual interventions, tokens,
-wall-clock time, iterations, GPU hours, full commit SHA, dirty state, config,
-data hash, seed, and protected hashes after execution.
+Each iteration copies `contracts/metrics.template.json`. A freezes the hypothesis,
+baseline experiment, and success rule before execution. E independently records the
+actual code diff, validation metrics, errors, recovery, manual interventions,
+tokens, wall-clock time, iterations, GPU hours, full `commit_sha`,
+`worktree_clean`, config, data hash, seed, and protected hashes after B produces
+immutable predictions.
 
 ## Independent audit
 
@@ -69,7 +70,8 @@ Copy `contracts/run_manifest.template.json`, fill it, and run:
 python3 -m tools.audit_run --manifest path/to/run_manifest.json
 ```
 
-The audit accepts only a full SHA matching the current commit, `dirty=false`, a
+The audit accepts only a full `commit_sha` matching the current commit,
+`worktree_clean=true`, a
 clean actual worktree, complete config/data/seed/hash evidence, development data
 ending no later than 2022-04-28, matching protected hashes, and no test-scoring
 command in the recorded command history.

@@ -1,5 +1,8 @@
 {
-  "frozen_commit": "REPLACE_WITH_FULL_40_CHARACTER_SHA",
+  "schema_version": 1,
+  "contract_type": "final_approval",
+  "experiment_id": "exp-YYYYMMDD-NNN",
+  "commit_sha": "REPLACE_WITH_FULL_40_CHARACTER_SHA",
   "approved": false,
   "approved_by": "REPLACE_WITH_HUMAN_NAME",
   "approved_at": "REPLACE_WITH_ISO_8601_TIMESTAMP",
@@ -7,6 +10,6 @@
     "starter/evaluate.py": "ecfde28392eb14fec4f488083251df50624e1af2b86278b962daecfb42d195de",
     "starter/data.py": "1bf54f5f3a9f590eab2f87f09a3c27422031867a20a5328d56cbd8c7db36e541",
     "starter/submit.py": "ab01bb2b970ae2a9f2ead299f5240b71ff4126c2d9bb0e0c4de6c7e245dc148c",
-    "starter/baseline_scores.json": "840ba4606534a334ae4aac38982fb6035f936b8874d2953a86c4bb66c9e19945"
+    "starter/baseline_scores.json": "950f98181770c030a68bdddab7be3c0abbf060531f54455a6a6f81a4cb003324"
   }
 }

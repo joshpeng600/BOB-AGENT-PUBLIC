@@ -28,11 +28,14 @@ def validate_approval_record(
     actual_dirty: bool,
     protected_hashes: dict[str, str],
 ) -> None:
-    frozen_commit = record.get("frozen_commit")
-    if not isinstance(frozen_commit, str) or not FULL_SHA.fullmatch(frozen_commit):
-        raise SecurityError("frozen_commit must be a complete 40-character SHA")
-    if frozen_commit != current_commit:
-        raise SecurityError("frozen_commit does not match the current Git commit")
+    experiment_id = record.get("experiment_id")
+    if not isinstance(experiment_id, str) or not experiment_id.strip():
+        raise SecurityError("experiment_id is required")
+    commit_sha = record.get("commit_sha")
+    if not isinstance(commit_sha, str) or not FULL_SHA.fullmatch(commit_sha):
+        raise SecurityError("commit_sha must be a complete 40-character SHA")
+    if commit_sha != current_commit:
+        raise SecurityError("commit_sha does not match the current Git commit")
     if actual_dirty:
         raise SecurityError("Worktree is dirty; test operation denied")
     if record.get("approved") is not True:
@@ -73,7 +76,7 @@ def main() -> int:
     except SecurityError as error:
         print(f"DENIED: {error}")
         return 1
-    print("APPROVED: frozen commit, clean worktree, protected hashes, and human approval verified")
+    print("APPROVED: commit_sha, clean worktree, protected hashes, and human approval verified")
     return 0
 
 

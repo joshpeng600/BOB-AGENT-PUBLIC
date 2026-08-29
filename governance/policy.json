@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "epsilon": 0.002,
+  "consecutive_no_improve": 3,
+  "max_single_round_seconds": 3600,
+  "automatic_repair": {
+    "max_attempts": 1,
+    "allowed_for": [
+      "transient_infrastructure_failure",
+      "dependency_install_failure",
+      "process_startup_failure"
+    ],
+    "forbidden_for": [
+      "policy_violation",
+      "test_access",
+      "data_leakage",
+      "metric_regression",
+      "scientific_change"
+    ]
+  },
+  "human_decision_required_when": [
+    "protected_file_missing_or_hash_mismatch",
+    "test_access_requested_or_detected",
+    "three_consecutive_non_improving_trials",
+    "automatic_repair_exhausted",
+    "run_exceeds_max_single_round_seconds",
+    "baseline_or_task_contract_conflict",
+    "missing_full_commit_sha_or_dirty_worktree",
+    "suspected_data_leakage",
+    "role_or_ownership_conflict",
+    "history_rewrite_or_force_push_requested"
+  ],
+  "test_evaluation": {
+    "ordinary_experiments_allowed": false,
+    "release_only": true,
+    "requires_human_approval": true,
+    "requires_manual_intervention_record": true
+  }
+}

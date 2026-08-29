@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "contract_type": "handoff",
+  "experiment_id": "exp_001",
+  "commit_sha": "195b2b719999d4160a7d1b178f67477e0150d1cf",
+  "from_role": "A",
+  "to_role": "C",
+  "status": "CHECKS_REQUIRED",
+  "required_checks": [
+    "confirm same-user positive/negative pairs can be constructed",
+    "confirm all fitting and sampling use train only",
+    "confirm maximum development date is 20220428",
+    "confirm original validation row order is preserved",
+    "confirm no held-out access"
+  ],
+  "feature_change_allowed": false,
+  "experiment_spec": "experiments/exp_001.json"
+}

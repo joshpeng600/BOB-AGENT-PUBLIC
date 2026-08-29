@@ -37,13 +37,16 @@ def validate_manifest_record(
     actual_dirty: bool,
     protected_hashes: dict[str, str],
 ) -> None:
-    commit = record.get("commit")
-    if not isinstance(commit, str) or not FULL_SHA.fullmatch(commit):
-        raise SecurityError("commit must be a complete 40-character SHA")
-    if commit != current_commit:
-        raise SecurityError("manifest commit does not match the current Git commit")
-    if record.get("dirty") is not False:
-        raise SecurityError("manifest must explicitly record dirty=false")
+    experiment_id = record.get("experiment_id")
+    if not isinstance(experiment_id, str) or not experiment_id.strip():
+        raise SecurityError("experiment_id is required")
+    commit_sha = record.get("commit_sha")
+    if not isinstance(commit_sha, str) or not FULL_SHA.fullmatch(commit_sha):
+        raise SecurityError("commit_sha must be a complete 40-character SHA")
+    if commit_sha != current_commit:
+        raise SecurityError("manifest commit_sha does not match the current Git commit")
+    if record.get("worktree_clean") is not True:
+        raise SecurityError("manifest must explicitly record worktree_clean=true")
     if actual_dirty:
         raise SecurityError("actual worktree is dirty")
 
