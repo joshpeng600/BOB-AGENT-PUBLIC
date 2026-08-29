@@ -1,0 +1,26 @@
+{
+  "status": "candidate_not_validated",
+  "model": {
+    "name": "factorization_machine",
+    "embedding_dim": 16,
+    "learning_rate": 0.001,
+    "l2": 0.000001
+  },
+  "objective": {
+    "name": "same_user_bpr",
+    "formula": "mean(-log(sigmoid(score_positive-score_negative)))",
+    "negatives_per_positive": 1,
+    "skip_all_positive_users": true,
+    "skip_all_negative_users": true
+  },
+  "training": {
+    "seed": 0,
+    "batch_size": 8192,
+    "epochs": 40,
+    "patience": 4,
+    "max_batches": null
+  },
+  "data_mode": "train_valid_only",
+  "runner_owner": "B",
+  "claim": "No metric improvement is claimed until E evaluates immutable valid predictions."
+}
