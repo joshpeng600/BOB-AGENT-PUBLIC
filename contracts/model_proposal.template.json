@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "contract_type": "model_proposal",
+  "proposal_id": "model-YYYYMMDD-NNN",
+  "author_role": "D",
+  "created_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
+  "commit_sha": "0000000000000000000000000000000000000000",
+  "name": "short model name",
+  "hypothesis": "validation-only hypothesis",
+  "model_family": "approved family",
+  "parameters": {},
+  "dependency_changes": [],
+  "resource_estimate": {
+    "max_runtime_seconds": 3600,
+    "accelerator": "none"
+  },
+  "status": "proposed"
+}

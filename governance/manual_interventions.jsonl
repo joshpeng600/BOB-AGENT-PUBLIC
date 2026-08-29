@@ -1,0 +1,1 @@
+{"record_type":"example","timestamp_utc":"YYYY-MM-DDTHH:MM:SSZ","requested_by":"human-id","scope":"exact files or run id","reason":"why automation stopped","decision":"approve|reject|replace","expires_at_utc":null,"commit_sha":"40-character lowercase Git SHA when applicable"}

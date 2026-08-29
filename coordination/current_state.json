@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "state": "BOOTSTRAP",
+  "owner": "A",
+  "next_receiver": "B",
+  "blocked_by": [
+    "canonical starter directory is absent",
+    "protected SHA-256 values cannot be established",
+    "task, date split, and FM 0.6016 baseline cannot be independently verified"
+  ],
+  "last_completed_iteration": null,
+  "consecutive_no_improve": 0
+}

@@ -1,0 +1,38 @@
+# Data and generated artifacts
+data/
+artifacts/
+checkpoints/
+predictions/
+prediction/
+outputs/
+predictions*.csv
+prediction*.csv
+submission*.csv
+*.predictions.*
+*.npy
+*.npz
+*.parquet
+
+# Python environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*.json
+secrets*.json
+
+# Editor and operating-system files
+.DS_Store
+.idea/
+.vscode/

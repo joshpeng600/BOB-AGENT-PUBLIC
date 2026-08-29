@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "contract_type": "run_manifest",
+  "run_id": "run-YYYYMMDD-NNN",
+  "started_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
+  "finished_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
+  "executor_role": "E",
+  "commit_sha": "0000000000000000000000000000000000000000",
+  "worktree_clean": true,
+  "approved_experiment_id": "exp-YYYYMMDD-NNN",
+  "approved_config_path": "configs/approved/example.json",
+  "command": ["python", "baseline.py"],
+  "environment": {
+    "python": "X.Y.Z",
+    "platform": "platform string",
+    "requirements_sha256": "64-character SHA-256"
+  },
+  "random_seeds": {},
+  "input_hashes": {},
+  "artifacts": [],
+  "status": "completed|failed|stopped"
+}

@@ -1,0 +1,19 @@
+[agents.A]
+description = "Track 2 controller, policy owner, and repository integrator."
+config_file = "agents/A.toml"
+
+[agents.B]
+description = "Validation, contract-test, and baseline verification owner."
+config_file = "agents/B.toml"
+
+[agents.C]
+description = "Feature-proposal owner with no model or approval authority."
+config_file = "agents/C.toml"
+
+[agents.D]
+description = "Model-proposal owner with no feature or approval authority."
+config_file = "agents/D.toml"
+
+[agents.E]
+description = "Approved-run executor and reproducibility reporter."
+config_file = "agents/E.toml"

@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "contract_type": "feature_proposal",
+  "proposal_id": "feature-YYYYMMDD-NNN",
+  "author_role": "C",
+  "created_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
+  "commit_sha": "0000000000000000000000000000000000000000",
+  "name": "short feature name",
+  "hypothesis": "validation-only hypothesis",
+  "inputs": [],
+  "transform": "deterministic transform description",
+  "leakage_review": {
+    "uses_future_information": false,
+    "uses_test_information": false,
+    "notes": ""
+  },
+  "ablation_plan": "single-variable comparison against approved baseline",
+  "status": "proposed"
+}

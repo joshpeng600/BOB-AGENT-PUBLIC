@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "contract_type": "experiment_spec",
+  "experiment_id": "exp-YYYYMMDD-NNN",
+  "author_role": "C|D",
+  "created_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
+  "commit_sha": "0000000000000000000000000000000000000000",
+  "task": {
+    "ranking_scope": "within_user",
+    "label": "long_view",
+    "split": "canonical_date_split",
+    "evaluation_split": "validation",
+    "metrics": ["GAUC", "nDCG@5"],
+    "primary": "mean(GAUC,nDCG@5)"
+  },
+  "feature_proposal_id": "feature-id",
+  "model_proposal_id": "model-id",
+  "parameters": {},
+  "max_runtime_seconds": 3600,
+  "status": "candidate"
+}

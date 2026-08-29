@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "hash_algorithm": "sha256",
+  "fail_closed": true,
+  "files": [
+    {
+      "path": "starter/evaluate.py",
+      "sha256": null,
+      "status": "MISSING_AT_BOOTSTRAP",
+      "note": "Populate from the canonical starter tree, compute SHA-256, and approve by PR. Never guess this value."
+    },
+    {
+      "path": "starter/baseline_scores.json",
+      "sha256": null,
+      "status": "MISSING_AT_BOOTSTRAP",
+      "note": "Populate from the canonical starter tree, compute SHA-256, and approve by PR. Never guess this value."
+    }
+  ]
+}

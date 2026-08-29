@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "contract_type": "metrics",
+  "run_id": "run-YYYYMMDD-NNN",
+  "commit_sha": "0000000000000000000000000000000000000000",
+  "split": "validation",
+  "GAUC": 0.0,
+  "nDCG@5": 0.0,
+  "primary": 0.0,
+  "primary_definition": "mean(GAUC,nDCG@5)",
+  "sample_counts": {
+    "users": 0,
+    "rows": 0
+  },
+  "artifact_manifest_path": "coordination/results/run-id/run_manifest.json"
+}
