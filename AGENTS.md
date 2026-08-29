@@ -2,6 +2,7 @@
 
 - Treat `starter/evaluate.py`, `starter/data.py`, `starter/submit.py`, and
   `starter/baseline_scores.json` as protected official files.
+- Preserve `.gitattributes`; protected text uses canonical LF across platforms.
 - Do not change the evaluation label, data split, GAUC, nDCG@5, or primary-score
   definitions.
 - Model, training, and feature work belongs outside E's evaluation tooling.
