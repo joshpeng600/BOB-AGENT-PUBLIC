@@ -6,14 +6,50 @@
   "author_role": "D",
   "created_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
   "commit_sha": "0000000000000000000000000000000000000000",
-  "name": "short model name",
-  "hypothesis": "validation-only hypothesis",
-  "model_family": "approved family",
-  "parameters": {},
+  "name": "same_user_bpr",
+  "hypothesis": "A same-user pairwise objective may improve validation ranking metrics relative to the approved pointwise FM baseline.",
+  "model_family": "factorization_machine",
+  "objective": {
+    "name": "same_user_bpr",
+    "formula": "mean(-log(sigmoid(score_positive-score_negative)))"
+  },
+  "sampling": {
+    "unit": "same_user_positive_negative_pair",
+    "negatives_per_positive": 1,
+    "seed": 0,
+    "skip_all_positive_users": true,
+    "skip_all_negative_users": true,
+    "required_logging": [
+      "pair_count",
+      "eligible_users",
+      "total_users",
+      "user_coverage"
+    ]
+  },
+  "input_output": {
+    "features": "int32[rows,fields]",
+    "labels": "float32[rows] binary",
+    "user_ids": "string[rows] ordered",
+    "scores": "finite float[rows] in input order"
+  },
+  "hyperparameters": {
+    "embedding_dim": 16,
+    "learning_rate": 0.001,
+    "l2": 0.000001,
+    "batch_size": 8192,
+    "epochs": 40,
+    "patience": 4,
+    "max_batches": null
+  },
   "dependency_changes": [],
   "resource_estimate": {
     "max_runtime_seconds": 3600,
-    "accelerator": "none"
+    "accelerator": "none",
+    "estimated_peak_memory_mb": null,
+    "measurement_status": "must_be_measured_by_B_on_target_data_and_machine"
   },
+  "failure_conditions": [],
+  "fallback": "pointwise_fm",
+  "validation_claim": "unverified_until_E_valid_evaluation",
   "status": "proposed"
 }

@@ -16,6 +16,8 @@ baseline/KuaiRand-Pure/
 baseline/KuaiRand-Pure.tar.gz
 starter/KuaiRand-Pure/
 starter/KuaiRand-Pure.tar.gz
+KuaiRand-Pure/
+KuaiRand-Pure.tar.gz
 
 # Python environments and caches
 .venv/
