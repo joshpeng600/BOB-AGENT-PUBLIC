@@ -5,8 +5,7 @@
   "next_receiver": "HUMAN_FOR_MERGE",
   "approved_against_commit_sha": "ab0da74d91cb71606ae99f3b4d7874be28839e1c",
   "blocked_by": [
-    "A governance PR requires human review and merge before B implementation begins",
-    "GitHub private-repository ruleset enforcement requires a plan/permission decision or a recorded human-approved substitute gate"
+    "A governance PR requires all four Actions checks to pass, human review, and human merge before B implementation begins"
   ],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
@@ -40,9 +39,17 @@
     "E": "WAIT_FOR_IMMUTABLE_B_OUTPUT"
   },
   "github_branch_protection": {
-    "status": "HUMAN_DECISION_REQUIRED",
+    "status": "TEMPORARY_MANUAL_GATE_APPROVED",
     "verification": "GitHub rulesets API returned 403: upgrade to GitHub Pro or make this repository public",
     "repository_visibility_change_authorized": false,
+    "manual_gate_approved_at_utc": "2026-08-29T17:00:38Z",
+    "manual_gate_conditions": [
+      "all four listed Actions checks pass on the PR head",
+      "the PR receives human review before merge",
+      "direct pushes to main are forbidden",
+      "force pushes to main are forbidden"
+    ],
+    "manual_gate_expires_when": "the repository supports and enables the four required checks",
     "required_checks": [
       "protected-files / verify-protected-files",
       "unit-tests / tests",
