@@ -17,8 +17,18 @@ class SecurityError(RuntimeError):
     """Raised when protected project state cannot be trusted."""
 
 
-def sha256_file(path: Path) -> str:
+def sha256_file(path: Path, *, normalize_line_endings: bool = False) -> str:
+    """Hash a file, optionally treating CRLF text as canonical LF text.
+
+    Protected Starter Kit files are text. Git may check those files out with
+    CRLF on Windows, which changes raw bytes without changing Python or JSON
+    content. Normalizing only CRLF to LF keeps the protection cross-platform;
+    every other byte remains covered by SHA-256.
+    """
     digest = hashlib.sha256()
+    if normalize_line_endings:
+        digest.update(path.read_bytes().replace(b"\r\n", b"\n"))
+        return digest.hexdigest()
     with path.open("rb") as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
@@ -54,7 +64,7 @@ def verify_protected_files() -> dict[str, str]:
         path = REPO_ROOT / relative_path
         if not path.is_file():
             raise SecurityError(f"Protected file is missing: {relative_path}")
-        digest = sha256_file(path)
+        digest = sha256_file(path, normalize_line_endings=True)
         actual[relative_path] = digest
         if digest != expected_digest:
             raise SecurityError(
