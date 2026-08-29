@@ -1,0 +1,34 @@
+{
+  "run_id": "exp001",
+  "parent_run_id": null,
+  "status": "completed",
+  "hypothesis": "Describe the expected improvement",
+  "code_diff": "Describe the actual code change",
+  "metrics": {
+    "GAUC": null,
+    "nDCG@5": null,
+    "primary": null,
+    "rows": null,
+    "users": null,
+    "evaluator_hash": null
+  },
+  "errors": [],
+  "recovery": [],
+  "manual_interventions": 0,
+  "tokens": 0,
+  "wall_time_seconds": 0,
+  "iterations": 1,
+  "gpu_hours": 0.0,
+  "git": {
+    "commit": null,
+    "dirty": null
+  },
+  "config": {},
+  "data": {
+    "dataset": "KuaiRand-Pure",
+    "split": "valid",
+    "hash": null
+  },
+  "seed": 0,
+  "protected_hashes": {}
+}
