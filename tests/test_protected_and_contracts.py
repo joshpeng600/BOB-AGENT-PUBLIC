@@ -1,12 +1,139 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
+from copy import deepcopy
 from pathlib import Path
 
 from tools.common import ValidationError, sha256_file, write_json
 from tools.validate_contract import validate_contract
 from tools.verify_protected_files import verify
+
+
+SHA = "b" * 40
+DIGEST = "c" * 64
+
+
+def canonical_documents() -> dict[str, dict[str, object]]:
+    common_proposal = {
+        "schema_version": 1,
+        "experiment_id": "exp_002",
+        "proposal_id": "proposal-1",
+        "created_at_utc": "2026-08-30T00:00:00Z",
+        "approved_against_commit_sha": SHA,
+        "implementation_commit_sha": None,
+        "name": "proposal",
+        "hypothesis": "one controlled change may improve ranking",
+        "status": "PROPOSED",
+    }
+    return {
+        "feature-proposal": {
+            **common_proposal,
+            "contract_type": "feature_proposal",
+            "author_role": "C",
+            "inputs": ["past rows"],
+            "transform": "train-fitted count",
+            "leakage_review": {
+                "uses_future_information": False,
+                "uses_test_information": False,
+            },
+            "ablation_plan": "compare with unchanged baseline",
+        },
+        "model-proposal": {
+            **common_proposal,
+            "contract_type": "model_proposal",
+            "author_role": "D",
+            "model_family": "factorization_machine",
+            "objective": {"name": "same_user_bpr"},
+            "sampling": {"unit": "same_user"},
+            "input_output": {"input": "features", "output": "score"},
+            "hyperparameters": {"learning_rate": 0.001},
+            "dependency_changes": [],
+            "resource_estimate": {"seconds": 60},
+            "failure_conditions": ["NaN"],
+            "fallback": "pointwise baseline",
+            "validation_claim": "none until E evaluates",
+        },
+        "run-manifest": {
+            "schema_version": 1,
+            "contract_type": "run_manifest",
+            "experiment_id": "exp_002",
+            "run_id": "run-1",
+            "commit_sha": SHA,
+            "worktree_clean": True,
+            "started_at_utc": "2026-08-30T00:00:00Z",
+            "finished_at_utc": "2026-08-30T00:01:00Z",
+            "executor_role": "B",
+            "experiment_spec_path": "experiments/exp_002.json",
+            "config_path": "configs/candidates/example.json",
+            "config_hash": DIGEST,
+            "config": {},
+            "data": {"split": "valid", "hash": DIGEST},
+            "data_hash": DIGEST,
+            "seed": 0,
+            "dev_max_date": 20220428,
+            "environment": {"python": "3.13"},
+            "protected_hashes": {"starter/evaluate.py": DIGEST},
+            "commands": ["python tools/run_experiment.py --mode valid-only"],
+            "prediction_hash": DIGEST,
+            "checkpoint_hash": DIGEST,
+            "artifacts": [{"path": "valid_predictions.csv", "sha256": DIGEST}],
+            "status": "completed",
+        },
+        "metrics": {
+            "schema_version": 1,
+            "contract_type": "metrics",
+            "experiment_id": "exp_002",
+            "run_id": "run-1",
+            "baseline_experiment_id": "baseline_fm",
+            "commit_sha": SHA,
+            "worktree_clean": True,
+            "evaluator_role": "E",
+            "status": "completed",
+            "hypothesis": "same-user BPR improves ranking",
+            "code_diff": "objective only",
+            "split": "valid",
+            "metrics": {"GAUC": 0.6, "nDCG@5": 0.5, "primary": 0.55},
+            "errors": [],
+            "recovery": None,
+            "manual_interventions": 0,
+            "tokens": 0,
+            "wall_time_seconds": 1,
+            "iterations": 1,
+            "gpu_hours": 0,
+            "config": {},
+            "data": {"split": "valid"},
+            "seed": 0,
+            "protected_hashes": {"starter/evaluate.py": DIGEST},
+            "artifact_manifest_path": "artifacts/run_manifest.json",
+        },
+        "decision-request": {
+            "schema_version": 1,
+            "contract_type": "decision_request",
+            "experiment_id": "exp_002",
+            "request_id": "decision-1",
+            "requested_at_utc": "2026-08-30T00:00:00Z",
+            "requested_by_role": "B",
+            "approved_against_commit_sha": SHA,
+            "trigger": "contract ambiguity",
+            "summary": "human choice is required",
+            "evidence_paths": [],
+            "options": [],
+            "automation_paused": True,
+            "status": "pending_human",
+        },
+        "final-approval": {
+            "schema_version": 1,
+            "contract_type": "final_approval",
+            "experiment_id": "exp_002",
+            "commit_sha": SHA,
+            "approved": True,
+            "approved_by": "human-owner",
+            "approved_at": "2026-08-30T00:00:00Z",
+            "protected_hashes": {"starter/evaluate.py": DIGEST},
+        },
+    }
 
 
 class ProtectedAndContractTests(unittest.TestCase):
@@ -24,59 +151,29 @@ class ProtectedAndContractTests(unittest.TestCase):
             self.assertEqual(len(failures), 1)
             self.assertIn("hash mismatch", failures[0])
 
-    def test_experiment_contract_normal_and_missing_field_paths(self) -> None:
-        document = {
-            "exp_id": "exp_001",
-            "base_commit": "a" * 40,
-            "hypothesis": "one change",
-            "single_variable": "loss=bpr",
-            "allowed_files": ["src/training/bpr.py"],
-            "forbidden_files": ["starter/evaluate.py"],
-            "data_mode": "train_valid_only",
-            "seeds": [0, 1],
-            "smoke_batches": 5,
-            "max_minutes": 120,
-            "success": {"metric": "primary", "split": "valid", "min_delta": 0.002},
-            "status": "PROPOSED",
-        }
+    def test_current_experiment_contract_and_missing_field_paths(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+        document = json.loads((repo_root / "experiments" / "exp_001.json").read_text(encoding="utf-8"))
         validate_contract("experiment-spec", document)
         del document["hypothesis"]
         with self.assertRaisesRegex(ValidationError, "hypothesis"):
             validate_contract("experiment-spec", document)
 
-    def test_other_four_contract_shapes(self) -> None:
-        sha = "b" * 40
-        documents = {
-            "feature-proposal": {
-                "exp_id": "exp_002", "raw_columns": ["date"], "time_boundary": "strictly before row",
-                "train_only_statistics": True, "missing_values": "UNK", "dimension": 1,
-                "leakage_checks": ["cutoff"], "expected_impact": "better ranking", "code_commit": sha,
-            },
-            "model-proposal": {
-                "exp_id": "exp_002", "objective": "BPR", "sampling_unit": "user",
-                "inputs": ["features"], "outputs": ["score"], "hyperparameters": {"lr": 0.001},
-                "resource_estimate": {"minutes": 10}, "failure_conditions": ["NaN"],
-                "fallback": "FM", "code_commit": sha,
-            },
-            "run-manifest": {
-                "exp_id": "exp_002", "commit": sha, "dirty": False, "config_hash": "c" * 64,
-                "data_hash": "d" * 64, "seed": 0, "started_at": "2026-08-29T00:00:00Z",
-                "ended_at": "2026-08-29T00:01:00Z", "exit_code": 0,
-                "checkpoint_hash": "e" * 64, "prediction_hash": "f" * 64,
-                "log_path": "run.log", "manual_intervention": False,
-                "command": ["python", "tools/run_experiment.py"],
-            },
-            "metrics": {
-                "exp_id": "exp_002", "commit": sha,
-                "valid": {"GAUC": 0.6, "nDCG@5": 0.5, "primary": 0.55},
-                "baseline_delta": 0.01, "seed_summary": {"mean": 0.55, "std": 0.0},
-                "prediction_checks": "PASS", "protected_hashes": {}, "compliance": "PASS",
-                "recommendation": "ACCEPT",
-            },
-        }
-        for contract_type, document in documents.items():
+    def test_all_handoff_contract_shapes_are_canonical(self) -> None:
+        for contract_type, document in canonical_documents().items():
             with self.subTest(contract_type=contract_type):
                 validate_contract(contract_type, document)
+
+    def test_legacy_alias_and_test_request_are_rejected_recursively(self) -> None:
+        manifest = deepcopy(canonical_documents()["run-manifest"])
+        manifest["config"] = {"nested": {"commit": SHA}}
+        with self.assertRaisesRegex(ValidationError, "forbidden legacy field"):
+            validate_contract("run-manifest", manifest)
+
+        manifest = deepcopy(canonical_documents()["run-manifest"])
+        manifest["config"] = {"evaluation_split": "test"}
+        with self.assertRaisesRegex(ValidationError, "test split denied"):
+            validate_contract("run-manifest", manifest)
 
 
 if __name__ == "__main__":
