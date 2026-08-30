@@ -20,7 +20,7 @@ from tools.run_experiment import (
     execute,
     main,
 )
-from tools.validate_contract import validate_contract
+from tools.validate_contract import validate_artifact_files, validate_contract
 from tools.validate_predictions import validate
 
 
@@ -172,10 +172,25 @@ class RunExperimentTests(unittest.TestCase):
             self.assertFalse(manifest["test_access"])
             self.assertGreater(manifest["pair_coverage"]["pair_count"], 0)
             self.assertEqual(len(manifest["commands"]), 1)
+            self.assertEqual(
+                {artifact["path"] for artifact in manifest["artifacts"]},
+                {
+                    "valid_predictions.csv",
+                    "checkpoint.npz",
+                    "resolved_config.json",
+                    "training_history.json",
+                    "runner_metrics.json",
+                },
+            )
             validate_contract("run-manifest", manifest)
+            validate_artifact_files(manifest, output_dir)
             self.assertEqual(validate(output_dir / "valid_predictions.csv", data_dir, "valid")["rows"], 2)
             with np.load(output_dir / "checkpoint.npz", allow_pickle=False) as checkpoint:
                 self.assertTrue({"mV", "vV", "mW", "vW", "t"}.issubset(checkpoint.files))
+
+            (output_dir / "resolved_config.json").write_text("{}\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValidationError, "artifact hash mismatch"):
+                validate_artifact_files(manifest, output_dir)
 
     def test_dirty_worktree_fails_closed_before_training_and_writes_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -200,6 +215,44 @@ class RunExperimentTests(unittest.TestCase):
             self.assertEqual(manifest["status"], "failed")
             self.assertIn("worktree must be clean", manifest["error"])
             validate_contract("run-manifest", manifest)
+
+    def test_artifact_hash_failure_cannot_leave_a_completed_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            data_dir = make_pair_dataset(base / "data")
+            output_dir = base / "run"
+            candidate_path = base / "candidate.json"
+            baseline_path = base / "baseline.json"
+            spec_path = base / "experiment.json"
+            write_json(candidate_path, candidate_config())
+            write_json(baseline_path, pointwise_config())
+            write_json(spec_path, approved_spec(candidate_path, baseline_path))
+            argv = [
+                "run_experiment.py",
+                "--experiment-spec", str(spec_path),
+                "--config", str(candidate_path),
+                "--data-dir", str(data_dir),
+                "--output-dir", str(output_dir),
+                "--seed", "0",
+                "--max-batches", "1",
+                "--mode", "valid-only",
+            ]
+            with (
+                patch.object(sys, "argv", argv),
+                patch("tools.run_experiment._git_state", side_effect=[(COMMIT_SHA, True)] * 2),
+                patch("tools.run_experiment._git_is_ancestor", return_value=True),
+                patch(
+                    "tools.run_experiment.validate_artifact_files",
+                    side_effect=ValidationError("artifact hash mismatch"),
+                ),
+                redirect_stderr(StringIO()),
+            ):
+                self.assertEqual(main(), 1)
+
+            manifest = json.loads((output_dir / "run_manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["status"], "failed")
+            self.assertEqual(manifest["exit_code"], 1)
+            self.assertIn("artifact hash mismatch", manifest["error"])
 
     def test_only_explicit_transient_error_is_retried_once(self) -> None:
         calls = 0
