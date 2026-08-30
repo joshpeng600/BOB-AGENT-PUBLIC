@@ -1,10 +1,12 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_CYCLE_REAL_VALID_RUN_ALLOWED",
+  "state": "EXP_001_CYCLE_VALID_IMPROVEMENT_ACCEPTED",
   "owner": "A",
-  "next_receiver": "B",
-  "approved_against_commit_sha": "ed44036eaed05bb3e00792f65c20849bb22af476",
-  "blocked_by": [],
+  "next_receiver": "A_FOR_NEXT_EXPERIMENT_OR_RELEASE_DECISION",
+  "approved_against_commit_sha": "2dc456539aa4e75665434b35ba86d23bfd1f0fa1",
+  "blocked_by": [
+    "test and final release remain blocked pending a separate exact human final approval"
+  ],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
   "approved_baseline_config_path": "configs/approved/baseline_fm.json",
@@ -27,20 +29,20 @@
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "ALLOWED",
+      "status": "CONSUMED",
       "evidence": "coordination/inbox/A/exp_001_cycle_gate_activation_20260831.md",
-      "permits": "exactly one fresh formal valid-only baseline/candidate pair on one clean descendant of ed44036eaed05bb3e00792f65c20849bb22af476, with identical data hash, feature set, seed 0, and full approved training budget; PR #25 evidence and test remain forbidden"
+      "permits": "no additional formal run; the authorized fresh baseline/candidate pair completed on 44fd36aa9b35b7fc9c01389e6dd453e972f16635 and test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "AUTHORIZED_FOR_ONE_FRESH_FORMAL_VALID_BASELINE_CANDIDATE_PAIR",
+    "B": "FRESH_FORMAL_BASELINE_CANDIDATE_PAIR_COMPLETED_AND_AUDITED",
     "C": "SETUP_COMPLETE_REAL_DATA_AND_PAIR_FEASIBILITY_PASS",
     "D": "SETUP_COMPLETE_MODEL_AND_TRAINING_INTERFACE_PASS",
-    "E": "PRE_EVALUATION_READY_WAITING_FOR_TWO_IMMUTABLE_B_PACKAGES"
+    "E": "FRESH_INDEPENDENT_VALID_EVALUATION_PASS"
   },
   "readiness_snapshot": {
-    "observed_at_utc": "2026-08-30T17:18:26Z",
-    "main_sha": "ed44036eaed05bb3e00792f65c20849bb22af476",
+    "observed_at_utc": "2026-08-30T17:52:48Z",
+    "main_sha": "2dc456539aa4e75665434b35ba86d23bfd1f0fa1",
     "d_setup": {
       "pr_number": 14,
       "status": "MERGED",
@@ -216,6 +218,55 @@
       "test_access": false,
       "evidence": "coordination/inbox/E/exp_001_phase1_pre_evaluation_review_20260831.md"
     },
+    "b_fresh_formal_pair": {
+      "status": "COMPLETED_AND_AUDITED",
+      "producing_commit_sha": "44fd36aa9b35b7fc9c01389e6dd453e972f16635",
+      "pr_number": 39,
+      "merge_sha": "cb61753bc4d23ee1207c37ec6e3dfb3c06e2008c",
+      "github_checks": "PASS_4_OF_4",
+      "data_hash": "69e5a6f656356832f7e1fa6a9774bc404030f32874e18e57e0f38b6a309a1002",
+      "seed": 0,
+      "mode": "valid-only",
+      "max_batches": null,
+      "baseline_run_id": "run-20260830T173747251968Z-exp_001-44fd36aa",
+      "candidate_run_id": "run-20260830T173832514735Z-exp_001-44fd36aa",
+      "baseline_manifest_sha256": "4532d1d2cd6c446e1871ac60c25c2f2a3559d65a95886ac038c9659386a64d38",
+      "candidate_manifest_sha256": "da563985885f3e87b6a4c29730f6b7bbcfffb40785fbd5c2530cbad459123d42",
+      "prediction_contracts": "PASS_BOTH_124909_ROWS",
+      "artifact_audits": "PASS_BOTH",
+      "test_access": false,
+      "evidence": "coordination/inbox/E/exp_001_fresh_44fd36_b_handoff.md"
+    },
+    "e_fresh_formal_evaluation": {
+      "status": "VALID_IMPROVEMENT_ACCEPTED",
+      "producing_commit_sha": "44fd36aa9b35b7fc9c01389e6dd453e972f16635",
+      "pr_number": 40,
+      "merge_sha": "2dc456539aa4e75665434b35ba86d23bfd1f0fa1",
+      "github_checks": "PASS_4_OF_4",
+      "evaluator_role": "E",
+      "baseline_primary": 0.601468756352959,
+      "candidate_primary": 0.603871007132627,
+      "primary_delta": 0.0024022507796679,
+      "strict_delta_gt_0_002": true,
+      "candidate_gt_0_6036": true,
+      "prediction_hashes_unchanged": true,
+      "isolated_e_pr_25_evidence_used": false,
+      "predictions_modified": false,
+      "training_performed_by_e": false,
+      "test_access": false,
+      "evidence": "coordination/inbox/E/exp_001_fresh_44fd36_evaluation_result.md"
+    },
+    "fresh_cycle_process_incident": {
+      "status": "CLOSED_ACCEPTED_WITH_PERMANENT_DISCLOSURE",
+      "incident": "the coordinating root session opened quarantined PR #25 metrics after both fresh B runs and immutable hashes were complete",
+      "causal_effect_on_training_or_predictions": false,
+      "mitigation": "the coordinating session was excluded from E scoring; a no-context isolated E evaluator was explicitly prohibited from reading PR #25",
+      "isolated_e_pr_25_evidence_used": false,
+      "fresh_predictions_modified": false,
+      "human_disposition": "ACCEPT_FRESH_RESULT_WITH_DISCLOSURE_NO_RERUN",
+      "test_access": false,
+      "evidence": "coordination/inbox/A/exp_001_fresh_valid_cycle_decision_20260831.md"
+    },
     "pr_25_gate_incident": {
       "pr_number": 25,
       "head_sha": "f4f253fe90fc6813aa0d780864b3d49ab46df033",
@@ -245,18 +296,37 @@
     "reason": "the repository owner explicitly authorized the acting A integration agent to set REAL_VALID_RUN_ALLOWED=ALLOWED for exactly one full-budget valid-only pair under the recorded safeguards",
     "setup_complete": true,
     "cycle_started": true,
-    "formal_run_started": false,
+    "formal_run_started": true,
+    "formal_run_completed": true,
     "explicit_user_cycle_approval_received": true,
-    "authorized_attempts_active": 1,
-    "score_comparison_performed": false,
-    "formal_metrics_available_for_selection": false,
+    "authorized_attempts_active": 0,
+    "score_comparison_performed": true,
+    "formal_metrics_available_for_selection": true,
     "quarantined_formal_metrics_present": true,
     "remaining_sequence": [
-      "B executes exactly one baseline/candidate pair from one clean frozen descendant commit; PR #25 evidence remains excluded",
-      "B hands complete immutable packages and hashes to E without test access",
-      "E atomically audits and evaluates both valid snapshots and returns the result to A",
-      "A records the comparison decision without test access or final approval"
+      "A selects the next approved experiment or separately asks the human repository owner whether to enter final release review",
+      "test remains inaccessible unless a new exact human final approval is created against a clean frozen commit"
     ]
+  },
+  "cycle_decision": {
+    "decision": "VALID_IMPROVEMENT_ACCEPTED",
+    "decided_at_utc": "2026-08-30T17:52:48Z",
+    "experiment_id": "exp_001",
+    "producing_commit_sha": "44fd36aa9b35b7fc9c01389e6dd453e972f16635",
+    "baseline_primary": 0.601468756352959,
+    "candidate_primary": 0.603871007132627,
+    "primary_delta": 0.0024022507796679,
+    "minimum_improvement": 0.002,
+    "success_rule": "candidate_primary - baseline_primary > 0.002",
+    "success_rule_pass": true,
+    "candidate_primary_threshold": 0.6036,
+    "candidate_threshold_pass": true,
+    "champion_config_path": "configs/candidates/bpr_fm.json",
+    "formal_run_authorization_consumed": true,
+    "fresh_result_accepted_with_process_incident_disclosure": true,
+    "final_approval_created": false,
+    "test_access": false,
+    "evidence": "coordination/inbox/A/exp_001_fresh_valid_cycle_decision_20260831.md"
   },
   "github_branch_protection": {
     "status": "TEMPORARY_CHECKS_ONLY_PR_GATE_APPROVED",
@@ -279,6 +349,6 @@
       "repository-contracts / contracts"
     ]
   },
-  "last_completed_iteration": null,
+  "last_completed_iteration": "exp_001",
   "consecutive_no_improve": 0
 }
