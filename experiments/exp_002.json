@@ -16,6 +16,30 @@
     "official_evaluator_change_allowed": false,
     "model_or_training_source_change_allowed": false
   },
+  "failure_information_value": "A non-improvement would show that additional within-user negative exposure is not sufficient at the fixed FM capacity and budget, narrowing the next mechanism choice toward listwise or time-safe sequential interest rather than more BPR sampling.",
+  "data_mode": "train_valid_only",
+  "allowed_files": [
+    "tools/validate_contract.py",
+    "tests/test_run_experiment.py",
+    "tests/test_protected_and_contracts.py",
+    "tests/test_audit.py",
+    "configs/candidates/bpr_fm_neg2.json",
+    "coordination/inbox/B/exp_002_*",
+    "coordination/inbox/C/exp_002_*",
+    "coordination/inbox/D/exp_002_*",
+    "coordination/inbox/E/exp_002_*"
+  ],
+  "forbidden_files": [
+    "starter/",
+    "src/models/",
+    "src/training/",
+    "tools/safe_evaluate.py",
+    "official evaluator and data/feature implementations"
+  ],
+  "seeds": [
+    0
+  ],
+  "smoke_batches": 1,
   "task": {
     "ranking_scope": "within_user",
     "label": "long_view",

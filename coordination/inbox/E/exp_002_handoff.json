@@ -5,7 +5,7 @@
   "approved_against_commit_sha": "8eb5bad5d1ce24ee8d68451dddd45a10414119c5",
   "from_role": "A",
   "to_role": "E",
-  "status": "ACTION_REQUIRED_PRE_EVALUATION_REVIEW_ONLY",
+  "status": "WAIT_FOR_MERGED_B_D_SETUP_EVIDENCE",
   "experiment_spec": "experiments/exp_002.json",
   "required_checks": [
     "pre-review baseline and candidate route binding after B generalizes the baseline objective contract",
@@ -15,5 +15,9 @@
     "do not score, train, modify predictions, create formal metrics, create final approval, or access test"
   ],
   "formal_evaluation_allowed": false,
+  "required_return_paths": [
+    "coordination/inbox/E/exp_002_pre_evaluation_readiness.md"
+  ],
+  "merge_requirement": "return evidence must be merged to main before A may use it as a gate",
   "next_receiver": "A"
 }

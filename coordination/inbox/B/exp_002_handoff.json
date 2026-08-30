@@ -32,5 +32,9 @@
     "FORMAL_METRICS_PRODUCED=false",
     "test_access=false"
   ],
+  "required_return_paths": [
+    "coordination/inbox/B/exp_002_setup_readiness.md"
+  ],
+  "merge_requirement": "return evidence and any B-owned implementation must be merged to main before A may use it as a gate",
   "next_receiver": "A"
 }

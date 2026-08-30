@@ -16,5 +16,9 @@
   ],
   "feature_change_allowed": false,
   "real_training_allowed": false,
+  "required_return_paths": [
+    "coordination/inbox/C/exp_002_feasibility.md"
+  ],
+  "merge_requirement": "return evidence must be merged to main before A may use it as a gate",
   "next_receiver": "A"
 }

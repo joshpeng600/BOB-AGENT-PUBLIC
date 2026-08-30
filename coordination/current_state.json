@@ -2,11 +2,11 @@
   "schema_version": 1,
   "state": "EXP_002_IMPLEMENTATION_SETUP_ALLOWED",
   "owner": "A",
-  "next_receiver": "B_C_D_E_PARALLEL_SETUP",
+  "next_receiver": "B_C_D_ASYNC_SETUP",
   "approved_against_commit_sha": "8eb5bad5d1ce24ee8d68451dddd45a10414119c5",
   "blocked_by": [
-    "B must generalize the baseline objective contract before exp_001 BPR can be replayed as the exp_002 baseline",
-    "D config, C feasibility, and E pre-evaluation evidence are pending",
+    "B baseline-route contract generalization, C feasibility recheck, and D config-only candidate are pending merged evidence",
+    "E pre-evaluation review waits for merged B and D setup evidence",
     "real valid runs remain blocked pending a later exact A authorization",
     "test and final release remain blocked pending a separate exact human final approval"
   ],
@@ -28,20 +28,20 @@
     },
     "SYNTHETIC_SMOKE_ALLOWED": {
       "status": "PENDING_ROLE_IMPLEMENTATION",
-      "evidence": "experiments/exp_002.json and coordination/inbox/A/exp_002_planning_decision_20260831.md",
-      "permits": "after B and D implementation, at most one bounded explicit synthetic fixture smoke; no metric conclusion"
+      "evidence": "experiments/exp_002.json",
+      "permits": "after relevant implementation is committed and clean, at most one bounded one-batch explicit synthetic fixture smoke; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED",
+      "status": "BLOCKED_PENDING_MERGED_B_C_D_E_READINESS_AND_EXACT_A_GATE",
       "evidence": "coordination/inbox/A/exp_002_planning_decision_20260831.md",
-      "permits": "none until B/C/D/E readiness evidence is integrated and A records a separate exact full-budget valid-only authorization"
+      "permits": "none; no real-data training or formal metrics and test remains forbidden"
     }
   },
   "role_statuses": {
     "B": "EXP_002_BASELINE_ROUTE_GENERALIZATION_ASSIGNED_SYNTHETIC_ONLY",
     "C": "EXP_002_READ_ONLY_FEASIBILITY_REVIEW_ASSIGNED",
     "D": "EXP_002_CONFIG_ONLY_NEGATIVE_SAMPLING_CHANGE_ASSIGNED",
-    "E": "EXP_002_PRE_EVALUATION_REVIEW_ASSIGNED_NO_SCORING"
+    "E": "WAIT_FOR_MERGED_B_D_SETUP_EVIDENCE"
   },
   "exp_002_planning": {
     "status": "IMPLEMENTATION_SETUP_APPROVED",
@@ -52,11 +52,16 @@
     "minimum_improvement": 0.002,
     "candidate_primary_must_be_greater_than": 0.605871007132627,
     "single_scientific_change": "objective.negatives_per_positive: 1 -> 2",
-    "model_source_change_allowed": false,
-    "feature_change_allowed": false,
-    "official_evaluator_change_allowed": false,
+    "data_mode": "train_valid_only",
+    "seeds": [
+      0
+    ],
+    "smoke_batches": 1,
+    "max_runtime_seconds": 3600,
     "formal_run_authorization_active": false,
+    "authorized_attempts_active": 0,
     "formal_metrics_produced": false,
+    "pr_25_evidence_used": false,
     "test_access": false,
     "evidence": "coordination/inbox/A/exp_002_planning_decision_20260831.md"
   },

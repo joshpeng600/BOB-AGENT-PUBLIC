@@ -17,5 +17,10 @@
     "do not access test"
   ],
   "real_training_allowed": false,
+  "required_return_paths": [
+    "configs/candidates/bpr_fm_neg2.json",
+    "coordination/inbox/D/exp_002_setup_readiness.md"
+  ],
+  "merge_requirement": "candidate config and return evidence must be merged to main before A may use them as a gate",
   "next_receiver": "A"
 }

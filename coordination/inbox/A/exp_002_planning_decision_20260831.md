@@ -16,7 +16,7 @@ test_access=false
 
 ## Decision
 
-The accepted exp_001 Same-user BPR candidate is promoted to an approved exp_002 baseline configuration. D's read-only design review recommended increasing `negatives_per_positive` from 1 to 2 as the single scientific change because it increases negative exposure while preserving the model, features, objective family, seed, evaluator, and nominal training budget.
+The accepted exp_001 Same-user BPR candidate in `configs/approved/exp_001.json` is the approved exp_002 baseline. Increasing `negatives_per_positive` from 1 to 2 is the single scientific change because it increases negative exposure while preserving the model, features, objective family, seed, evaluator, and nominal training budget.
 
 Alternatives considered were increasing the embedding dimension and increasing the learning rate. Both introduce broader capacity or optimization risk, so they were not selected for this round.
 
@@ -35,3 +35,5 @@ This is a synthetic/contract repair only. It does not authorize real data use, f
 5. A reviews merged evidence and separately decides whether to authorize exactly one fresh full-budget valid-only baseline/candidate pair.
 
 No formal run authorization is active in this planning decision.
+
+This setup remains asynchronous: B, C, and D may return evidence independently; E waits for the merged B/D route and config evidence. Unmerged role branches are not gate evidence.
