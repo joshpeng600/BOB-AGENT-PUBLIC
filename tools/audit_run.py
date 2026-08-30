@@ -16,7 +16,7 @@ from tools.project_security import (
     load_json,
     verify_protected_files,
 )
-from tools.validate_contract import validate_contract
+from tools.validate_contract import validate_artifact_files, validate_contract
 
 
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -94,6 +94,10 @@ def audit_manifest(manifest_path: Path) -> dict[str, Any]:
         raise SecurityError("Protected files do not match their manifest")
     record = load_json(manifest_path)
     validate_manifest_record(record, git_head(), git_is_dirty(), expected_hashes)
+    try:
+        validate_artifact_files(record, manifest_path.resolve().parent)
+    except ValidationError as error:
+        raise SecurityError(f"artifact audit failed: {error}") from error
     return record
 
 

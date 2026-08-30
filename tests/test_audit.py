@@ -1,7 +1,14 @@
-import unittest
+from __future__ import annotations
 
-from tools.common import stable_json_hash
-from tools.audit_run import is_test_scoring_command, validate_manifest_record
+from copy import deepcopy
+import json
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+
+from tools.common import sha256_file, stable_json_hash, write_json
+from tools.audit_run import audit_manifest, is_test_scoring_command, validate_manifest_record
 from tools.final_approval import validate_approval_record
 from tools.project_security import SecurityError
 
@@ -123,6 +130,146 @@ class AuditTests(unittest.TestCase):
         self.manifest["commands"] = [command]
         with self.assertRaises(SecurityError):
             validate_manifest_record(self.manifest, self.commit, False, self.hashes)
+
+
+class ArtifactAuditTests(unittest.TestCase):
+    def setUp(self):
+        AuditTests.setUp(self)
+
+    def _write_package(self, root: Path) -> Path:
+        payloads = {
+            "valid_predictions.csv": b"row_id,user_id,video_id,score\n0,u1,v1,0.5\n",
+            "checkpoint.npz": b"synthetic-checkpoint",
+            "training_history.json": b"{}\n",
+            "runner_metrics.json": b"{}\n",
+        }
+        for name, payload in payloads.items():
+            (root / name).write_bytes(payload)
+        write_json(root / "resolved_config.json", self.config)
+
+        manifest = deepcopy(self.manifest)
+        artifact_hashes = {
+            path: sha256_file(root / path)
+            for path in (
+                "valid_predictions.csv",
+                "checkpoint.npz",
+                "resolved_config.json",
+                "training_history.json",
+                "runner_metrics.json",
+            )
+        }
+        manifest["prediction_hash"] = artifact_hashes["valid_predictions.csv"]
+        manifest["checkpoint_hash"] = artifact_hashes["checkpoint.npz"]
+        manifest["artifacts"] = [
+            {"path": path, "sha256": digest}
+            for path, digest in artifact_hashes.items()
+        ]
+        manifest_path = root / "run_manifest.json"
+        write_json(manifest_path, manifest)
+        return manifest_path
+
+    def _audit(self, manifest_path: Path) -> dict[str, object]:
+        with (
+            patch("tools.audit_run.verify_protected_files", return_value=self.hashes),
+            patch("tools.audit_run.expected_protected_hashes", return_value=self.hashes),
+            patch("tools.audit_run.git_head", return_value=self.commit),
+            patch("tools.audit_run.git_is_dirty", return_value=False),
+        ):
+            return audit_manifest(manifest_path)
+
+    def test_audit_manifest_accepts_complete_byte_bound_package(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest_path = self._write_package(Path(tmp))
+            self.assertEqual(self._audit(manifest_path)["status"], "completed")
+
+    def test_audit_manifest_rejects_tampered_and_missing_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path = self._write_package(root)
+            (root / "valid_predictions.csv").write_text("tampered\n", encoding="utf-8")
+            with self.assertRaisesRegex(SecurityError, "artifact hash mismatch"):
+                self._audit(manifest_path)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path = self._write_package(root)
+            (root / "checkpoint.npz").unlink()
+            with self.assertRaisesRegex(SecurityError, "artifact file is missing"):
+                self._audit(manifest_path)
+
+    def test_audit_manifest_rejects_resolved_config_semantic_mismatch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path = self._write_package(root)
+            write_json(root / "resolved_config.json", {"model": "different"})
+            manifest = self._audit_input_with_current_hashes(root, manifest_path)
+            write_json(manifest_path, manifest)
+            with self.assertRaisesRegex(SecurityError, "content must equal"):
+                self._audit(manifest_path)
+
+    def _audit_input_with_current_hashes(
+        self, root: Path, manifest_path: Path
+    ) -> dict[str, object]:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        for artifact in manifest["artifacts"]:
+            artifact["sha256"] = sha256_file(root / artifact["path"])
+        manifest["prediction_hash"] = next(
+            artifact["sha256"]
+            for artifact in manifest["artifacts"]
+            if artifact["path"] == "valid_predictions.csv"
+        )
+        manifest["checkpoint_hash"] = next(
+            artifact["sha256"]
+            for artifact in manifest["artifacts"]
+            if artifact["path"] == "checkpoint.npz"
+        )
+        return manifest
+
+    def test_audit_manifest_rejects_top_level_cross_hash_mismatch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path = self._write_package(root)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["prediction_hash"] = "d" * 64
+            write_json(manifest_path, manifest)
+            with self.assertRaisesRegex(SecurityError, "prediction_hash must match"):
+                self._audit(manifest_path)
+
+    def test_audit_manifest_rejects_duplicate_and_traversal_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path = self._write_package(root)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["artifacts"].append(deepcopy(manifest["artifacts"][0]))
+            write_json(manifest_path, manifest)
+            with self.assertRaisesRegex(SecurityError, "duplicate artifact path"):
+                self._audit(manifest_path)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path = self._write_package(root)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["artifacts"][0]["path"] = "../valid_predictions.csv"
+            write_json(manifest_path, manifest)
+            with self.assertRaisesRegex(SecurityError, "normalized relative path"):
+                self._audit(manifest_path)
+
+    def test_audit_manifest_rejects_artifact_symlink(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path = self._write_package(root)
+            target = root.parent / f"{root.name}-outside-predictions.csv"
+            target.write_bytes((root / "valid_predictions.csv").read_bytes())
+            (root / "valid_predictions.csv").unlink()
+            try:
+                (root / "valid_predictions.csv").symlink_to(target)
+            except OSError as error:
+                self.skipTest(f"symlink creation is unavailable: {error}")
+            try:
+                with self.assertRaisesRegex(SecurityError, "not a symlink"):
+                    self._audit(manifest_path)
+            finally:
+                target.unlink(missing_ok=True)
 
 
 class FinalApprovalTests(unittest.TestCase):

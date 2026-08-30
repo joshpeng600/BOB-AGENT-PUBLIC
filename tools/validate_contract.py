@@ -10,7 +10,13 @@ from typing import Any
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tools.common import VALID_END, ValidationError, read_json, sha256_file
+from tools.common import (
+    VALID_END,
+    ValidationError,
+    read_json,
+    sha256_file,
+    stable_json_hash,
+)
 
 
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
@@ -246,6 +252,7 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
         raise ValidationError("run manifest data.split must be valid")
     artifacts = _require_list(document["artifacts"], "artifacts")
     artifact_paths: set[str] = set()
+    artifact_hashes: dict[str, str] = {}
     for index, artifact in enumerate(artifacts):
         item = _require_object(artifact, f"artifacts[{index}]")
         raw_path = item.get("path")
@@ -260,6 +267,7 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
             raise ValidationError(f"duplicate artifact path: {raw_path}")
         artifact_paths.add(raw_path)
         _validate_sha256(item.get("sha256"), f"artifacts[{index}].sha256")
+        artifact_hashes[raw_path] = item["sha256"]
     if document["status"] == "completed":
         if document["worktree_clean"] is not True:
             raise ValidationError("completed run must record worktree_clean=true")
@@ -272,19 +280,36 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
                 "completed run is missing required artifacts: "
                 + ", ".join(sorted(missing_artifacts))
             )
+        if document["prediction_hash"] != artifact_hashes["valid_predictions.csv"]:
+            raise ValidationError(
+                "prediction_hash must match the valid_predictions.csv artifact hash"
+            )
+        if document["checkpoint_hash"] != artifact_hashes["checkpoint.npz"]:
+            raise ValidationError(
+                "checkpoint_hash must match the checkpoint.npz artifact hash"
+            )
 
 
 def validate_artifact_files(document: dict[str, Any], artifact_root: Path) -> None:
     """Verify every declared artifact against bytes below the run directory."""
     validate_contract("run_manifest", document)
     root = artifact_root.resolve()
+    resolved_paths: dict[str, Path] = {}
     for index, artifact in enumerate(document["artifacts"]):
         relative = Path(artifact["path"])
-        candidate = (root / relative).resolve()
-        if candidate.parent != root:
+        unresolved = root / relative
+        if unresolved.is_symlink():
             raise ValidationError(
-                f"artifacts[{index}].path must name a file directly below the run directory"
+                f"artifact path must name an ordinary file, not a symlink: "
+                f"{relative.as_posix()}"
             )
+        candidate = unresolved.resolve()
+        try:
+            candidate.relative_to(root)
+        except ValueError as exc:
+            raise ValidationError(
+                f"artifacts[{index}].path escapes the run directory"
+            ) from exc
         if not candidate.is_file():
             raise ValidationError(f"artifact file is missing: {relative.as_posix()}")
         actual = sha256_file(candidate)
@@ -293,6 +318,17 @@ def validate_artifact_files(document: dict[str, Any], artifact_root: Path) -> No
                 f"artifact hash mismatch for {relative.as_posix()}: "
                 f"expected {artifact['sha256']}, observed {actual}"
             )
+        resolved_paths[relative.as_posix()] = candidate
+
+    resolved_config = read_json(resolved_paths["resolved_config.json"])
+    if resolved_config != document["config"]:
+        raise ValidationError(
+            "resolved_config.json content must equal run_manifest.config"
+        )
+    if stable_json_hash(resolved_config) != document["config_hash"]:
+        raise ValidationError(
+            "resolved_config.json canonical hash must equal run_manifest.config_hash"
+        )
 
 
 def _validate_metrics(document: dict[str, Any]) -> None:
