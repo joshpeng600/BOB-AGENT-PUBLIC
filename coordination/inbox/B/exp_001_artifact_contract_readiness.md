@@ -4,15 +4,15 @@ STATUS=READY_FOR_E_ARTIFACT_CONTRACT_REREVIEW
 ROLE=B
 BRANCH=B-Part
 ORIGIN_MAIN_SHA=4170b2e1377be89205fbe9c93cbafafa81c7e4c0
-IMPLEMENTATION_COMMIT_SHA=24235daf9a0a5e6d4272aa16270befd9cb18bb2b
+IMPLEMENTATION_COMMIT_SHA=dba130047e944842de51f75db69a6411a42f74b4
 WORKTREE_CLEAN_AT_VERIFICATION=true
 EXPERIMENT_ID=exp_001
 E_BLOCKER_SOURCE=coordination/inbox/E/exp_001_pre_evaluation_readiness.md
 EXPECTED_ARTIFACT_CONTRACT=PASS
 ARTIFACT_BYTES_VERIFIED=true
 REQUIRED_ARTIFACT_COUNT=5
-PYTEST=PASS_84_TESTS_26_SUBTESTS_1_PLATFORM_SKIP
-UNIT_TESTS=PASS_85_OF_85_1_PLATFORM_SKIP
+PYTEST=PASS_85_TESTS_28_SUBTESTS_1_PLATFORM_SKIP
+UNIT_TESTS=PASS_86_OF_86_1_PLATFORM_SKIP
 PROTECTED_HASHES=PASS
 REPOSITORY_CONTRACTS=PASS
 PREDICTION_CONTRACT=PASS
@@ -51,7 +51,7 @@ The complete correction provides all of the following:
 - the runner records a raw SHA-256 entry for `resolved_config.json`;
 - completed manifests reject a missing required artifact;
 - duplicate, absolute, non-normalized, and parent-traversal artifact paths are
-  rejected;
+  rejected consistently for both POSIX and Windows path syntax;
 - `validate_artifact_files()` resolves declared files below the run directory,
   rejects symlinks and path escape, requires each path to be an ordinary file,
   recomputes SHA-256 from file bytes, and rejects any mismatch;
@@ -62,6 +62,8 @@ The complete correction provides all of the following:
 - `tools/audit_run.py` invokes the complete artifact verifier relative to the
   directory containing `run_manifest.json`, so E cannot accept a manifest-only
   claim without the immutable files;
+- the artifact verifier accepts only `status=completed`, so failed or stopped
+  manifests cannot fall through as formal evidence;
 - the `tools/validate_contract.py --type run-manifest --path <manifest>` CLI
   verifies completed artifact bytes relative to the manifest directory by
   default, with an explicit `--artifact-root` override when required;
@@ -89,17 +91,17 @@ B's authorized implementation scope.
 Implementation commit:
 
 ```text
-24235daf9a0a5e6d4272aa16270befd9cb18bb2b
+dba130047e944842de51f75db69a6411a42f74b4
 ```
 
 Results:
 
 ```text
 python -m pytest -q
-PASS: 84 tests, 26 subtests, 1 Windows privilege skip
+PASS: 85 tests, 28 subtests, 1 Windows privilege skip
 
 python -m unittest discover -s tests -v
-PASS: 85/85, 1 Windows privilege skip
+PASS: 86/86, 1 Windows privilege skip
 
 python scripts/check_repository_contracts.py
 PASS: 22 JSON files plus JSONL/TOML
