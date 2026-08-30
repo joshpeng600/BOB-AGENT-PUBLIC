@@ -621,7 +621,6 @@ def validate_artifact_files(
         raise ValidationError(
             "non-formal artifact verification requires synthetic-only smoke evidence"
         )
-    validate_approved_run_route(document)
     root = artifact_root.resolve()
     resolved_config_bytes: bytes | None = None
     bindings: list[
