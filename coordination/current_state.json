@@ -3,7 +3,7 @@
   "state": "EXP_002_IMPLEMENTATION_SETUP_ALLOWED",
   "owner": "A",
   "next_receiver": "B_C_D_E_PARALLEL_SETUP",
-  "approved_against_commit_sha": "676c79e9661c8cdeb97b04c50f0ddc3a6d3a9767",
+  "approved_against_commit_sha": "8eb5bad5d1ce24ee8d68451dddd45a10414119c5",
   "blocked_by": [
     "B must generalize the baseline objective contract before exp_001 BPR can be replayed as the exp_002 baseline",
     "D config, C feasibility, and E pre-evaluation evidence are pending",
@@ -12,7 +12,7 @@
   ],
   "active_experiment_id": "exp_002",
   "experiment_spec_path": "experiments/exp_002.json",
-  "approved_baseline_config_path": "configs/approved/exp_001_bpr_fm.json",
+  "approved_baseline_config_path": "configs/approved/exp_001.json",
   "starter_contract_verified": true,
   "protected_hashes_pinned": true,
   "contract_fields": {
@@ -45,9 +45,9 @@
   },
   "exp_002_planning": {
     "status": "IMPLEMENTATION_SETUP_APPROVED",
-    "approved_against_commit_sha": "676c79e9661c8cdeb97b04c50f0ddc3a6d3a9767",
-    "current_champion_experiment_id": "exp_001_bpr_fm",
-    "current_champion_config_path": "configs/approved/exp_001_bpr_fm.json",
+    "approved_against_commit_sha": "8eb5bad5d1ce24ee8d68451dddd45a10414119c5",
+    "current_champion_experiment_id": "exp_001",
+    "current_champion_config_path": "configs/approved/exp_001.json",
     "current_champion_primary": 0.603871007132627,
     "minimum_improvement": 0.002,
     "candidate_primary_must_be_greater_than": 0.605871007132627,
@@ -329,7 +329,8 @@
     ]
   },
   "cycle_decision": {
-    "decision": "VALID_IMPROVEMENT_ACCEPTED",
+    "decision": "KEEP",
+    "result_classification": "IMPROVED",
     "decided_at_utc": "2026-08-30T17:52:48Z",
     "experiment_id": "exp_001",
     "producing_commit_sha": "44fd36aa9b35b7fc9c01389e6dd453e972f16635",
@@ -341,12 +342,21 @@
     "success_rule_pass": true,
     "candidate_primary_threshold": 0.6036,
     "candidate_threshold_pass": true,
-    "champion_config_path": "configs/candidates/bpr_fm.json",
+    "champion_config_path": "configs/approved/exp_001.json",
     "formal_run_authorization_consumed": true,
     "fresh_result_accepted_with_process_incident_disclosure": true,
     "final_approval_created": false,
     "test_access": false,
     "evidence": "coordination/inbox/A/exp_001_fresh_valid_cycle_decision_20260831.md"
+  },
+  "formal_decision_artifacts": {
+    "current_experiment": "coordination/current_experiment.json",
+    "experiment_history": "coordination/experiment_history.jsonl",
+    "latest_metrics": "coordination/results/latest_metrics.json",
+    "iteration_spec": "coordination/iterations/exp_001/experiment_spec.json",
+    "approved_config": "configs/approved/exp_001.json",
+    "github_issue_draft": "coordination/issues/exp_001_keep_decision.md",
+    "recorded_at_utc": "2026-08-30T18:25:11Z"
   },
   "github_branch_protection": {
     "status": "TEMPORARY_CHECKS_ONLY_PR_GATE_APPROVED",

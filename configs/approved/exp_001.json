@@ -1,9 +1,10 @@
 {
   "schema_version": 1,
   "contract_type": "approved_config",
-  "experiment_id": "exp_001_bpr_fm",
+  "experiment_id": "exp_001",
   "approved_against_commit_sha": "676c79e9661c8cdeb97b04c50f0ddc3a6d3a9767",
   "status": "APPROVED",
+  "source_candidate": "configs/candidates/bpr_fm.json",
   "model": {
     "name": "factorization_machine",
     "embedding_dim": 16,
@@ -31,6 +32,11 @@
   ],
   "maximum_development_date": 20220428,
   "evaluation_split": "valid",
-  "expected_validation_primary": 0.603871007132627,
-  "runner_interface": "governance/runner_model_interface.json"
+  "producing_commit_sha": "44fd36aa9b35b7fc9c01389e6dd453e972f16635",
+  "validated_primary": 0.603871007132627,
+  "baseline_primary": 0.601468756352959,
+  "primary_delta": 0.0024022507796679,
+  "decision": "KEEP",
+  "evidence": "coordination/inbox/E/exp_001_fresh_44fd36_evaluation_result.md",
+  "test_access": false
 }

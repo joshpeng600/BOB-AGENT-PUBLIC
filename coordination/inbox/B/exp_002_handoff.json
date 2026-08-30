@@ -2,7 +2,7 @@
   "schema_version": 1,
   "contract_type": "handoff",
   "experiment_id": "exp_002",
-  "approved_against_commit_sha": "676c79e9661c8cdeb97b04c50f0ddc3a6d3a9767",
+  "approved_against_commit_sha": "8eb5bad5d1ce24ee8d68451dddd45a10414119c5",
   "from_role": "A",
   "to_role": "B",
   "status": "ACTION_REQUIRED_SYNTHETIC_ONLY_BASELINE_ROUTE_GENERALIZATION",

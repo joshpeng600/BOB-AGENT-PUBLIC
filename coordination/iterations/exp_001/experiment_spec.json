@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "contract_type": "experiment_spec",
+  "experiment_id": "exp_001",
+  "author_role": "A",
+  "created_at_utc": "2026-08-29T14:41:22Z",
+  "approved_against_commit_sha": "ab0da74d91cb71606ae99f3b4d7874be28839e1c",
+  "status": "APPROVED_FOR_IMPLEMENTATION",
+  "change_type": "loss_only",
+  "objective": "same_user_bpr",
+  "hypothesis": "Training the same FM so that each user's positive impressions rank above that user's negative impressions may improve validation ranking metrics.",
+  "scope": {
+    "single_variable": "objective: pointwise_binary_cross_entropy -> same_user_bpr",
+    "new_features_allowed": false,
+    "model_family_change_allowed": false,
+    "official_evaluator_change_allowed": false
+  },
+  "task": {
+    "ranking_scope": "within_user",
+    "label": "long_view",
+    "training_splits": ["train", "valid"],
+    "maximum_development_date": 20220428,
+    "evaluation_split": "valid",
+    "metrics": ["GAUC", "nDCG@5", "primary"],
+    "primary_definition": "mean(GAUC,nDCG@5)",
+    "test_access_allowed": false
+  },
+  "baseline": {
+    "baseline_experiment_id": "baseline_fm",
+    "approved_config": "configs/approved/baseline_fm.json",
+    "validation_primary": 0.6016,
+    "minimum_improvement": 0.002,
+    "success_rule": "candidate_primary - baseline_primary > 0.002",
+    "candidate_primary_must_be_greater_than": 0.6036
+  },
+  "implementation_config": "configs/candidates/bpr_fm.json",
+  "role_deliverables": {
+    "C": ["confirm same-user positive/negative pairs can be constructed", "confirm maximum development date is 20220428", "confirm source row order is preserved", "confirm no test access"],
+    "D": ["provide one reproducible same-user BPR training path", "reuse the existing FactorizationMachine and unchanged features", "do not modify the official evaluator"],
+    "B": ["accept --experiment-spec and obtain experiment_id only from this approved spec", "adapt the runner to D's canonical config and FactorizationMachine interface", "emit experiment_id and commit_sha in manifests", "run one synthetic smoke before the real valid-only run", "allow at most one allowlisted transient-infrastructure retry with identical inputs", "do not install dependencies automatically", "rollback to configs/approved/baseline_fm.json on contract, leakage, NaN, timeout, or repeated infrastructure failure"],
+    "E": ["independently validate immutable validation predictions", "record GAUC, nDCG@5, primary, protected hashes, and manual intervention count", "do not train or alter predictions"]
+  },
+  "run_command": ["python", "tools/run_experiment.py", "--experiment-spec", "experiments/exp_001.json", "--config", "configs/candidates/bpr_fm.json", "--data-dir", "<DEV_DATA_DIR>", "--output-dir", "artifacts/exp_001", "--seed", "0", "--mode", "valid-only"],
+  "max_runtime_seconds": 3600,
+  "automatic_repair_attempts": 1,
+  "outcome": {
+    "decision": "KEEP",
+    "result_classification": "IMPROVED",
+    "producing_commit_sha": "44fd36aa9b35b7fc9c01389e6dd453e972f16635",
+    "baseline_primary": 0.601468756352959,
+    "candidate_primary": 0.603871007132627,
+    "primary_delta": 0.0024022507796679,
+    "evidence": "coordination/inbox/E/exp_001_fresh_44fd36_evaluation_result.md",
+    "pr_25_evidence_used": false,
+    "test_access": false
+  }
+}

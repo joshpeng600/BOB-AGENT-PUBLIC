@@ -4,7 +4,7 @@
   "experiment_id": "exp_002",
   "author_role": "A",
   "created_at_utc": "2026-08-30T18:28:43Z",
-  "approved_against_commit_sha": "676c79e9661c8cdeb97b04c50f0ddc3a6d3a9767",
+  "approved_against_commit_sha": "8eb5bad5d1ce24ee8d68451dddd45a10414119c5",
   "status": "APPROVED_FOR_IMPLEMENTATION",
   "change_type": "hyperparameter_only",
   "objective": "same_user_bpr",
@@ -34,8 +34,8 @@
     "test_access_allowed": false
   },
   "baseline": {
-    "baseline_experiment_id": "exp_001_bpr_fm",
-    "approved_config": "configs/approved/exp_001_bpr_fm.json",
+    "baseline_experiment_id": "exp_001",
+    "approved_config": "configs/approved/exp_001.json",
     "validation_primary": 0.603871007132627,
     "minimum_improvement": 0.002,
     "success_rule": "candidate_primary - baseline_primary > 0.002",
