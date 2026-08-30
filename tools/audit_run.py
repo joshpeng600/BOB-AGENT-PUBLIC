@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import argparse
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
-from tools.common import ValidationError, stable_json_hash
+from tools.common import ValidationError, sha256_file, stable_json_hash
 from tools.project_security import (
     SecurityError,
     expected_protected_hashes,
@@ -20,6 +20,7 @@ from tools.validate_contract import validate_artifact_files, validate_contract
 
 
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def is_test_scoring_command(command: str) -> bool:
@@ -87,6 +88,36 @@ def validate_manifest_record(
         raise SecurityError(f"test scoring command found: {forbidden[0]}")
 
 
+def verify_experiment_spec(record: dict[str, Any]) -> None:
+    raw_path = record.get("experiment_spec_path")
+    if not isinstance(raw_path, str) or not raw_path:
+        raise SecurityError("experiment_spec_path must be a repository-relative path")
+    path = Path(raw_path)
+    posix_path = PurePosixPath(raw_path)
+    windows_path = PureWindowsPath(raw_path)
+    if (
+        path.is_absolute()
+        or posix_path.is_absolute()
+        or windows_path.is_absolute()
+        or bool(windows_path.drive)
+        or "\\" in raw_path
+        or ".." in posix_path.parts
+        or posix_path.as_posix() != raw_path
+    ):
+        raise SecurityError("experiment_spec_path must be a normalized relative path")
+    candidate = (REPO_ROOT / path).resolve()
+    try:
+        candidate.relative_to(REPO_ROOT)
+    except ValueError as error:
+        raise SecurityError("experiment_spec_path escapes the repository") from error
+    if not candidate.is_file():
+        raise SecurityError("recorded experiment spec is missing")
+    if sha256_file(candidate) != record.get("experiment_spec_hash"):
+        raise SecurityError(
+            "experiment_spec_hash does not match the recorded experiment spec"
+        )
+
+
 def audit_manifest(manifest_path: Path) -> dict[str, Any]:
     actual_hashes = verify_protected_files()
     expected_hashes = expected_protected_hashes()
@@ -94,6 +125,7 @@ def audit_manifest(manifest_path: Path) -> dict[str, Any]:
         raise SecurityError("Protected files do not match their manifest")
     record = load_json(manifest_path)
     validate_manifest_record(record, git_head(), git_is_dirty(), expected_hashes)
+    verify_experiment_spec(record)
     try:
         validate_artifact_files(record, manifest_path.resolve().parent)
     except ValidationError as error:

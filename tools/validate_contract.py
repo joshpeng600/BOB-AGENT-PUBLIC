@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import math
+import os
 import re
+import stat
 import sys
+from contextlib import ExitStack
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Any
+from typing import Any, BinaryIO
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -14,7 +19,6 @@ from tools.common import (
     VALID_END,
     ValidationError,
     read_json,
-    sha256_file,
     stable_json_hash,
 )
 
@@ -56,9 +60,10 @@ REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "run_manifest": (
         "schema_version", "contract_type", "experiment_id", "run_id", "commit_sha",
         "worktree_clean", "started_at_utc", "finished_at_utc", "executor_role",
-        "experiment_spec_path", "config_path", "config_hash", "config", "data",
-        "data_hash", "seed", "dev_max_date", "environment", "protected_hashes",
-        "commands", "prediction_hash", "checkpoint_hash", "artifacts", "status",
+        "experiment_spec_path", "experiment_spec_hash", "config_path", "config_hash",
+        "config", "data", "data_hash", "seed", "dev_max_date", "environment",
+        "protected_hashes", "commands", "prediction_hash", "checkpoint_hash",
+        "artifacts", "status",
     ),
     "metrics": (
         "schema_version", "contract_type", "experiment_id", "run_id",
@@ -281,7 +286,10 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
     if document["status"] == "completed":
         if document["worktree_clean"] is not True:
             raise ValidationError("completed run must record worktree_clean=true")
-        for field in ("config_hash", "data_hash", "prediction_hash", "checkpoint_hash"):
+        for field in (
+            "experiment_spec_hash", "config_hash", "data_hash", "prediction_hash",
+            "checkpoint_hash",
+        ):
             _validate_sha256(document[field], field)
         _validate_hash_map(document["protected_hashes"], "protected_hashes")
         missing_artifacts = REQUIRED_COMPLETED_ARTIFACTS.difference(artifact_paths)
@@ -290,6 +298,14 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
                 "completed run is missing required artifacts: "
                 + ", ".join(sorted(missing_artifacts))
             )
+        extra_artifacts = artifact_paths.difference(REQUIRED_COMPLETED_ARTIFACTS)
+        if extra_artifacts:
+            raise ValidationError(
+                "completed run has unexpected artifacts: "
+                + ", ".join(sorted(extra_artifacts))
+            )
+        if document["config_hash"] != stable_json_hash(document["config"]):
+            raise ValidationError("config_hash does not match run_manifest.config")
         if document["prediction_hash"] != artifact_hashes["valid_predictions.csv"]:
             raise ValidationError(
                 "prediction_hash must match the valid_predictions.csv artifact hash"
@@ -300,6 +316,58 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
             )
 
 
+def _artifact_signature(metadata: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        int(metadata.st_dev), int(metadata.st_ino), int(metadata.st_mode),
+        int(metadata.st_size), int(metadata.st_mtime_ns), int(metadata.st_ctime_ns),
+    )
+
+
+def _artifact_identity(metadata: os.stat_result) -> tuple[int, int, int]:
+    return (int(metadata.st_dev), int(metadata.st_ino), int(metadata.st_mode))
+
+
+def _read_open_artifact(
+    handle: BinaryIO, path: Path, *, capture_bytes: bool,
+) -> tuple[str, bytes | None]:
+    """Hash bytes from one already-bound handle and reject in-place changes."""
+
+    try:
+        before = _artifact_signature(os.fstat(handle.fileno()))
+        digest = hashlib.sha256()
+        captured = bytearray() if capture_bytes else None
+        handle.seek(0)
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+            if captured is not None:
+                captured.extend(block)
+        after = _artifact_signature(os.fstat(handle.fileno()))
+    except OSError as exc:
+        raise ValidationError(f"cannot read artifact safely: {path.name}: {exc}") from exc
+    if before != after:
+        raise ValidationError(f"artifact changed while hashing: {path.name}")
+    return digest.hexdigest(), None if captured is None else bytes(captured)
+
+
+def _assert_artifact_binding(
+    path: Path, handle: BinaryIO,
+    path_signature: tuple[int, int, int, int, int, int],
+    handle_signature: tuple[int, int, int, int, int, int],
+) -> None:
+    try:
+        current_path = os.lstat(path)
+        current_handle = os.fstat(handle.fileno())
+    except OSError as exc:
+        raise ValidationError(f"artifact binding changed for {path.name}: {exc}") from exc
+    if (
+        stat.S_ISLNK(current_path.st_mode)
+        or not stat.S_ISREG(current_path.st_mode)
+        or _artifact_signature(current_path) != path_signature
+        or _artifact_signature(current_handle) != handle_signature
+    ):
+        raise ValidationError(f"artifact path changed during validation: {path.name}")
+
+
 def validate_artifact_files(document: dict[str, Any], artifact_root: Path) -> None:
     """Verify every declared artifact against bytes below the run directory."""
     validate_contract("run_manifest", document)
@@ -308,41 +376,126 @@ def validate_artifact_files(document: dict[str, Any], artifact_root: Path) -> No
             "only a completed run_manifest can be accepted as artifact evidence"
         )
     root = artifact_root.resolve()
-    resolved_paths: dict[str, Path] = {}
-    for index, artifact in enumerate(document["artifacts"]):
-        relative = Path(artifact["path"])
-        unresolved = root / relative
-        if unresolved.is_symlink():
-            raise ValidationError(
-                f"artifact path must name an ordinary file, not a symlink: "
-                f"{relative.as_posix()}"
+    resolved_config_bytes: bytes | None = None
+    bindings: list[
+        tuple[
+            Path, BinaryIO, tuple[int, int, int, int, int, int],
+            tuple[int, int, int, int, int, int], str,
+        ]
+    ] = []
+    with ExitStack() as stack:
+        for index, artifact in enumerate(document["artifacts"]):
+            relative = Path(artifact["path"])
+            candidate = root / relative
+            try:
+                candidate.relative_to(root)
+                path_metadata = os.lstat(candidate)
+            except ValueError as exc:
+                raise ValidationError(
+                    f"artifacts[{index}].path escapes the run directory"
+                ) from exc
+            except OSError as exc:
+                raise ValidationError(
+                    f"artifact file is missing: {relative.as_posix()}"
+                ) from exc
+            if stat.S_ISLNK(path_metadata.st_mode) or not stat.S_ISREG(path_metadata.st_mode):
+                raise ValidationError(
+                    "artifact path must name an ordinary file, not a symlink: "
+                    f"{relative.as_posix()}"
+                )
+            flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+            try:
+                descriptor = os.open(candidate, flags)
+            except OSError as exc:
+                raise ValidationError(
+                    f"cannot safely open artifact: {relative.as_posix()}: {exc}"
+                ) from exc
+            try:
+                opened_handle = os.fdopen(descriptor, "rb")
+            except BaseException:
+                os.close(descriptor)
+                raise
+            handle = stack.enter_context(opened_handle)
+            try:
+                opened_metadata = os.fstat(handle.fileno())
+                bound_path_metadata = os.lstat(candidate)
+            except OSError as exc:
+                raise ValidationError(
+                    f"artifact path changed while opening: {relative.as_posix()}: {exc}"
+                ) from exc
+            opened_signature = _artifact_signature(opened_metadata)
+            bound_path_signature = _artifact_signature(bound_path_metadata)
+            if (
+                not stat.S_ISREG(opened_metadata.st_mode)
+                or _artifact_identity(path_metadata) != _artifact_identity(opened_metadata)
+                or _artifact_identity(bound_path_metadata)
+                != _artifact_identity(opened_metadata)
+            ):
+                raise ValidationError(
+                    f"artifact path changed while opening: {relative.as_posix()}"
+                )
+            capture = relative.as_posix() == "resolved_config.json"
+            actual, captured = _read_open_artifact(
+                handle, candidate, capture_bytes=capture
             )
-        candidate = unresolved.resolve()
-        try:
-            candidate.relative_to(root)
-        except ValueError as exc:
-            raise ValidationError(
-                f"artifacts[{index}].path escapes the run directory"
-            ) from exc
-        if not candidate.is_file():
-            raise ValidationError(f"artifact file is missing: {relative.as_posix()}")
-        actual = sha256_file(candidate)
-        if actual != artifact["sha256"]:
-            raise ValidationError(
-                f"artifact hash mismatch for {relative.as_posix()}: "
-                f"expected {artifact['sha256']}, observed {actual}"
+            second_actual, second_captured = _read_open_artifact(
+                handle, candidate, capture_bytes=capture
             )
-        resolved_paths[relative.as_posix()] = candidate
+            if actual != second_actual or captured != second_captured:
+                raise ValidationError(
+                    f"artifact bytes changed during validation: {relative.as_posix()}"
+                )
+            if actual != artifact["sha256"]:
+                raise ValidationError(
+                    f"artifact hash mismatch for {relative.as_posix()}: "
+                    f"expected {artifact['sha256']}, observed {actual}"
+                )
+            if capture:
+                resolved_config_bytes = captured
+            bindings.append(
+                (
+                    candidate, handle, bound_path_signature, opened_signature,
+                    artifact["sha256"],
+                )
+            )
 
-    resolved_config = read_json(resolved_paths["resolved_config.json"])
-    if resolved_config != document["config"]:
-        raise ValidationError(
-            "resolved_config.json content must equal run_manifest.config"
-        )
-    if stable_json_hash(resolved_config) != document["config_hash"]:
-        raise ValidationError(
-            "resolved_config.json canonical hash must equal run_manifest.config_hash"
-        )
+        for candidate, handle, path_signature, handle_signature, _ in bindings:
+            _assert_artifact_binding(
+                candidate, handle, path_signature, handle_signature
+            )
+
+        if resolved_config_bytes is None:
+            raise ValidationError("resolved_config.json bytes were not captured")
+        try:
+            resolved_config = json.loads(resolved_config_bytes.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValidationError(f"invalid JSON in resolved_config.json: {exc}") from exc
+        resolved_config_hash = stable_json_hash(resolved_config)
+        if resolved_config_hash != stable_json_hash(document["config"]):
+            raise ValidationError(
+                "resolved_config.json content must equal run_manifest.config"
+            )
+        if resolved_config_hash != document["config_hash"]:
+            raise ValidationError(
+                "resolved_config.json canonical hash must equal run_manifest.config_hash"
+            )
+        for (
+            candidate, handle, path_signature, handle_signature, expected_hash,
+        ) in bindings:
+            _assert_artifact_binding(
+                candidate, handle, path_signature, handle_signature
+            )
+            final_hash, _ = _read_open_artifact(
+                handle, candidate, capture_bytes=False
+            )
+            if final_hash != expected_hash:
+                raise ValidationError(
+                    f"artifact bytes changed during validation: {candidate.name}"
+                )
+            _assert_artifact_binding(
+                candidate, handle, path_signature, handle_signature
+            )
+        return
 
 
 def _validate_metrics(document: dict[str, Any]) -> None:
