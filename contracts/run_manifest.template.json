@@ -11,6 +11,7 @@
   "experiment_spec_path": "experiments/exp_NNN.json",
   "experiment_spec_hash": "REPLACE_WITH_EXPERIMENT_SPEC_SHA256",
   "run_variant": "baseline|candidate",
+  "objective": "pointwise_binary_cross_entropy|same_user_bpr",
   "config_path": "configs/candidates/example.json",
   "config_input_hash": "REPLACE_WITH_RAW_REPOSITORY_CONFIG_FILE_SHA256",
   "config_hash": "REPLACE_WITH_CANONICAL_RESOLVED_CONFIG_OBJECT_SHA256",
@@ -24,6 +25,9 @@
   },
   "data_hash": "REPLACE_WITH_DATA_SHA256",
   "seed": 0,
+  "mode": "valid-only",
+  "max_batches": null,
+  "evidence_tier": "formal_valid|synthetic_only",
   "dev_max_date": 20220428,
   "environment": {
     "python": "X.Y.Z",
@@ -61,5 +65,5 @@
       "sha256": "REPLACE_WITH_RUNNER_METRICS_SHA256"
     }
   ],
-  "status": "completed|failed|stopped"
+  "status": "completed|failed|stopped|synthetic_smoke"
 }

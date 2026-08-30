@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import ExitStack
 from copy import deepcopy
 import json
 from pathlib import Path
@@ -8,12 +9,19 @@ import unittest
 from unittest.mock import patch
 
 from tools.common import ValidationError, sha256_file, stable_json_hash, write_json
-from tools.audit_run import audit_manifest, is_test_scoring_command, validate_manifest_record
+from tools.audit_run import (
+    _git_is_ancestor,
+    audit_manifest,
+    is_test_scoring_command,
+    validate_manifest_record,
+    verify_approved_repository_inputs,
+)
 from tools.final_approval import validate_approval_record
 from tools.project_security import SecurityError
 from tools.validate_contract import (
     _assert_artifact_binding,
     _read_open_artifact,
+    validate_approved_run_semantics,
     validate_approved_run_route,
 )
 
@@ -51,6 +59,7 @@ class AuditTests(unittest.TestCase):
             "experiment_spec_path": "experiments/exp_001.json",
             "experiment_spec_hash": self.spec_hash,
             "run_variant": "candidate",
+            "objective": "same_user_bpr",
             "config_path": "configs/candidates/bpr_fm.json",
             "config_input_hash": sha256_file(self.config_path),
             "config_hash": stable_json_hash(self.config),
@@ -158,6 +167,20 @@ class AuditTests(unittest.TestCase):
         with self.assertRaises(SecurityError):
             validate_manifest_record(self.manifest, self.commit, False, self.hashes)
 
+    def test_git_ancestry_uses_approved_then_run_commit_and_fails_closed(self):
+        approved, run_commit = "a" * 40, "b" * 40
+        with patch("tools.audit_run.subprocess.run") as git:
+            git.return_value.returncode = 0
+            self.assertTrue(_git_is_ancestor(approved, run_commit))
+            self.assertEqual(
+                git.call_args.args[0],
+                ["git", "merge-base", "--is-ancestor", approved, run_commit],
+            )
+        with patch(
+            "tools.audit_run.subprocess.run", side_effect=OSError("git unavailable")
+        ):
+            self.assertFalse(_git_is_ancestor(approved, run_commit))
+
 
 class ArtifactAuditTests(unittest.TestCase):
     def setUp(self):
@@ -195,12 +218,18 @@ class ArtifactAuditTests(unittest.TestCase):
         write_json(manifest_path, manifest)
         return manifest_path
 
-    def _audit(self, manifest_path: Path) -> dict[str, object]:
+    def _audit(
+        self, manifest_path: Path, *, approved_ancestor: bool = True,
+    ) -> dict[str, object]:
         with (
             patch("tools.audit_run.verify_protected_files", return_value=self.hashes),
             patch("tools.audit_run.expected_protected_hashes", return_value=self.hashes),
             patch("tools.audit_run.git_head", return_value=self.commit),
             patch("tools.audit_run.git_is_dirty", return_value=False),
+            patch(
+                "tools.audit_run._git_is_ancestor",
+                return_value=approved_ancestor,
+            ),
         ):
             return audit_manifest(manifest_path)
 
@@ -331,6 +360,96 @@ class ArtifactAuditTests(unittest.TestCase):
             with self.assertRaisesRegex(SecurityError, "approved repository config"):
                 self._audit(manifest_path)
 
+    def test_audit_manifest_rejects_forged_objective_seed_and_mode(self):
+        cases = (
+            ("objective", "pointwise_binary_cross_entropy", "objective"),
+            ("seed", 7, "training.seed"),
+            ("mode", "experiment", "valid-only"),
+        )
+        for field, value, message in cases:
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                manifest_path = self._write_package(root)
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest[field] = value
+                if field in {"seed", "mode"}:
+                    manifest["config"]["resolved_run"][field] = value
+                    manifest["config_hash"] = stable_json_hash(manifest["config"])
+                    write_json(root / "resolved_config.json", manifest["config"])
+                write_json(manifest_path, manifest)
+                manifest = self._audit_input_with_current_hashes(root, manifest_path)
+                write_json(manifest_path, manifest)
+                with self.assertRaisesRegex(SecurityError, message):
+                    self._audit(manifest_path)
+
+    def test_audit_manifest_rejects_unrelated_approval_commit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest_path = self._write_package(Path(tmp))
+            with self.assertRaisesRegex(SecurityError, "not an ancestor"):
+                self._audit(manifest_path, approved_ancestor=False)
+
+    def test_baseline_config_approval_commit_must_be_an_ancestor(self):
+        baseline_path = self.repo_root / "configs" / "approved" / "baseline_fm.json"
+        raw_baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+        record = deepcopy(self.manifest)
+        record.update(
+            run_variant="baseline",
+            objective="pointwise_binary_cross_entropy",
+            config_path="configs/approved/baseline_fm.json",
+            config_input_hash=sha256_file(baseline_path),
+        )
+        record["config"] = {
+            **raw_baseline,
+            "resolved_run": {
+                "experiment_id": "exp_001", "run_variant": "baseline",
+                "seed": 0, "max_batches": None, "mode": "valid-only",
+            },
+        }
+        record["config_hash"] = stable_json_hash(record["config"])
+        with ExitStack() as stack, patch(
+            "tools.audit_run._git_is_ancestor", side_effect=[True, False]
+        ):
+            with self.assertRaisesRegex(SecurityError, "baseline config.*not an ancestor"):
+                verify_approved_repository_inputs(record, stack)
+
+    def test_semantics_reject_spec_and_config_identity_forgery(self):
+        spec = json.loads(self.spec_path.read_text(encoding="utf-8"))
+        raw_candidate = json.loads(self.config_path.read_text(encoding="utf-8"))
+
+        wrong_author = deepcopy(spec)
+        wrong_author["author_role"] = "E"
+        with self.assertRaisesRegex(ValidationError, "author_role"):
+            validate_approved_run_semantics(
+                self.manifest, wrong_author, raw_candidate
+            )
+
+        limited = deepcopy(raw_candidate)
+        limited["training"]["max_batches"] = 2
+        forged_limit = deepcopy(self.manifest)
+        forged_limit["max_batches"] = 1
+        with self.assertRaisesRegex(ValidationError, "max_batches"):
+            validate_approved_run_semantics(forged_limit, spec, limited)
+
+        unapproved_cli_limit = deepcopy(self.manifest)
+        unapproved_cli_limit["max_batches"] = 1
+        with self.assertRaisesRegex(ValidationError, "max_batches"):
+            validate_approved_run_semantics(
+                unapproved_cli_limit, spec, raw_candidate
+            )
+
+        baseline_path = self.repo_root / "configs" / "approved" / "baseline_fm.json"
+        raw_baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+        raw_baseline["experiment_id"] = "baseline_forged"
+        baseline_manifest = deepcopy(self.manifest)
+        baseline_manifest.update(
+            run_variant="baseline",
+            objective="pointwise_binary_cross_entropy",
+        )
+        with self.assertRaisesRegex(ValidationError, "baseline config experiment_id"):
+            validate_approved_run_semantics(
+                baseline_manifest, spec, raw_baseline
+            )
+
     def _audit_input_with_current_hashes(
         self, root: Path, manifest_path: Path
     ) -> dict[str, object]:
@@ -377,9 +496,15 @@ class ArtifactAuditTests(unittest.TestCase):
             (root / "configs" / "approved").mkdir(parents=True)
             candidate = root / "configs" / "candidates" / "candidate.json"
             baseline = root / "configs" / "approved" / "baseline.json"
-            candidate.write_text('{"objective":{"name":"same_user_bpr"}}\n', encoding="utf-8")
+            candidate.write_text(
+                '{"objective":{"name":"same_user_bpr"},'
+                '"training":{"seed":0,"max_batches":null}}\n',
+                encoding="utf-8",
+            )
             baseline.write_text(
-                '{"objective":{"name":"pointwise_binary_cross_entropy"}}\n',
+                '{"experiment_id":"baseline_fm",'
+                '"objective":{"name":"pointwise_binary_cross_entropy"},'
+                '"training":{"seed":0,"max_batches":null}}\n',
                 encoding="utf-8",
             )
             spec = json.loads(self.spec_path.read_text(encoding="utf-8"))

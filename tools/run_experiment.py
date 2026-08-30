@@ -39,7 +39,11 @@ from tools.common import (
 )
 from tools.preflight import inspect_data
 from tools.project_security import verify_protected_files
-from tools.validate_contract import validate_artifact_files, validate_contract
+from tools.validate_contract import (
+    validate_approved_run_semantics,
+    validate_artifact_files,
+    validate_contract,
+)
 
 
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
@@ -320,6 +324,7 @@ def _reject_legacy_runner_fields(value: Any, path: str = "config") -> None:
 def _settings(
     config: dict[str, Any], *, seed: int | None = None,
     max_batches: int | None = None,
+    synthetic_smoke: bool = False,
 ) -> dict[str, Any]:
     _reject_legacy_runner_fields(config)
     model, training, objective = (
@@ -352,10 +357,26 @@ def _settings(
             f"CLI seed {effective_seed} does not match approved training.seed {configured_seed}"
         )
     configured_max_batches = training.get("max_batches")
-    effective_max_batches = configured_max_batches if max_batches is None else max_batches
-    if configured_max_batches is not None and max_batches is not None:
-        if int(max_batches) != int(configured_max_batches):
-            raise ValidationError("CLI max-batches conflicts with training.max_batches")
+    if configured_max_batches is not None and (
+        isinstance(configured_max_batches, bool)
+        or not isinstance(configured_max_batches, int)
+        or configured_max_batches < 1
+    ):
+        raise ValidationError("training.max_batches must be null or a positive integer")
+    if max_batches is not None and (
+        isinstance(max_batches, bool) or not isinstance(max_batches, int) or max_batches < 1
+    ):
+        raise ValidationError("max_batches must be a positive integer")
+    if synthetic_smoke:
+        if max_batches is None:
+            raise ValidationError("synthetic smoke requires an explicit --max-batches bound")
+        effective_max_batches = max_batches
+    else:
+        if max_batches is not None and max_batches != configured_max_batches:
+            raise ValidationError(
+                "formal max-batches must exactly match approved training.max_batches"
+            )
+        effective_max_batches = configured_max_batches
 
     settings = {
         "model_name": "factorization_machine",
@@ -561,12 +582,14 @@ def _train_bpr(
 def _execute_bound_snapshot(
     spec: dict[str, Any], config: dict[str, Any], variant: str,
     data_dir: Path, output_dir: Path, seed: int, max_batches: int | None,
-    mode: str, data_snapshot: DataSnapshot,
+    mode: str, data_snapshot: DataSnapshot, synthetic_smoke: bool = False,
 ) -> dict[str, Any]:
     _assert_data_snapshot(data_dir, data_snapshot, "before preflight inspection")
     preflight = inspect_data(data_dir, "experiment", {"spec": spec, "config": config})
     _assert_data_snapshot(data_dir, data_snapshot, "during preflight inspection")
-    settings = _settings(config, seed=seed, max_batches=max_batches)
+    settings = _settings(
+        config, seed=seed, max_batches=max_batches, synthetic_smoke=synthetic_smoke
+    )
     try:
         starter_data = importlib.import_module("starter.data")
         starter_evaluate = importlib.import_module("starter.evaluate")
@@ -590,7 +613,7 @@ def _execute_bound_snapshot(
     model = _build_model(settings, feature_dim)
     training = ResolvedTrainingConfig(
         seed=settings["seed"], batch_size=settings["batch_size"],
-        epochs=1 if max_batches is not None else settings["epochs"],
+        epochs=1 if settings["max_batches"] is not None else settings["epochs"],
         patience=settings["patience"], max_batches=settings["max_batches"],
     )
     max_runtime_seconds = int(spec.get("max_runtime_seconds", 3600))
@@ -625,7 +648,7 @@ def _execute_bound_snapshot(
         **config,
         "resolved_run": {
             "experiment_id": spec["experiment_id"], "run_variant": variant,
-            "seed": seed, "max_batches": max_batches, "mode": mode,
+            "seed": seed, "max_batches": settings["max_batches"], "mode": mode,
         },
     }
     checkpoint_path = output_dir / "checkpoint.npz"
@@ -660,9 +683,10 @@ def execute(
     *, repo_root: Path | None = None,
     approved_inputs: tuple[dict[str, Any], dict[str, Any], str] | None = None,
     expected_data_snapshot: DataSnapshot | None = None,
+    synthetic_smoke: bool = False,
 ) -> dict[str, Any]:
-    if mode not in {"experiment", "valid-only"}:
-        raise ValidationError("run_experiment only permits experiment/valid-only modes")
+    if mode != "valid-only":
+        raise ValidationError("run_experiment only permits valid-only mode")
     if max_batches is not None and max_batches <= 0:
         raise ValidationError("max-batches must be positive")
     repo_root = (repo_root or Path(__file__).resolve().parents[1]).resolve()
@@ -672,6 +696,23 @@ def execute(
         )
     else:
         spec, config, variant = approved_inputs
+    settings = _settings(
+        config, seed=seed, max_batches=max_batches, synthetic_smoke=synthetic_smoke
+    )
+    validate_approved_run_semantics(
+        {
+            "run_variant": variant,
+            "objective": settings["objective"],
+            "seed": settings["seed"],
+            "mode": mode,
+            "max_batches": settings["max_batches"],
+            "status": "synthetic_smoke" if synthetic_smoke else "completed",
+            "evidence_tier": "synthetic_only" if synthetic_smoke else "formal_valid",
+        },
+        spec,
+        config,
+        allow_synthetic_smoke=synthetic_smoke,
+    )
     source_snapshot = expected_data_snapshot or _capture_data_snapshot(data_dir)
     with tempfile.TemporaryDirectory(prefix="bob-agent-data-snapshot-") as temp:
         snapshot_dir = Path(temp) / "data"
@@ -680,7 +721,7 @@ def execute(
         )
         return _execute_bound_snapshot(
             spec, config, variant, snapshot_dir, output_dir, seed, max_batches,
-            mode, execution_snapshot,
+            mode, execution_snapshot, synthetic_smoke,
         )
 
 
@@ -717,6 +758,8 @@ def _recorded_command(args: argparse.Namespace, repo_root: Path) -> str:
     ]
     if args.max_batches is not None:
         parts.extend(("--max-batches", str(args.max_batches)))
+    if args.synthetic_smoke:
+        parts.append("--synthetic-smoke")
     return shlex.join(parts)
 
 
@@ -728,7 +771,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--max-batches", type=int)
-    parser.add_argument("--mode", choices=("experiment", "valid-only"), default="valid-only")
+    parser.add_argument(
+        "--synthetic-smoke", action="store_true",
+        help="run an explicitly bounded synthetic-only smoke; never formal evidence",
+    )
+    parser.add_argument("--mode", choices=("valid-only",), default="valid-only")
     return parser.parse_args()
 
 
@@ -761,7 +808,8 @@ def main() -> int:
         "experiment_spec_path": _display_path(args.experiment_spec, repo_root, "EXPERIMENT_SPEC"),
         "config_path": _display_path(args.config, repo_root, "CONFIG"),
         "experiment_spec_hash": None, "run_variant": None,
-        "config_input_hash": None, "config_hash": None, "config": {},
+        "objective": None, "config_input_hash": None,
+        "config_hash": None, "config": {},
         "mode": args.mode, "max_batches": args.max_batches,
         "data": {"dataset": "KuaiRand-Pure", "split": "valid", "hash": None},
         "data_hash": None, "seed": args.seed, "dev_max_date": None,
@@ -773,6 +821,7 @@ def main() -> int:
         "prediction_hash": None, "checkpoint_hash": None, "artifacts": [],
         "status": "failed", "exit_code": 1, "retry_count": 0,
         "manual_interventions": 0, "test_access": False,
+        "evidence_tier": "synthetic_only" if args.synthetic_smoke else "formal_valid",
     }
     log_lines = [f"started_at_utc={started_at}", f"run_id={run_id}", f"command={command}"]
     completion_validated = False
@@ -805,11 +854,33 @@ def main() -> int:
         manifest["experiment_spec_hash"] = spec_input_hash
         manifest["run_variant"] = variant
         manifest["config_input_hash"] = config_input_hash
+        preview_settings = _settings(
+            config, seed=args.seed, max_batches=args.max_batches,
+            synthetic_smoke=args.synthetic_smoke,
+        )
+        manifest["objective"] = preview_settings["objective"]
+        manifest["max_batches"] = preview_settings["max_batches"]
+        semantic_preview = {
+            **manifest,
+            "status": "synthetic_smoke" if args.synthetic_smoke else "completed",
+        }
+        validate_approved_run_semantics(
+            semantic_preview, spec, config,
+            allow_synthetic_smoke=args.synthetic_smoke,
+        )
+        if variant == "baseline" and not _git_is_ancestor(
+            repo_root, str(config["approved_against_commit_sha"]), commit_sha
+        ):
+            raise ValidationError(
+                "baseline approved_against_commit_sha is not an ancestor of HEAD"
+            )
         resolved_preview = {
             **config,
             "resolved_run": {
                 "experiment_id": spec["experiment_id"], "run_variant": variant,
-                "seed": args.seed, "max_batches": args.max_batches, "mode": args.mode,
+                "seed": args.seed,
+                "max_batches": preview_settings["max_batches"],
+                "mode": args.mode,
             },
         }
         manifest["config"] = resolved_preview
@@ -831,6 +902,7 @@ def main() -> int:
                 args.mode, repo_root=repo_root,
                 approved_inputs=(spec, config, variant),
                 expected_data_snapshot=data_snapshot,
+                synthetic_smoke=args.synthetic_smoke,
             ), attempts,
         )
         manifest["retry_count"] = retries
@@ -856,7 +928,8 @@ def main() -> int:
             raise ValidationError("Git commit/worktree changed during execution")
         completed_manifest = dict(manifest)
         completed_manifest.update(
-            status="completed", exit_code=0, run_variant=result["run_variant"],
+            status="synthetic_smoke" if args.synthetic_smoke else "completed",
+            exit_code=0, run_variant=result["run_variant"],
             objective=result["objective"], prediction_hash=result["prediction_hash"],
             checkpoint_hash=result["checkpoint_hash"], metrics=result["metrics"],
             batches_seen=result["batches_seen"], best_epoch=result["best_epoch"],
@@ -872,12 +945,14 @@ def main() -> int:
             {"path": "training_history.json", "sha256": sha256_file(result["history_path"])},
             {"path": "runner_metrics.json", "sha256": sha256_file(result["runner_metrics_path"])},
         ]
-        validate_artifact_files(completed_manifest, output_dir)
+        validate_artifact_files(
+            completed_manifest, output_dir, formal_evidence=not args.synthetic_smoke
+        )
         manifest = completed_manifest
         completion_validated = True
         log_lines.extend((
             f"batches_seen={result['batches_seen']}", f"retry_count={retries}",
-            "status=completed",
+            f"status={completed_manifest['status']}",
         ))
     except Exception as exc:
         manifest["status"] = "failed"
@@ -909,8 +984,12 @@ def main() -> int:
         print(f"ERROR={manifest.get('error', 'unknown error')}", file=sys.stderr)
         print(f"EVIDENCE_DIR={output_dir}", file=sys.stderr)
         return 1
-    print(f"VALID_ROWS={manifest['metrics'].get('rows', 'unknown')}")
-    print(f"VALID_PRIMARY={manifest['metrics']['primary']:.6f}")
+    if args.synthetic_smoke:
+        print(f"SYNTHETIC_ROWS={manifest['metrics'].get('rows', 'unknown')}")
+        print("SYNTHETIC_SMOKE=PASS")
+    else:
+        print(f"VALID_ROWS={manifest['metrics'].get('rows', 'unknown')}")
+        print(f"VALID_PRIMARY={manifest['metrics']['primary']:.6f}")
     print(f"RUN_ID={manifest['run_id']}")
     print("RUN_EXPERIMENT=PASS")
     return 0

@@ -8,6 +8,7 @@ import json
 import os
 import re
 import stat
+import subprocess
 from contextlib import ExitStack
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
@@ -22,11 +23,28 @@ from tools.project_security import (
     load_json,
     verify_protected_files,
 )
-from tools.validate_contract import validate_artifact_files, validate_contract
+from tools.validate_contract import (
+    validate_approved_run_semantics,
+    validate_artifact_files,
+    validate_contract,
+)
 
 
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _git_is_ancestor(ancestor: str, descendant: str) -> bool:
+    try:
+        result = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return False
+    return result.returncode == 0
 
 
 def is_test_scoring_command(command: str) -> bool:
@@ -50,6 +68,8 @@ def validate_manifest_record(
         validate_contract("run_manifest", record)
     except ValidationError as error:
         raise SecurityError(f"invalid run_manifest contract: {error}") from error
+    if record.get("status") != "completed":
+        raise SecurityError("only a completed formal run may be audited")
 
     experiment_id = record.get("experiment_id")
     if not isinstance(experiment_id, str) or not experiment_id.strip():
@@ -227,6 +247,13 @@ def verify_approved_repository_inputs(
         raise SecurityError("experiment spec is not APPROVED_FOR_IMPLEMENTATION")
     if spec.get("experiment_id") != record.get("experiment_id"):
         raise SecurityError("manifest experiment_id does not match the approved experiment spec")
+    if not _git_is_ancestor(
+        str(spec.get("approved_against_commit_sha")), str(record.get("commit_sha"))
+    ):
+        raise SecurityError(
+            "experiment spec approved_against_commit_sha is not an ancestor of "
+            "the manifest commit"
+        )
 
     candidate_path = str(spec.get("implementation_config", ""))
     baseline = spec.get("baseline")
@@ -251,6 +278,18 @@ def verify_approved_repository_inputs(
     if config_binding.digest != record.get("config_input_hash"):
         raise SecurityError("config_input_hash does not match the raw repository config bytes")
     raw_config = config_binding.document
+    try:
+        validate_approved_run_semantics(record, spec, raw_config)
+    except ValidationError as error:
+        raise SecurityError(f"approved run semantic mismatch: {error}") from error
+    if expected_variant == "baseline" and not _git_is_ancestor(
+        str(raw_config.get("approved_against_commit_sha")),
+        str(record.get("commit_sha")),
+    ):
+        raise SecurityError(
+            "baseline config approved_against_commit_sha is not an ancestor of "
+            "the manifest commit"
+        )
     resolved_run = record.get("config", {}).get("resolved_run")
     if not isinstance(resolved_run, dict):
         raise SecurityError("manifest config.resolved_run is required")

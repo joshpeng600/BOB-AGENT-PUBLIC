@@ -68,6 +68,7 @@ def canonical_documents() -> dict[str, dict[str, object]]:
             "experiment_spec_path": "experiments/exp_002.json",
             "experiment_spec_hash": DIGEST,
             "run_variant": "candidate",
+            "objective": "same_user_bpr",
             "config_path": "configs/candidates/example.json",
             "config_input_hash": DIGEST,
             "config_hash": stable_json_hash({}),
@@ -173,6 +174,11 @@ class ProtectedAndContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValidationError, "hypothesis"):
             validate_contract("experiment-spec", document)
 
+        document = json.loads((repo_root / "experiments" / "exp_001.json").read_text(encoding="utf-8"))
+        document["author_role"] = "E"
+        with self.assertRaisesRegex(ValidationError, "author_role"):
+            validate_contract("experiment-spec", document)
+
     def test_all_handoff_contract_shapes_are_canonical(self) -> None:
         for contract_type, document in canonical_documents().items():
             with self.subTest(contract_type=contract_type):
@@ -223,6 +229,12 @@ class ProtectedAndContractTests(unittest.TestCase):
         manifest = deepcopy(canonical_documents()["run-manifest"])
         manifest["config_hash"] = DIGEST
         with self.assertRaisesRegex(ValidationError, "config_hash"):
+            validate_contract("run-manifest", manifest)
+
+    def test_completed_run_requires_valid_only_mode(self) -> None:
+        manifest = deepcopy(canonical_documents()["run-manifest"])
+        manifest["mode"] = "experiment"
+        with self.assertRaisesRegex(ValidationError, "valid-only"):
             validate_contract("run-manifest", manifest)
 
 
