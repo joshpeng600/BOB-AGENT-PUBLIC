@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "contract_type": "decision_request",
+  "experiment_id": "exp_001",
+  "request_id": "exp_001-pr-25-reconciliation-20260830",
+  "requested_at_utc": "2026-08-30T12:03:29Z",
+  "requested_by_role": "A",
+  "approved_against_commit_sha": "4c07e03663e7d13f11547546da7cc6ac3ea5ff98",
+  "trigger": "contract_conflict",
+  "summary": "PR #25 committed formal valid metrics while the A-owned REAL_VALID_RUN_ALLOWED gate was blocked. E's later independent setup rereview passed the artifact contract but rejected PR #25 as authoritative cycle evidence. The repository owner directed the integration agent to finish the unresolved work.",
+  "evidence_paths": [
+    "coordination/current_state.json",
+    "coordination/inbox/C/exp_001_real_data_readiness.md",
+    "coordination/inbox/B/exp_001_artifact_contract_readiness.md",
+    "coordination/inbox/D/setup_result.md",
+    "coordination/inbox/E/exp_001_artifact_contract_rereview.md",
+    "coordination/inbox/E/exp_001_evaluation_result.md",
+    "governance/manual_interventions.jsonl"
+  ],
+  "options": [
+    {
+      "id": "quarantine_pr_25_and_run_fresh",
+      "effect": "Exclude PR #25 metrics from selection and conditionally authorize one fresh governed valid-only baseline/candidate run only after all B/E security preconditions pass and A later opens the exact gate."
+    },
+    {
+      "id": "accept_pr_25_retroactively",
+      "effect": "Treat the pre-gate PR #25 metrics as authoritative despite the violated stage order."
+    }
+  ],
+  "resolution": {
+    "resolved_at_utc": "2026-08-30T12:03:29Z",
+    "resolved_by": "repository owner via Codex conversation",
+    "selected_option": "quarantine_pr_25_and_run_fresh",
+    "decision": "approve",
+    "pr_25_metrics_authoritative": false,
+    "reports_experiments_csv_update_allowed": false,
+    "authorized_run_commit_sha": null,
+    "real_valid_run_allowed": false,
+    "authorized_attempts_after_gate_open": 1,
+    "activation_status": "DEFERRED_PENDING_B_E_SECURITY_REPAIR_AND_E_REREVIEW",
+    "test_access_allowed": false,
+    "next_receiver": "B",
+    "required_next_action": "B fixes the approved experiment/config audit-route binding and B-owned regressions; E fixes immutable prediction ingress and independently rereviews the combined clean main; A then records a new exact REAL_VALID_RUN_ALLOWED state before any fresh run."
+  },
+  "automation_paused": true,
+  "status": "resolved_approved_pending_security_preconditions"
+}

@@ -157,7 +157,8 @@
       "fresh_rerun_attempts_authorized_after_gate_open": 1,
       "fresh_rerun_authorization_active": false,
       "quarantine_record": "coordination/inbox/A/exp_001_pr_25_gate_incident.md",
-      "decision_request": "coordination/inbox/A/exp_001_pr_25_gate_incident_decision_request.json"
+      "decision_request": "coordination/inbox/A/exp_001_pr_25_gate_incident_decision_request.json",
+      "reconciliation_record": "coordination/inbox/A/exp_001_pr_25_reconciliation.json"
     }
   },
   "setup_decision": {
