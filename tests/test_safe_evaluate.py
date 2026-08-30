@@ -198,7 +198,8 @@ class SafeEvaluateIntegrationTests(unittest.TestCase):
             contextlib.redirect_stdout(stdout),
         ):
             self.assertEqual(safe_evaluate.main(), 1)
-        self.assertIn("Prediction path changed", stdout.getvalue())
+        self.assertIn("EVALUATION DENIED:", stdout.getvalue())
+        self.assertEqual(self.prediction.read_bytes(), original)
         self.assertFalse(self.output.exists())
 
     def test_permanent_prediction_replacement_fails_closed(self):
@@ -236,7 +237,8 @@ class SafeEvaluateIntegrationTests(unittest.TestCase):
             contextlib.redirect_stdout(stdout),
         ):
             self.assertEqual(safe_evaluate.main(), 1)
-        self.assertIn("Prediction path changed", stdout.getvalue())
+        self.assertIn("EVALUATION DENIED:", stdout.getvalue())
+        self.assertEqual(self.prediction.read_bytes(), original)
         self.assertFalse(self.output.exists())
 
     def test_prediction_symlink_is_rejected(self):

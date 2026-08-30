@@ -34,6 +34,7 @@ REQUIRED_COMPLETED_ARTIFACTS = {
     "training_history.json",
     "runner_metrics.json",
 }
+SUPPORTED_OBJECTIVES = {"pointwise_binary_cross_entropy", "same_user_bpr"}
 
 REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "experiment_spec": (
@@ -187,6 +188,8 @@ def _validate_common(contract_type: str, document: dict[str, Any]) -> None:
 
 
 def _validate_experiment_spec(document: dict[str, Any]) -> None:
+    if document.get("author_role") != "A":
+        raise ValidationError("experiment_spec author_role must be A")
     if document["status"] not in {"PROPOSED", "APPROVED_FOR_IMPLEMENTATION"}:
         raise ValidationError("unsupported experiment status")
     if not isinstance(document["hypothesis"], str) or not document["hypothesis"].strip():
@@ -248,10 +251,8 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
         raise ValidationError("run_manifest executor_role must be B")
     if document.get("run_variant") not in {None, "baseline", "candidate"}:
         raise ValidationError("run_variant must be baseline or candidate")
-    if document["status"] == "completed" and document.get("mode") not in {
-        "experiment", "valid-only",
-    }:
-        raise ValidationError("mode must be experiment or valid-only")
+    if document["status"] == "completed" and document.get("mode") != "valid-only":
+        raise ValidationError("completed run mode must be valid-only")
     max_batches = document.get("max_batches")
     if max_batches is not None and (
         isinstance(max_batches, bool) or not isinstance(max_batches, int) or max_batches < 1
@@ -305,6 +306,8 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
             _validate_sha256(document[field], field)
         if document["run_variant"] not in {"baseline", "candidate"}:
             raise ValidationError("completed run requires baseline or candidate run_variant")
+        if document.get("objective") not in SUPPORTED_OBJECTIVES:
+            raise ValidationError("completed run requires a supported objective")
         if "max_batches" not in document:
             raise ValidationError("completed run requires max_batches runtime input")
         _validate_hash_map(document["protected_hashes"], "protected_hashes")
@@ -377,23 +380,32 @@ def _normalized_repository_file(
 def _read_repository_json_snapshot(path: Path, label: str) -> tuple[Any, str]:
     flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
     try:
+        initial_path = os.lstat(path)
+    except OSError as exc:
+        raise ValidationError(f"{label} disappeared before reading") from exc
+    try:
         descriptor = os.open(path, flags)
     except OSError as exc:
         raise ValidationError(f"cannot safely open {label}: {exc}") from exc
     try:
         with os.fdopen(descriptor, "rb") as handle:
+            bound_path = os.lstat(path)
             before = os.fstat(handle.fileno())
             raw = handle.read()
             after = os.fstat(handle.fileno())
+            path_after = os.lstat(path)
     except OSError as exc:
         raise ValidationError(f"cannot read {label}: {exc}") from exc
     if _artifact_signature(before) != _artifact_signature(after):
         raise ValidationError(f"{label} changed while reading")
-    try:
-        path_after = os.lstat(path)
-    except OSError as exc:
-        raise ValidationError(f"{label} disappeared while reading") from exc
-    if _artifact_signature(path_after) != _artifact_signature(after):
+    if (
+        stat.S_ISLNK(bound_path.st_mode)
+        or not stat.S_ISREG(bound_path.st_mode)
+        or _artifact_signature(initial_path) != _artifact_signature(bound_path)
+        or _artifact_signature(bound_path) != _artifact_signature(path_after)
+        or _artifact_identity(bound_path) != _artifact_identity(before)
+        or _artifact_identity(path_after) != _artifact_identity(after)
+    ):
         raise ValidationError(f"{label} path changed while reading")
     try:
         document = json.loads(raw.decode("utf-8"))
@@ -440,6 +452,7 @@ def validate_approved_run_route(
     if config_input_hash != document.get("config_input_hash"):
         raise ValidationError("config_input_hash does not match approved config bytes")
     raw_config = _require_object(raw_config, "approved config")
+    validate_approved_run_semantics(document, spec, raw_config)
     rebuilt = {
         **raw_config,
         "resolved_run": {
@@ -456,6 +469,70 @@ def validate_approved_run_route(
         )
     if stable_json_hash(rebuilt) != document.get("config_hash"):
         raise ValidationError("config_hash does not match rebuilt resolved config")
+
+
+def validate_approved_run_semantics(
+    document: dict[str, Any], spec: dict[str, Any], raw_config: dict[str, Any],
+) -> None:
+    """Cross-check scientific/runtime identity after route bytes are bound."""
+
+    if spec.get("author_role") != "A":
+        raise ValidationError("approved experiment spec author_role must be A")
+    variant = document.get("run_variant")
+    if variant == "candidate":
+        expected_objective = spec.get("objective")
+    elif variant == "baseline":
+        expected_objective = "pointwise_binary_cross_entropy"
+        baseline = _require_object(spec.get("baseline"), "experiment_spec.baseline")
+        if raw_config.get("contract_type") != "approved_config":
+            raise ValidationError("baseline config contract_type must be approved_config")
+        if raw_config.get("status") != "APPROVED":
+            raise ValidationError("baseline config status must be APPROVED")
+        if not isinstance(raw_config.get("schema_version"), int):
+            raise ValidationError("baseline config schema_version must be an integer")
+        _validate_sha(
+            raw_config.get("approved_against_commit_sha"),
+            "baseline config approved_against_commit_sha",
+        )
+        if raw_config.get("experiment_id") != baseline.get("baseline_experiment_id"):
+            raise ValidationError(
+                "baseline config experiment_id does not match the experiment spec"
+            )
+    else:
+        raise ValidationError("run_variant must be baseline or candidate")
+    if expected_objective not in SUPPORTED_OBJECTIVES:
+        raise ValidationError("approved experiment objective is unsupported")
+    if document.get("objective") != expected_objective:
+        raise ValidationError("manifest objective does not match the approved route")
+    objective = _require_object(raw_config.get("objective"), "approved config.objective")
+    if objective.get("name") != expected_objective:
+        raise ValidationError("approved config objective does not match the approved route")
+
+    training = _require_object(raw_config.get("training"), "approved config.training")
+    configured_seed = training.get("seed")
+    if isinstance(configured_seed, bool) or not isinstance(configured_seed, int):
+        raise ValidationError("approved config training.seed must be an integer")
+    if document.get("seed") != configured_seed:
+        raise ValidationError("manifest seed does not match approved config training.seed")
+    if document.get("mode") != "valid-only":
+        raise ValidationError("completed approved evidence must use valid-only mode")
+
+    configured_max_batches = training.get("max_batches")
+    if configured_max_batches is not None and (
+        isinstance(configured_max_batches, bool)
+        or not isinstance(configured_max_batches, int)
+        or configured_max_batches < 1
+    ):
+        raise ValidationError(
+            "approved config training.max_batches must be null or a positive integer"
+        )
+    if (
+        configured_max_batches is not None
+        and document.get("max_batches") != configured_max_batches
+    ):
+        raise ValidationError(
+            "manifest max_batches does not match approved config training.max_batches"
+        )
 
 
 def _artifact_signature(metadata: os.stat_result) -> tuple[int, int, int, int, int, int]:

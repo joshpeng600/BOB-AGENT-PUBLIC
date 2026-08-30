@@ -62,6 +62,13 @@ def candidate_config() -> dict[str, object]:
 
 def pointwise_config() -> dict[str, object]:
     config = candidate_config()
+    config.update(
+        schema_version=1,
+        contract_type="approved_config",
+        experiment_id="baseline_fm",
+        approved_against_commit_sha=COMMIT_SHA,
+        status="APPROVED",
+    )
     config["objective"] = {"name": "pointwise_binary_cross_entropy"}
     return config
 
@@ -274,6 +281,7 @@ class RunExperimentTests(unittest.TestCase):
                 patch("tools.audit_run.expected_protected_hashes", return_value=protected),
                 patch("tools.audit_run.git_head", return_value=COMMIT_SHA),
                 patch("tools.audit_run.git_is_dirty", return_value=False),
+                patch("tools.audit_run._git_is_ancestor", return_value=True),
             ):
                 audited = audit_manifest(output_dir / "run_manifest.json")
             self.assertEqual(audited["status"], "completed")
@@ -318,6 +326,31 @@ class RunExperimentTests(unittest.TestCase):
             )
             self.assertEqual(manifest["status"], "failed")
             self.assertIn("experiment spec must be inside", manifest["error"])
+
+    def test_baseline_approval_ancestry_fails_before_data_access(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = make_runner_fixture(Path(tmp))
+            argv = runner_argv(paths)
+            argv[argv.index(str(paths["candidate"]))] = str(paths["baseline"])
+            with (
+                patch.object(sys, "argv", argv),
+                patch("tools.run_experiment._require_repository_input"),
+                patch("tools.run_experiment._git_state", return_value=(COMMIT_SHA, True)),
+                patch(
+                    "tools.run_experiment._git_is_ancestor",
+                    side_effect=[True, False],
+                ),
+                patch("tools.run_experiment._capture_data_snapshot") as capture,
+                patch("tools.run_experiment.execute") as execute_mock,
+                redirect_stderr(StringIO()),
+            ):
+                self.assertEqual(main(), 1)
+            capture.assert_not_called()
+            execute_mock.assert_not_called()
+            manifest = json.loads(
+                (paths["output"] / "run_manifest.json").read_text(encoding="utf-8")
+            )
+            self.assertIn("baseline approved_against_commit_sha", manifest["error"])
 
     def test_artifact_hash_failure_cannot_leave_a_completed_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -582,6 +615,23 @@ class RunExperimentTests(unittest.TestCase):
             self.assertEqual(result, {"snapshot_bound": True})
             self.assertEqual(source.read_bytes(), original)
 
+    def test_execute_records_configured_effective_max_batches(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            paths = make_runner_fixture(base)
+            config = candidate_config()
+            config["training"]["max_batches"] = 1
+            write_json(paths["candidate"], config)
+            paths["output"].mkdir()
+            result = execute(
+                paths["spec"], paths["candidate"], paths["data"], paths["output"],
+                seed=0, max_batches=None, mode="valid-only", repo_root=base,
+            )
+            self.assertEqual(result["resolved_config"]["resolved_run"]["max_batches"], 1)
+            self.assertEqual(result["batches_seen"], 1)
+            history = json.loads(result["history_path"].read_text(encoding="utf-8"))
+            self.assertEqual(len(history), 1)
+
     def test_only_explicit_transient_error_is_retried_once(self) -> None:
         calls = 0
 
@@ -603,12 +653,42 @@ class RunExperimentTests(unittest.TestCase):
         resolved = _settings(candidate_config(), seed=0, max_batches=1)
         self.assertEqual(resolved["embedding_dim"], 4)
         self.assertEqual(resolved["max_batches"], 1)
+        configured_limit = candidate_config()
+        configured_limit["training"]["max_batches"] = 2
+        self.assertEqual(
+            _settings(configured_limit, seed=0, max_batches=None)["max_batches"],
+            2,
+        )
         legacy = candidate_config()
         legacy["training"] = {"seed": 0, "batch": 2, "epochs": 1, "patience": 1}
         with self.assertRaisesRegex(ValidationError, "legacy runner field"):
             _settings(legacy)
         with self.assertRaisesRegex(ValidationError, "does not match"):
             _settings(candidate_config(), seed=7)
+
+    def test_invalid_mode_and_approved_identity_fail_before_data_access(self) -> None:
+        spec = approved_spec(Path("candidate.json"), Path("baseline.json"))
+        config = candidate_config()
+        with patch("tools.run_experiment._capture_data_snapshot") as capture:
+            with self.assertRaisesRegex(ValidationError, "valid-only"):
+                execute(
+                    Path("unused-spec.json"), Path("unused-config.json"),
+                    Path("unused-data"), Path("unused-output"), seed=0,
+                    max_batches=1, mode="experiment",
+                    approved_inputs=(spec, config, "candidate"),
+                )
+            capture.assert_not_called()
+
+        spec["author_role"] = "E"
+        with patch("tools.run_experiment._capture_data_snapshot") as capture:
+            with self.assertRaisesRegex(ValidationError, "author_role"):
+                execute(
+                    Path("unused-spec.json"), Path("unused-config.json"),
+                    Path("unused-data"), Path("unused-output"), seed=0,
+                    max_batches=1, mode="valid-only",
+                    approved_inputs=(spec, config, "candidate"),
+                )
+            capture.assert_not_called()
 
 
 if __name__ == "__main__":

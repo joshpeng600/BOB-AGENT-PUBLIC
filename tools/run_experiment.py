@@ -39,7 +39,11 @@ from tools.common import (
 )
 from tools.preflight import inspect_data
 from tools.project_security import verify_protected_files
-from tools.validate_contract import validate_artifact_files, validate_contract
+from tools.validate_contract import (
+    validate_approved_run_semantics,
+    validate_artifact_files,
+    validate_contract,
+)
 
 
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
@@ -590,7 +594,7 @@ def _execute_bound_snapshot(
     model = _build_model(settings, feature_dim)
     training = ResolvedTrainingConfig(
         seed=settings["seed"], batch_size=settings["batch_size"],
-        epochs=1 if max_batches is not None else settings["epochs"],
+        epochs=1 if settings["max_batches"] is not None else settings["epochs"],
         patience=settings["patience"], max_batches=settings["max_batches"],
     )
     max_runtime_seconds = int(spec.get("max_runtime_seconds", 3600))
@@ -625,7 +629,7 @@ def _execute_bound_snapshot(
         **config,
         "resolved_run": {
             "experiment_id": spec["experiment_id"], "run_variant": variant,
-            "seed": seed, "max_batches": max_batches, "mode": mode,
+            "seed": seed, "max_batches": settings["max_batches"], "mode": mode,
         },
     }
     checkpoint_path = output_dir / "checkpoint.npz"
@@ -661,8 +665,8 @@ def execute(
     approved_inputs: tuple[dict[str, Any], dict[str, Any], str] | None = None,
     expected_data_snapshot: DataSnapshot | None = None,
 ) -> dict[str, Any]:
-    if mode not in {"experiment", "valid-only"}:
-        raise ValidationError("run_experiment only permits experiment/valid-only modes")
+    if mode != "valid-only":
+        raise ValidationError("run_experiment only permits valid-only mode")
     if max_batches is not None and max_batches <= 0:
         raise ValidationError("max-batches must be positive")
     repo_root = (repo_root or Path(__file__).resolve().parents[1]).resolve()
@@ -672,6 +676,18 @@ def execute(
         )
     else:
         spec, config, variant = approved_inputs
+    settings = _settings(config, seed=seed, max_batches=max_batches)
+    validate_approved_run_semantics(
+        {
+            "run_variant": variant,
+            "objective": settings["objective"],
+            "seed": settings["seed"],
+            "mode": mode,
+            "max_batches": settings["max_batches"],
+        },
+        spec,
+        config,
+    )
     source_snapshot = expected_data_snapshot or _capture_data_snapshot(data_dir)
     with tempfile.TemporaryDirectory(prefix="bob-agent-data-snapshot-") as temp:
         snapshot_dir = Path(temp) / "data"
@@ -728,7 +744,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--max-batches", type=int)
-    parser.add_argument("--mode", choices=("experiment", "valid-only"), default="valid-only")
+    parser.add_argument("--mode", choices=("valid-only",), default="valid-only")
     return parser.parse_args()
 
 
@@ -761,7 +777,8 @@ def main() -> int:
         "experiment_spec_path": _display_path(args.experiment_spec, repo_root, "EXPERIMENT_SPEC"),
         "config_path": _display_path(args.config, repo_root, "CONFIG"),
         "experiment_spec_hash": None, "run_variant": None,
-        "config_input_hash": None, "config_hash": None, "config": {},
+        "objective": None, "config_input_hash": None,
+        "config_hash": None, "config": {},
         "mode": args.mode, "max_batches": args.max_batches,
         "data": {"dataset": "KuaiRand-Pure", "split": "valid", "hash": None},
         "data_hash": None, "seed": args.seed, "dev_max_date": None,
@@ -805,11 +822,25 @@ def main() -> int:
         manifest["experiment_spec_hash"] = spec_input_hash
         manifest["run_variant"] = variant
         manifest["config_input_hash"] = config_input_hash
+        preview_settings = _settings(
+            config, seed=args.seed, max_batches=args.max_batches
+        )
+        manifest["objective"] = preview_settings["objective"]
+        manifest["max_batches"] = preview_settings["max_batches"]
+        validate_approved_run_semantics(manifest, spec, config)
+        if variant == "baseline" and not _git_is_ancestor(
+            repo_root, str(config["approved_against_commit_sha"]), commit_sha
+        ):
+            raise ValidationError(
+                "baseline approved_against_commit_sha is not an ancestor of HEAD"
+            )
         resolved_preview = {
             **config,
             "resolved_run": {
                 "experiment_id": spec["experiment_id"], "run_variant": variant,
-                "seed": args.seed, "max_batches": args.max_batches, "mode": args.mode,
+                "seed": args.seed,
+                "max_batches": preview_settings["max_batches"],
+                "mode": args.mode,
             },
         }
         manifest["config"] = resolved_preview
