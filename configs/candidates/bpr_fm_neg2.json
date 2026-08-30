@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "status": "candidate_not_validated",
+  "experiment_id": "exp_002",
+  "derived_from_config": "configs/approved/exp_001.json",
+  "model": {
+    "name": "factorization_machine",
+    "embedding_dim": 16,
+    "learning_rate": 0.001,
+    "l2": 0.000001
+  },
+  "objective": {
+    "name": "same_user_bpr",
+    "formula": "mean(-log(sigmoid(score_positive-score_negative)))",
+    "negatives_per_positive": 2,
+    "skip_all_positive_users": true,
+    "skip_all_negative_users": true
+  },
+  "training": {
+    "seed": 0,
+    "batch_size": 8192,
+    "epochs": 40,
+    "patience": 4,
+    "max_batches": null
+  },
+  "data_mode": "train_valid_only",
+  "allowed_splits": [
+    "train",
+    "valid"
+  ],
+  "maximum_development_date": 20220428,
+  "evaluation_split": "valid",
+  "runner_owner": "B",
+  "claim": "No metric improvement is claimed until E evaluates immutable valid predictions after a separate exact formal-run authorization."
+}
