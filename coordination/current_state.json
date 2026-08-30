@@ -1,10 +1,14 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_REAL_VALID_RUN_ALLOWED_FRESH_RUN_REQUIRED",
+  "state": "EXP_001_SETUP_SECURITY_REPAIR_REQUIRED_BEFORE_AUTHORIZED_RERUN",
   "owner": "A",
   "next_receiver": "B",
   "approved_against_commit_sha": "4c07e03663e7d13f11547546da7cc6ac3ea5ff98",
-  "blocked_by": [],
+  "blocked_by": [
+    "tools/audit_run.py verifies experiment_spec_path/hash but does not bind the manifest experiment_id, run variant, and candidate/baseline config route and raw bytes to the approved spec",
+    "tools/safe_evaluate.py hashes a prediction path and later reopens that path for validation, so temporary replacement and restoration can decouple evaluated bytes from prediction_hash",
+    "B and E must close their owned security gaps with B-owned regression tests, then E must independently rereview before A activates the single authorized fresh run"
+  ],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
   "approved_baseline_config_path": "configs/approved/baseline_fm.json",
@@ -27,20 +31,19 @@
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "ALLOWED_ONE_FRESH_BASELINE_AND_CANDIDATE_PAIR",
-      "authorized_run_commit_sha": "4c07e03663e7d13f11547546da7cc6ac3ea5ff98",
-      "permits": "B may execute one fresh same-commit, same-data, same-features, same-seed, same-budget baseline and exp_001 candidate pair on valid only; test remains forbidden"
+      "status": "BLOCKED_PENDING_B_E_SECURITY_REPAIR_AND_E_REREVIEW",
+      "permits": "nothing until A records a later ALLOWED state on main; test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "ACTION_REQUIRED_FRESH_REAL_VALID_BASELINE_AND_CANDIDATE_RUN",
+    "B": "ACTION_REQUIRED_BIND_AUDIT_ROUTE_AND_ADD_SECURITY_REGRESSIONS",
     "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
     "D": "SETUP_READY_NO_ACTION_REQUIRED",
-    "E": "WAIT_FOR_FRESH_IMMUTABLE_B_OUTPUT"
+    "E": "ACTION_REQUIRED_IMMUTABLE_PREDICTION_EVALUATION_INGRESS"
   },
   "readiness_snapshot": {
-    "observed_at_utc": "2026-08-30T11:42:06Z",
-    "main_sha": "f3fb11e2242a424c803bb1c98e942ad8d5c15e84",
+    "observed_at_utc": "2026-08-30T12:01:12Z",
+    "main_sha": "4c07e03663e7d13f11547546da7cc6ac3ea5ff98",
     "d_setup": {
       "pr_number": 14,
       "status": "MERGED",
@@ -93,9 +96,7 @@
       "technical_remaining": [],
       "cross_role_exception_recorded": true,
       "manual_gate_completion_recorded": true,
-      "governance_remaining": [
-        "independent E re-review of the merged immutable artifact contract and PR #21 cross-platform hardening"
-      ]
+      "governance_remaining": []
     },
     "b_cross_platform_hardening": {
       "pr_number": 21,
@@ -119,36 +120,61 @@
       "evidence": "coordination/inbox/B/exp_001_artifact_contract_readiness.md"
     },
     "e_setup": {
-      "status": "PASS_COMPLETE_ARTIFACT_REREVIEW_THROUGH_PR_22",
+      "status": "PASS_INDEPENDENT_ARTIFACT_REREVIEW_THROUGH_PR_22",
       "b_technical_acceptance": true,
       "human_governance_decision_required": false,
-      "independent_rereview_pr_number": 26,
-      "independent_rereview_merge_sha": "1374a6e4cdbb820b975430c93d514657bc809d63",
+      "pre_evaluation_pr_number": 17,
+      "pre_evaluation_merge_sha": "05dff207484eda385c943dde57742eaf535a6906",
+      "artifact_rereview_pr_number": 26,
+      "artifact_rereview_head_sha": "e8a11c7cd9870685d012053bcec8ff4a6172b92a",
+      "artifact_rereview_merge_sha": "1374a6e4cdbb820b975430c93d514657bc809d63",
+      "artifact_rereview_github_checks": "PASS_4_OF_4_VERIFIED_VIA_GITHUB_API",
       "expected_artifact_contract": "PASS",
       "prediction_contract": "PASS",
       "protected_hashes": "PASS",
+      "pr_25_evidence_accepted": false,
+      "formal_evaluation_performed_in_setup_rereview": false,
+      "formal_metrics_produced_in_setup_rereview": false,
+      "test_access": false,
       "next_receiver": "A",
       "evidence": "coordination/inbox/E/exp_001_artifact_contract_rereview.md"
     },
-    "pr_25_reconciliation": {
-      "status": "QUARANTINED_NOT_AUTHORITATIVE",
-      "reason": "formal valid metrics were produced while REAL_VALID_RUN_ALLOWED was blocked",
-      "selection_allowed": false,
-      "score_comparison_allowed": false,
-      "evidence": "coordination/inbox/A/exp_001_pr_25_reconciliation.json"
+    "pr_25_gate_incident": {
+      "pr_number": 25,
+      "head_sha": "f4f253fe90fc6813aa0d780864b3d49ab46df033",
+      "merge_sha": "afe5b795abacb408c668f05db1a61b6a5af03879",
+      "github_state": "MERGED",
+      "github_checks": "PASS_4_OF_4_VERIFIED_VIA_GITHUB_API_BUT_NOT_A_RUN_AUTHORIZATION",
+      "formal_metrics_present_in_git_history": true,
+      "gate_status_at_production": "BLOCKED",
+      "e_evidence_accepted": false,
+      "quarantine_status": "QUARANTINED_NOT_ACCEPTED",
+      "use_for_experiment_selection": false,
+      "use_for_threshold_or_hyperparameter_decisions": false,
+      "count_as_completed_iteration": false,
+      "reproduction_authorized": false,
+      "human_incident_disposition": "APPROVE_PERMANENT_QUARANTINE_AND_ONE_FRESH_RERUN",
+      "fresh_rerun_attempts_authorized_after_gate_open": 1,
+      "fresh_rerun_authorization_active": false,
+      "quarantine_record": "coordination/inbox/A/exp_001_pr_25_gate_incident.md",
+      "decision_request": "coordination/inbox/A/exp_001_pr_25_gate_incident_decision_request.json",
+      "reconciliation_record": "coordination/inbox/A/exp_001_pr_25_reconciliation.json"
     }
   },
   "setup_decision": {
-    "decision": "PASS_TO_ONE_FRESH_REAL_VALID_RUN",
-    "decided_at_utc": "2026-08-30T12:03:29Z",
-    "subject": "PR #25 gate-incident reconciliation and fresh exp_001 valid-only authorization",
-    "reason": "E independently passed the complete artifact contract through PR #22; PR #25 metrics are quarantined because they were produced before the A-owned gate opened; the repository owner authorized a fresh governed run",
+    "decision": "HUMAN_INCIDENT_DISPOSITION_APPROVED_RERUN_DEFERRED_SECURITY_REPAIR",
+    "decided_at_utc": "2026-08-30T12:01:12Z",
+    "subject": "permanent PR #25 quarantine and one fresh valid-only rerun approved subject to unresolved setup security gates",
+    "reason": "the incident decision is complete, but code inspection and merged D evidence show the auditor route and prediction evaluation ingress are not yet immutable end to end; hard safety gates prevent immediate cycle activation",
     "score_comparison_performed": false,
-    "formal_metrics_available": false,
+    "formal_metrics_available_for_selection": false,
+    "quarantined_formal_metrics_present": true,
     "remaining_sequence": [
-      "B executes one fresh baseline and candidate pair at the authorized clean commit using identical approved inputs and valid only",
-      "E independently audits and evaluates the fresh immutable predictions",
-      "A records the authoritative exp_001 selection decision"
+      "B binds audit evidence to the approved experiment identity, run variant, spec, and raw candidate/baseline config route and bytes",
+      "E makes safe_evaluate consume the exact immutable prediction bytes whose hash is recorded",
+      "B adds synthetic regression coverage for both security gaps and all four checks pass",
+      "E independently rereviews the final clean implementation",
+      "A activates exactly one fresh valid-only rerun on a new clean main SHA; PR #25 evidence remains excluded"
     ]
   },
   "github_branch_protection": {

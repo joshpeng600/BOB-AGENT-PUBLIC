@@ -20,7 +20,7 @@
   "options": [
     {
       "id": "quarantine_pr_25_and_run_fresh",
-      "effect": "Exclude PR #25 metrics from selection, open one fresh governed valid-only baseline/candidate run, then require independent E evaluation."
+      "effect": "Exclude PR #25 metrics from selection and conditionally authorize one fresh governed valid-only baseline/candidate run only after all B/E security preconditions pass and A later opens the exact gate."
     },
     {
       "id": "accept_pr_25_retroactively",
@@ -34,12 +34,14 @@
     "decision": "approve",
     "pr_25_metrics_authoritative": false,
     "reports_experiments_csv_update_allowed": false,
-    "authorized_run_commit_sha": "4c07e03663e7d13f11547546da7cc6ac3ea5ff98",
-    "real_valid_run_allowed": true,
+    "authorized_run_commit_sha": null,
+    "real_valid_run_allowed": false,
+    "authorized_attempts_after_gate_open": 1,
+    "activation_status": "DEFERRED_PENDING_B_E_SECURITY_REPAIR_AND_E_REREVIEW",
     "test_access_allowed": false,
     "next_receiver": "B",
-    "required_next_action": "B executes one fresh same-commit baseline/candidate valid-only pair; E independently audits and evaluates it before A records selection."
+    "required_next_action": "B fixes the approved experiment/config audit-route binding and B-owned regressions; E fixes immutable prediction ingress and independently rereviews the combined clean main; A then records a new exact REAL_VALID_RUN_ALLOWED state before any fresh run."
   },
-  "automation_paused": false,
-  "status": "resolved_approved_fresh_run_required"
+  "automation_paused": true,
+  "status": "resolved_approved_pending_security_preconditions"
 }
