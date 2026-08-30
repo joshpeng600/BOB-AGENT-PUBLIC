@@ -1,12 +1,10 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_SETUP_E_INDEPENDENT_REREVIEW_REQUIRED",
+  "state": "EXP_001_REAL_VALID_RUN_ALLOWED_FRESH_RUN_REQUIRED",
   "owner": "A",
-  "next_receiver": "E",
-  "approved_against_commit_sha": "f3fb11e2242a424c803bb1c98e942ad8d5c15e84",
-  "blocked_by": [
-    "E must independently rereview the complete artifact contract through PR #22 before A may consider REAL_VALID_RUN_ALLOWED"
-  ],
+  "next_receiver": "B",
+  "approved_against_commit_sha": "4c07e03663e7d13f11547546da7cc6ac3ea5ff98",
+  "blocked_by": [],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
   "approved_baseline_config_path": "configs/approved/baseline_fm.json",
@@ -29,15 +27,16 @@
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED_PENDING_E_INDEPENDENT_REREVIEW",
-      "permits": "nothing until A records a later ALLOWED state on main; test remains forbidden"
+      "status": "ALLOWED_ONE_FRESH_BASELINE_AND_CANDIDATE_PAIR",
+      "authorized_run_commit_sha": "4c07e03663e7d13f11547546da7cc6ac3ea5ff98",
+      "permits": "B may execute one fresh same-commit, same-data, same-features, same-seed, same-budget baseline and exp_001 candidate pair on valid only; test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "TECHNICAL_ARTIFACT_FOLLOWUP_COMPLETE_NO_ACTION_REQUIRED",
+    "B": "ACTION_REQUIRED_FRESH_REAL_VALID_BASELINE_AND_CANDIDATE_RUN",
     "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
     "D": "SETUP_READY_NO_ACTION_REQUIRED",
-    "E": "ACTION_REQUIRED_INDEPENDENT_ARTIFACT_CONTRACT_REREVIEW"
+    "E": "WAIT_FOR_FRESH_IMMUTABLE_B_OUTPUT"
   },
   "readiness_snapshot": {
     "observed_at_utc": "2026-08-30T11:42:06Z",
@@ -120,28 +119,36 @@
       "evidence": "coordination/inbox/B/exp_001_artifact_contract_readiness.md"
     },
     "e_setup": {
-      "status": "ACTION_REQUIRED_FULL_ARTIFACT_REREVIEW_THROUGH_PR_22",
+      "status": "PASS_COMPLETE_ARTIFACT_REREVIEW_THROUGH_PR_22",
       "b_technical_acceptance": true,
       "human_governance_decision_required": false,
-      "pre_evaluation_pr_number": 17,
-      "pre_evaluation_merge_sha": "05dff207484eda385c943dde57742eaf535a6906",
-      "expected_artifact_contract": "FAIL",
+      "independent_rereview_pr_number": 26,
+      "independent_rereview_merge_sha": "1374a6e4cdbb820b975430c93d514657bc809d63",
+      "expected_artifact_contract": "PASS",
       "prediction_contract": "PASS",
       "protected_hashes": "PASS",
-      "next_receiver": "E",
-      "evidence": "coordination/inbox/E/exp_001_pre_evaluation_readiness.md"
+      "next_receiver": "A",
+      "evidence": "coordination/inbox/E/exp_001_artifact_contract_rereview.md"
+    },
+    "pr_25_reconciliation": {
+      "status": "QUARANTINED_NOT_AUTHORITATIVE",
+      "reason": "formal valid metrics were produced while REAL_VALID_RUN_ALLOWED was blocked",
+      "selection_allowed": false,
+      "score_comparison_allowed": false,
+      "evidence": "coordination/inbox/A/exp_001_pr_25_reconciliation.json"
     }
   },
   "setup_decision": {
-    "decision": "CONDITIONAL_PASS_TO_E_INDEPENDENT_REREVIEW",
-    "decided_at_utc": "2026-08-30T11:42:06Z",
-    "subject": "human ratification of the exact PR #22 tools/audit_run.py cross-role change",
-    "reason": "the repository owner approved the exact ownership exception; E independent technical rereview of the complete contract through PR #22 remains mandatory before any real-valid authorization",
+    "decision": "PASS_TO_ONE_FRESH_REAL_VALID_RUN",
+    "decided_at_utc": "2026-08-30T12:03:29Z",
+    "subject": "PR #25 gate-incident reconciliation and fresh exp_001 valid-only authorization",
+    "reason": "E independently passed the complete artifact contract through PR #22; PR #25 metrics are quarantined because they were produced before the A-owned gate opened; the repository owner authorized a fresh governed run",
     "score_comparison_performed": false,
     "formal_metrics_available": false,
     "remaining_sequence": [
-      "E independently repeats pre-evaluation review of the complete artifact contract through PR #22 without training or scoring",
-      "A reviews E evidence before considering REAL_VALID_RUN_ALLOWED"
+      "B executes one fresh baseline and candidate pair at the authorized clean commit using identical approved inputs and valid only",
+      "E independently audits and evaluates the fresh immutable predictions",
+      "A records the authoritative exp_001 selection decision"
     ]
   },
   "github_branch_protection": {
