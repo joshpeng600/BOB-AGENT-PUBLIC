@@ -452,7 +452,11 @@ def _validate_approved_inputs(
     if actual_path == candidate_path:
         variant, expected_objective = "candidate", spec.get("objective")
     elif actual_path == baseline_path:
-        variant, expected_objective = "baseline", "pointwise_binary_cross_entropy"
+        variant = "baseline"
+        objective = config.get("objective")
+        if not isinstance(objective, dict):
+            raise ValidationError("baseline config objective must be an object")
+        expected_objective = objective.get("name")
     else:
         raise ValidationError(
             "--config must match experiment_spec.implementation_config or baseline.approved_config"

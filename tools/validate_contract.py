@@ -489,10 +489,7 @@ def validate_approved_run_semantics(
     if spec.get("author_role") != "A":
         raise ValidationError("approved experiment spec author_role must be A")
     variant = document.get("run_variant")
-    if variant == "candidate":
-        expected_objective = spec.get("objective")
-    elif variant == "baseline":
-        expected_objective = "pointwise_binary_cross_entropy"
+    if variant == "baseline":
         baseline = _require_object(spec.get("baseline"), "experiment_spec.baseline")
         if raw_config.get("contract_type") != "approved_config":
             raise ValidationError("baseline config contract_type must be approved_config")
@@ -508,13 +505,25 @@ def validate_approved_run_semantics(
             raise ValidationError(
                 "baseline config experiment_id does not match the experiment spec"
             )
+        objective = _require_object(
+            raw_config.get("objective"), "approved config.objective"
+        )
+        expected_objective = objective.get("name")
+    elif variant == "candidate":
+        if raw_config.get("contract_type") == "approved_config":
+            raise ValidationError(
+                "candidate route must not use an approved baseline config"
+            )
+        expected_objective = spec.get("objective")
+        objective = _require_object(
+            raw_config.get("objective"), "approved config.objective"
+        )
     else:
         raise ValidationError("run_variant must be baseline or candidate")
     if expected_objective not in SUPPORTED_OBJECTIVES:
         raise ValidationError("approved experiment objective is unsupported")
     if document.get("objective") != expected_objective:
         raise ValidationError("manifest objective does not match the approved route")
-    objective = _require_object(raw_config.get("objective"), "approved config.objective")
     if objective.get("name") != expected_objective:
         raise ValidationError("approved config objective does not match the approved route")
 

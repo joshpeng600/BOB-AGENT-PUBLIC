@@ -412,6 +412,56 @@ class ArtifactAuditTests(unittest.TestCase):
             with self.assertRaisesRegex(SecurityError, "baseline config.*not an ancestor"):
                 verify_approved_repository_inputs(record, stack)
 
+    def test_exp002_baseline_route_binds_the_approved_bpr_champion(self):
+        spec_path = self.repo_root / "experiments" / "exp_002.json"
+        baseline_path = self.repo_root / "configs" / "approved" / "exp_001.json"
+        raw_baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+        record = deepcopy(self.manifest)
+        record.update(
+            experiment_id="exp_002",
+            experiment_spec_path="experiments/exp_002.json",
+            experiment_spec_hash=sha256_file(spec_path),
+            run_variant="baseline",
+            objective="same_user_bpr",
+            config_path="configs/approved/exp_001.json",
+            config_input_hash=sha256_file(baseline_path),
+        )
+        record["config"] = {
+            **raw_baseline,
+            "resolved_run": {
+                "experiment_id": "exp_002",
+                "run_variant": "baseline",
+                "seed": 0,
+                "max_batches": None,
+                "mode": "valid-only",
+            },
+        }
+        record["config_hash"] = stable_json_hash(record["config"])
+        validate_approved_run_route(record, self.repo_root)
+
+        forged_objective = deepcopy(record)
+        forged_objective["objective"] = "pointwise_binary_cross_entropy"
+        with self.assertRaisesRegex(ValidationError, "manifest objective"):
+            validate_approved_run_route(forged_objective, self.repo_root)
+
+        candidate_on_baseline = deepcopy(record)
+        candidate_on_baseline["config_path"] = "configs/candidates/bpr_fm.json"
+        with self.assertRaisesRegex(ValidationError, "baseline config_path"):
+            validate_approved_run_route(candidate_on_baseline, self.repo_root)
+
+        baseline_on_candidate = deepcopy(record)
+        baseline_on_candidate["run_variant"] = "candidate"
+        with self.assertRaisesRegex(ValidationError, "candidate config_path"):
+            validate_approved_run_route(baseline_on_candidate, self.repo_root)
+
+    def test_candidate_semantics_reject_an_approved_baseline_config(self):
+        spec = json.loads(self.spec_path.read_text(encoding="utf-8"))
+        baseline_path = self.repo_root / "configs" / "approved" / "exp_001.json"
+        raw_baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+        record = deepcopy(self.manifest)
+        with self.assertRaisesRegex(ValidationError, "candidate route"):
+            validate_approved_run_semantics(record, spec, raw_baseline)
+
     def test_semantics_reject_spec_and_config_identity_forgery(self):
         spec = json.loads(self.spec_path.read_text(encoding="utf-8"))
         raw_candidate = json.loads(self.config_path.read_text(encoding="utf-8"))
