@@ -2,10 +2,10 @@
   "schema_version": 1,
   "contract_type": "handoff",
   "experiment_id": "exp_001",
-  "approved_against_commit_sha": "b7001f693bb412a68398fb2ac47c6c40efe76ca0",
+  "approved_against_commit_sha": "cb61b52affd5ecdb4095312087400fb482d8301b",
   "from_role": "A",
   "to_role": "B",
-  "status": "TECHNICAL_COMPLETE_PR_20_PR_21_PENDING_E_REREVIEW",
+  "status": "TECHNICAL_COMPLETE_THROUGH_PR_22_PENDING_HUMAN_OWNERSHIP_DECISION",
   "branch": "B-Part",
   "branch_sync_commands": [
     "git fetch origin",
@@ -83,6 +83,16 @@
       "independent E technical rereview of PR #20 and PR #21 after the human decision was recorded"
     ]
   },
+  "artifact_followup_pr_review": {
+    "pr_number": 22,
+    "head_sha": "7477009032f37e57a38099955b7e6aff3c261c19",
+    "implementation_sha": "366951c06be3aedddca4f6da7f35e479ed374df4",
+    "merge_sha": "cb61b52affd5ecdb4095312087400fb482d8301b",
+    "status": "TECHNICAL_PASS_GOVERNANCE_HUMAN_DECISION_REQUIRED",
+    "required_actions_checks": "PASS_4_OF_4_VERIFIED_VIA_GITHUB_API",
+    "cross_role_change": "tools/audit_run.py is E-owned and was modified by B after the exact PR #20 exception",
+    "decision_request": "coordination/inbox/A/exp_001_pr_22_ownership_decision_request.json"
+  },
   "ownership_boundary": {
     "B_owned": [
       "tools/run_experiment.py",
@@ -94,7 +104,7 @@
     ],
     "rule": "B must not modify tools/audit_run.py without an explicit recorded human exception; E must not modify B-owned tests without an explicit recorded human exception"
   },
-  "next_action": "B takes no further action unless E identifies a technical defect; wait for independent E rereview and a later A gate decision; do not run real data or access test",
+  "next_action": "B takes no further action unless the human rejects the exact PR #22 ownership exception or E later identifies a technical defect; do not run real data or access test",
   "rollback_config": "configs/approved/baseline_fm.json",
   "experiment_spec": "experiments/exp_001.json"
 }

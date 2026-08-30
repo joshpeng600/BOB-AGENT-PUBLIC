@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "contract_type": "decision_request",
+  "experiment_id": "exp_001",
+  "request_id": "exp_001-pr-22-ownership-20260830",
+  "requested_at_utc": "2026-08-30T11:40:00Z",
+  "requested_by_role": "A",
+  "approved_against_commit_sha": "cb61b52affd5ecdb4095312087400fb482d8301b",
+  "trigger": "new cross-role ownership conflict after exact PR #20 ratification",
+  "summary": "PR #22 passed all four required GitHub checks and merged as cb61b52affd5ecdb4095312087400fb482d8301b, but B again modified E-owned tools/audit_run.py. The repository owner's prior approval was explicitly limited to the exact PR #20 change and does not authorize this later PR #22 edit.",
+  "evidence_paths": [
+    "coordination/inbox/B/exp_001_artifact_contract_readiness.md",
+    "coordination/current_state.json",
+    "coordination/inbox/E/exp_001_handoff.json",
+    "governance/manual_interventions.jsonl"
+  ],
+  "observations": {
+    "main_sha": "cb61b52affd5ecdb4095312087400fb482d8301b",
+    "pr_number": 22,
+    "pr_head_sha": "7477009032f37e57a38099955b7e6aff3c261c19",
+    "implementation_sha": "366951c06be3aedddca4f6da7f35e479ed374df4",
+    "merge_sha": "cb61b52affd5ecdb4095312087400fb482d8301b",
+    "required_actions_checks": "PASS_4_OF_4_VERIFIED_VIA_GITHUB_API",
+    "cross_role_file": "tools/audit_run.py",
+    "file_owner": "E",
+    "change_author_role": "B",
+    "technical_claim": "bind experiment_spec_hash to repository spec bytes and fail closed on unsafe spec paths",
+    "formal_metrics_produced": false,
+    "test_access": false
+  },
+  "options": [
+    {
+      "id": "ratify_exact_pr_22_audit_change",
+      "effect": "ratify only the exact tools/audit_run.py change in PR #22; A records the exception and routes the complete artifact contract to E for independent rereview"
+    },
+    {
+      "id": "require_ownership_correct_repair",
+      "effect": "do not ratify the PR #22 cross-role scope; require an ownership-correct revert and E reimplementation before independent rereview"
+    }
+  ],
+  "automation_scope": "SETUP_OWNERSHIP_DECISION_ONLY",
+  "automation_paused": true,
+  "status": "pending_human"
+}
