@@ -5,7 +5,7 @@
   "request_id": "exp_001-real-valid-gate-20260830",
   "requested_at_utc": "2026-08-30T10:05:10Z",
   "requested_by_role": "A",
-  "approved_against_commit_sha": "1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c",
+  "approved_against_commit_sha": "b7001f693bb412a68398fb2ac47c6c40efe76ca0",
   "trigger": "repeated cross-role ownership exception and temporary manual-gate completion",
   "summary": "PR #20 technically closes the immutable artifact contract, but B modified E-owned tools/audit_run.py without a matching manual intervention and its readiness incorrectly says no E-owned audit logic changed. This repeats the PR #10 cross-role ownership class. A requires a human disposition of the exact PR #20 change and confirmation of the PR #15/PR #20 temporary manual gates before E rereview or any real valid-only authorization.",
   "evidence_paths": [
@@ -48,6 +48,28 @@
     }
   ],
   "automation_scope": "REAL_VALID_RUN_ONLY",
+  "resolution": {
+    "resolved_at_utc": "2026-08-30T11:32:38Z",
+    "resolved_by": "repository owner via Codex conversation",
+    "selected_option": "ratify_exact_cross_role_changes_and_manual_gates",
+    "decision": "approve",
+    "exact_scope": {
+      "pr_10_cross_role_files": [
+        "tools/validate_predictions.py",
+        "tests/test_audit.py",
+        "tests/test_predictions.py",
+        "tests/test_safe_evaluate.py"
+      ],
+      "pr_20_cross_role_files": [
+        "tools/audit_run.py"
+      ],
+      "temporary_manual_gates_confirmed": [15, 20]
+    },
+    "record_path": "governance/manual_interventions.jsonl",
+    "next_receiver": "E",
+    "real_valid_run_allowed": false,
+    "required_next_action": "E independently rereviews the merged PR #20 artifact contract and PR #21 hardening; A alone may later open the real-valid gate"
+  },
   "automation_paused": true,
-  "status": "pending_human"
+  "status": "resolved_approved_pending_e_rereview"
 }

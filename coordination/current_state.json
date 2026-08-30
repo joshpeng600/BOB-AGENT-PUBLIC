@@ -1,13 +1,11 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_SETUP_HUMAN_DECISION_REQUIRED_AFTER_PR_20",
+  "state": "EXP_001_SETUP_E_INDEPENDENT_REREVIEW_REQUIRED",
   "owner": "A",
-  "next_receiver": "HUMAN",
-  "approved_against_commit_sha": "1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c",
+  "next_receiver": "E",
+  "approved_against_commit_sha": "b7001f693bb412a68398fb2ac47c6c40efe76ca0",
   "blocked_by": [
-    "PR #20 technically closes the artifact-byte, resolved-config, cross-hash, and audit entry-point gaps, but B modified E-owned tools/audit_run.py without a matching manual_interventions.jsonl exception and its readiness incorrectly states that E-owned audit logic was not modified",
-    "the cross-role ownership failure has now repeated after PR #10, so a human must either ratify the exact PR #20 audit_run change or require an ownership-correct revert and E reimplementation",
-    "human confirmation or completion records remain required for the PR #15 and PR #20 temporary manual merge gates; Git history proves non-bot merges but does not prove a formal review entry or the four GitHub check conclusions"
+    "E must independently rereview the merged PR #20 artifact contract and PR #21 cross-platform fail-closed hardening before A may consider REAL_VALID_RUN_ALLOWED"
   ],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
@@ -31,19 +29,19 @@
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED_PENDING_HUMAN_RATIFICATION_AND_E_REREVIEW",
+      "status": "BLOCKED_PENDING_E_INDEPENDENT_REREVIEW",
       "permits": "nothing until A records a later ALLOWED state on main; test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "TECHNICAL_ARTIFACT_FIX_COMPLETE_PENDING_GOVERNANCE_RATIFICATION",
+    "B": "TECHNICAL_ARTIFACT_FIX_COMPLETE_NO_ACTION_REQUIRED",
     "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
     "D": "SETUP_READY_NO_ACTION_REQUIRED",
-    "E": "WAIT_FOR_HUMAN_RATIFICATION_THEN_INDEPENDENT_PR_20_REREVIEW"
+    "E": "ACTION_REQUIRED_INDEPENDENT_PR_20_PR_21_REREVIEW"
   },
   "readiness_snapshot": {
-    "observed_at_utc": "2026-08-30T10:05:10Z",
-    "main_sha": "1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c",
+    "observed_at_utc": "2026-08-30T11:32:38Z",
+    "main_sha": "b7001f693bb412a68398fb2ac47c6c40efe76ca0",
     "d_setup": {
       "pr_number": 14,
       "status": "MERGED",
@@ -68,7 +66,8 @@
       "required_actions_checks": "PASS_4_OF_4",
       "human_review_present": false,
       "merged_by_non_bot": "LedCalamity",
-      "manual_gate_confirmation_required": true,
+      "manual_gate_confirmation_required": false,
+      "manual_gate_completion_recorded": true,
       "pytest_policy_blocker": false,
       "pytest_basis": "AGENTS.md requires unittest and the temporary manual gate requires four named Actions checks; latest B evidence additionally reports pytest PASS",
       "evidence": "coordination/inbox/B/exp_001_freeze_readiness.md"
@@ -84,7 +83,7 @@
       "local_clean_pytest": "PASS_85",
       "local_clean_unittest": "PASS_85_OF_85",
       "local_clean_audit_tests": "PASS_20_OF_20",
-      "github_checks": "NOT_VERIFIED_BY_GIT_REFS",
+      "github_checks": "PASS_4_OF_4_VERIFIED_VIA_GITHUB_API",
       "completed": [
         "five required artifact paths in completed manifests",
         "artifact file-byte verification in validator and audit_manifest",
@@ -93,50 +92,58 @@
         "missing, tampered, duplicate, traversal, and symlink regression coverage"
       ],
       "technical_remaining": [],
+      "cross_role_exception_recorded": true,
+      "manual_gate_completion_recorded": true,
       "governance_remaining": [
-        "human decision on the repeated cross-role ownership exception for tools/audit_run.py",
-        "human confirmation of temporary manual-gate compliance for PR #15 and PR #20",
-        "independent E re-review of the merged immutable artifact contract"
+        "independent E re-review of the merged immutable artifact contract and PR #21 cross-platform hardening"
       ]
     },
+    "b_cross_platform_hardening": {
+      "pr_number": 21,
+      "head_sha": "d28621f9df791c2d88cebaf0782505cbe5c3d269",
+      "merge_sha": "b7001f693bb412a68398fb2ac47c6c40efe76ca0",
+      "github_state": "MERGED",
+      "github_checks": "PASS_4_OF_4_VERIFIED_VIA_GITHUB_API",
+      "scope": "cross-platform absolute-path rejection and non-completed run artifact fail-closed behavior"
+    },
     "e_setup": {
-      "status": "WAIT_FOR_HUMAN_RATIFICATION_THEN_PR_20_REREVIEW",
+      "status": "ACTION_REQUIRED_PR_20_PR_21_REREVIEW",
       "b_technical_acceptance": true,
-      "human_governance_decision_required": true,
+      "human_governance_decision_required": false,
       "pre_evaluation_pr_number": 17,
       "pre_evaluation_merge_sha": "05dff207484eda385c943dde57742eaf535a6906",
       "expected_artifact_contract": "FAIL",
       "prediction_contract": "PASS",
       "protected_hashes": "PASS",
-      "next_receiver": "HUMAN",
+      "next_receiver": "E",
       "evidence": "coordination/inbox/E/exp_001_pre_evaluation_readiness.md"
     }
   },
   "setup_decision": {
-    "decision": "HUMAN_DECISION_REQUIRED",
-    "decided_at_utc": "2026-08-30T10:05:10Z",
-    "subject": "PR #20 technical artifact completion with repeated cross-role ownership conflict",
-    "reason": "technical checks pass, but the second cross-role ownership incident requires explicit human disposition before E acceptance or real-valid authorization",
+    "decision": "CONDITIONAL_PASS_TO_E_INDEPENDENT_REREVIEW",
+    "decided_at_utc": "2026-08-30T11:32:38Z",
+    "subject": "human ratification of exact PR #10/PR #20 cross-role changes and PR #15/PR #20 temporary gates",
+    "reason": "the repository owner approved the exact ownership exceptions and confirmed both temporary gates; E independent technical rereview remains mandatory before any real-valid authorization",
     "score_comparison_performed": false,
     "formal_metrics_available": false,
-    "repair_sequence": [
-      "human ratifies the exact PR #20 tools/audit_run.py cross-role change or requires revert and E reimplementation",
-      "human confirms how PR #15 and PR #20 satisfied the temporary manual merge gate",
-      "A appends the resulting decision to governance/manual_interventions.jsonl",
-      "E independently repeats pre-evaluation review before A considers REAL_VALID_RUN_ALLOWED"
+    "remaining_sequence": [
+      "E independently repeats pre-evaluation review of the merged PR #20 and PR #21 artifact contract without training or scoring",
+      "A reviews E evidence before considering REAL_VALID_RUN_ALLOWED"
     ]
   },
   "github_branch_protection": {
-    "status": "TEMPORARY_MANUAL_GATE_APPROVED",
+    "status": "TEMPORARY_CHECKS_ONLY_PR_GATE_APPROVED",
     "verification": "GitHub rulesets API returned 403: upgrade to GitHub Pro or make this repository public",
     "repository_visibility_change_authorized": false,
     "manual_gate_approved_at_utc": "2026-08-29T17:00:38Z",
     "manual_gate_conditions": [
       "all four listed Actions checks pass on the PR head",
-      "the PR receives human review before merge",
+      "the PR is conflict-free and reviewed by the acting Codex integration agent; no separate human review is required",
+      "protected-file changes, test access, leakage, and unrecorded ownership conflicts still require human escalation",
       "direct pushes to main are forbidden",
       "force pushes to main are forbidden"
     ],
+    "human_review_clause_superseded_at_utc": "2026-08-30T11:32:38Z",
     "manual_gate_expires_when": "the repository supports and enables the four required checks",
     "required_checks": [
       "protected-files / verify-protected-files",

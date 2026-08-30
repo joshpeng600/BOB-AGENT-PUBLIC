@@ -2,10 +2,10 @@
   "schema_version": 1,
   "contract_type": "handoff",
   "experiment_id": "exp_001",
-  "approved_against_commit_sha": "1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c",
+  "approved_against_commit_sha": "b7001f693bb412a68398fb2ac47c6c40efe76ca0",
   "from_role": "A",
   "to_role": "E",
-  "status": "WAIT_FOR_HUMAN_PR_20_RATIFICATION_THEN_INDEPENDENT_REREVIEW",
+  "status": "ACTION_REQUIRED_INDEPENDENT_PR_20_PR_21_REREVIEW",
   "required_changes": [
     "pre-review manifest and evidence schema while waiting; do not score before immutable B valid predictions exist",
     "accept experiment_id and runtime commit_sha in evaluation evidence and record evaluator_role=E",
@@ -17,11 +17,46 @@
   "setup_review": {
     "technical_status": "PR_20_LOCAL_VERIFICATION_PASS_PENDING_E_REREVIEW",
     "b_accepts_pr_10_validator_and_test_changes": true,
-    "cross_role_governance_exception_recorded": false,
-    "human_decision_required": true,
-    "pr_20_cross_role_exception_recorded": false,
+    "cross_role_governance_exception_recorded": true,
+    "human_decision_required": false,
+    "pr_20_cross_role_exception_recorded": true,
+    "pr_15_pr_20_manual_gate_completion_recorded": true,
+    "review_baseline_main_sha": "b7001f693bb412a68398fb2ac47c6c40efe76ca0",
     "decision_request": "coordination/inbox/A/exp_001_real_valid_gate_decision_request.json"
   },
-  "next_action": "remain idle until the human decision for PR #20 is recorded; then independently rereview the merged artifact validator and audit entry point without training, formal metrics, or test access",
+  "independent_rereview_contract": {
+    "scope": [
+      "tools/audit_run.py",
+      "tools/validate_contract.py",
+      "tests/test_audit.py",
+      "tests/test_protected_and_contracts.py",
+      "tests/test_run_experiment.py"
+    ],
+    "required_commands": [
+      "python -m unittest tests.test_audit tests.test_protected_and_contracts tests.test_run_experiment -v",
+      "python scripts/check_protected_files.py",
+      "python scripts/check_repository_contracts.py",
+      "python scripts/check_prediction_contract.py"
+    ],
+    "required_evidence_path": "coordination/inbox/E/exp_001_artifact_contract_rereview.md",
+    "must_confirm": [
+      "completed manifests bind all five required artifact bytes",
+      "resolved_config content and canonical config hash match the manifest",
+      "prediction and checkpoint hashes match manifest entries and bytes",
+      "missing, tampered, duplicate, traversal, Windows/POSIX absolute, and symlink paths fail closed",
+      "failed or stopped manifests cannot be used as completed evidence"
+    ],
+    "forbidden": [
+      "training",
+      "formal valid or test metric production",
+      "test access",
+      "modification of B-owned runner, validator, or tests"
+    ],
+    "result_routing": {
+      "PASS": "A",
+      "BLOCKED": "B"
+    }
+  },
+  "next_action": "synchronize E-Part with main at or after b7001f693bb412a68398fb2ac47c6c40efe76ca0 and perform the independent artifact-contract rereview only; REAL_VALID_RUN_ALLOWED remains blocked",
   "experiment_spec": "experiments/exp_001.json"
 }

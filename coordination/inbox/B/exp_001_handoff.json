@@ -2,10 +2,10 @@
   "schema_version": 1,
   "contract_type": "handoff",
   "experiment_id": "exp_001",
-  "approved_against_commit_sha": "1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c",
+  "approved_against_commit_sha": "b7001f693bb412a68398fb2ac47c6c40efe76ca0",
   "from_role": "A",
   "to_role": "B",
-  "status": "TECHNICAL_COMPLETE_PR_20_PENDING_HUMAN_RATIFICATION_AND_E_REREVIEW",
+  "status": "TECHNICAL_COMPLETE_PR_20_PR_21_PENDING_E_REREVIEW",
   "branch": "B-Part",
   "branch_sync_commands": [
     "git fetch origin",
@@ -53,7 +53,8 @@
     "pytest_basis": "not required by AGENTS.md or the temporary four-check manual gate; latest B evidence also reports pytest PASS",
     "human_review_present": false,
     "merged_by_non_bot": "LedCalamity",
-    "manual_gate_confirmation_required": true
+    "manual_gate_confirmation_required": false,
+    "manual_gate_completion_recorded": true
   },
   "e_pre_evaluation_review": {
     "pr_number": 17,
@@ -69,7 +70,7 @@
     "head_sha": "adee38640b589bd618963c3d637977f97e9ec783",
     "implementation_sha": "24235daf9a0a5e6d4272aa16270befd9cb18bb2b",
     "merge_sha": "1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c",
-    "status": "TECHNICAL_PASS_GOVERNANCE_HUMAN_DECISION_REQUIRED",
+    "status": "TECHNICAL_PASS_HUMAN_RATIFIED_PENDING_E_REREVIEW",
     "passing_evidence": [
       "clean pytest 85 passed",
       "clean unittest 85 of 85 passed",
@@ -79,9 +80,7 @@
       "prediction contract passed"
     ],
     "required_followup": [
-      "human disposition of the unrecorded B modification to E-owned tools/audit_run.py",
-      "human confirmation of temporary manual-gate compliance for PR #15 and PR #20",
-      "independent E technical rereview after the human decision is recorded"
+      "independent E technical rereview of PR #20 and PR #21 after the human decision was recorded"
     ]
   },
   "ownership_boundary": {
@@ -95,7 +94,7 @@
     ],
     "rule": "B must not modify tools/audit_run.py without an explicit recorded human exception; E must not modify B-owned tests without an explicit recorded human exception"
   },
-  "next_action": "B takes no further action unless A or E identifies a technical defect; wait for the human cross-role/manual-gate decision and independent E rereview; do not run real data or access test",
+  "next_action": "B takes no further action unless E identifies a technical defect; wait for independent E rereview and a later A gate decision; do not run real data or access test",
   "rollback_config": "configs/approved/baseline_fm.json",
   "experiment_spec": "experiments/exp_001.json"
 }
