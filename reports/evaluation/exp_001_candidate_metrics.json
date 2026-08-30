@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "contract_type": "metrics",
+  "experiment_id": "exp_001",
+  "run_id": "run-20260830T113748549146Z-exp_001-cb61b52a",
+  "baseline_experiment_id": "baseline_fm",
+  "commit_sha": "cb61b52affd5ecdb4095312087400fb482d8301b",
+  "worktree_clean": true,
+  "evaluator_role": "E",
+  "status": "completed",
+  "hypothesis": "Same-user BPR training improves within-user validation ranking over the approved pointwise FM baseline.",
+  "code_diff": "Loss-only change from pointwise binary cross-entropy to same-user BPR; model family, features, data, seed, and resource budget remain fixed.",
+  "split": "valid",
+  "metrics": {
+    "GAUC": 0.6705350761953585,
+    "nDCG@5": 0.5372069380698954,
+    "primary": 0.603871007132627,
+    "rows": 124909,
+    "users": 22377,
+    "evaluator_hash": "ecfde28392eb14fec4f488083251df50624e1af2b86278b962daecfb42d195de"
+  },
+  "errors": [],
+  "recovery": [],
+  "manual_interventions": 1,
+  "tokens": 0,
+  "wall_time_seconds": 31.496885,
+  "iterations": 1,
+  "gpu_hours": 0.0,
+  "config": {
+    "source": "configs/candidates/bpr_fm.json",
+    "objective": "same_user_bpr",
+    "negatives_per_positive": 1,
+    "seed": 0,
+    "batch_size": 8192,
+    "epochs": 40,
+    "patience": 4
+  },
+  "data": {
+    "dataset": "KuaiRand-Pure",
+    "split": "valid",
+    "hash": "69e5a6f656356832f7e1fa6a9774bc404030f32874e18e57e0f38b6a309a1002",
+    "dev_max_date": 20220428,
+    "test_rows": 0
+  },
+  "seed": 0,
+  "protected_hashes": {
+    "starter/evaluate.py": "ecfde28392eb14fec4f488083251df50624e1af2b86278b962daecfb42d195de",
+    "starter/data.py": "1bf54f5f3a9f590eab2f87f09a3c27422031867a20a5328d56cbd8c7db36e541",
+    "starter/submit.py": "ab01bb2b970ae2a9f2ead299f5240b71ff4126c2d9bb0e0c4de6c7e245dc148c",
+    "starter/baseline_scores.json": "950f98181770c030a68bdddab7be3c0abbf060531f54455a6a6f81a4cb003324"
+  },
+  "artifact_manifest_path": "artifacts/exp_001_candidate/run_manifest.json",
+  "run_manifest_sha256": "497a49349b499bdea191e1eafb7b467cc6718d609166c5f63d2288c0bf0600be",
+  "prediction_hash": "d137ce7d482d2cb8a2042d59831fa1fd1b1de50abd93bef288c189e11e05c0e3",
+  "checkpoint_hash": "ab33916c2ce9fec82a6d35085f2ecd858b0add53eddde11ce62150c04c86d528",
+  "evaluation_output_sha256": "867279c8d53b182ff261fb53304ff91cd9e7277d83177c3f6c59161cb2a4d297",
+  "test_access": false
+}
