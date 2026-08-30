@@ -1,13 +1,11 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_SETUP_HUMAN_DECISION_REQUIRED_AFTER_PR_22",
+  "state": "EXP_001_SETUP_E_INDEPENDENT_REREVIEW_REQUIRED",
   "owner": "A",
-  "next_receiver": "HUMAN",
-  "approved_against_commit_sha": "cb61b52affd5ecdb4095312087400fb482d8301b",
+  "next_receiver": "E",
+  "approved_against_commit_sha": "f3fb11e2242a424c803bb1c98e942ad8d5c15e84",
   "blocked_by": [
-    "PR #22 merged an additional B modification to E-owned tools/audit_run.py after the repository owner's exact PR #20 ratification; the prior exact exception does not authorize this later change",
-    "a human must ratify the exact PR #22 tools/audit_run.py change or require an ownership-correct revert and E reimplementation",
-    "after the ownership decision, E must independently rereview the complete artifact contract through PR #22 before A may consider REAL_VALID_RUN_ALLOWED"
+    "E must independently rereview the complete artifact contract through PR #22 before A may consider REAL_VALID_RUN_ALLOWED"
   ],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
@@ -31,19 +29,19 @@
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED_PENDING_PR_22_HUMAN_DECISION_AND_E_REREVIEW",
+      "status": "BLOCKED_PENDING_E_INDEPENDENT_REREVIEW",
       "permits": "nothing until A records a later ALLOWED state on main; test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "TECHNICAL_ARTIFACT_FOLLOWUP_COMPLETE_PENDING_PR_22_GOVERNANCE_DECISION",
+    "B": "TECHNICAL_ARTIFACT_FOLLOWUP_COMPLETE_NO_ACTION_REQUIRED",
     "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
     "D": "SETUP_READY_NO_ACTION_REQUIRED",
-    "E": "WAIT_FOR_PR_22_HUMAN_DECISION_THEN_INDEPENDENT_REREVIEW"
+    "E": "ACTION_REQUIRED_INDEPENDENT_ARTIFACT_CONTRACT_REREVIEW"
   },
   "readiness_snapshot": {
-    "observed_at_utc": "2026-08-30T11:40:00Z",
-    "main_sha": "cb61b52affd5ecdb4095312087400fb482d8301b",
+    "observed_at_utc": "2026-08-30T11:42:06Z",
+    "main_sha": "f3fb11e2242a424c803bb1c98e942ad8d5c15e84",
     "d_setup": {
       "pr_number": 14,
       "status": "MERGED",
@@ -117,33 +115,31 @@
       "github_checks": "PASS_4_OF_4_VERIFIED_VIA_GITHUB_API",
       "technical_claim": "closes executed-config, spec/config/data input-race, fixed-handle artifact, and BaseException fail-closed gaps",
       "cross_role_change": "B modified E-owned tools/audit_run.py",
-      "cross_role_exception_recorded": false,
+      "cross_role_exception_recorded": true,
       "decision_request": "coordination/inbox/A/exp_001_pr_22_ownership_decision_request.json",
       "evidence": "coordination/inbox/B/exp_001_artifact_contract_readiness.md"
     },
     "e_setup": {
-      "status": "WAIT_FOR_PR_22_HUMAN_DECISION_THEN_FULL_ARTIFACT_REREVIEW",
+      "status": "ACTION_REQUIRED_FULL_ARTIFACT_REREVIEW_THROUGH_PR_22",
       "b_technical_acceptance": true,
-      "human_governance_decision_required": true,
+      "human_governance_decision_required": false,
       "pre_evaluation_pr_number": 17,
       "pre_evaluation_merge_sha": "05dff207484eda385c943dde57742eaf535a6906",
       "expected_artifact_contract": "FAIL",
       "prediction_contract": "PASS",
       "protected_hashes": "PASS",
-      "next_receiver": "HUMAN",
+      "next_receiver": "E",
       "evidence": "coordination/inbox/E/exp_001_pre_evaluation_readiness.md"
     }
   },
   "setup_decision": {
-    "decision": "HUMAN_DECISION_REQUIRED_AFTER_PR_22",
-    "decided_at_utc": "2026-08-30T11:40:00Z",
-    "subject": "PR #22 technical artifact follow-up with a new unratified cross-role audit change",
-    "reason": "the earlier human decision remains valid for PR #10 and PR #20 only; PR #22 introduced a later B change to E-owned tools/audit_run.py and therefore requires its own exact disposition",
+    "decision": "CONDITIONAL_PASS_TO_E_INDEPENDENT_REREVIEW",
+    "decided_at_utc": "2026-08-30T11:42:06Z",
+    "subject": "human ratification of the exact PR #22 tools/audit_run.py cross-role change",
+    "reason": "the repository owner approved the exact ownership exception; E independent technical rereview of the complete contract through PR #22 remains mandatory before any real-valid authorization",
     "score_comparison_performed": false,
     "formal_metrics_available": false,
     "remaining_sequence": [
-      "human ratifies the exact PR #22 tools/audit_run.py change or requires an ownership-correct revert and E reimplementation",
-      "A records that exact decision in governance/manual_interventions.jsonl",
       "E independently repeats pre-evaluation review of the complete artifact contract through PR #22 without training or scoring",
       "A reviews E evidence before considering REAL_VALID_RUN_ALLOWED"
     ]
