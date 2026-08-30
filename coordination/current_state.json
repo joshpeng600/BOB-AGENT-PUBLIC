@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_ARTIFACT_CONTRACT_FIX_REQUIRED",
+  "state": "EXP_001_SETUP_HUMAN_DECISION_REQUIRED_AFTER_PR_22",
   "owner": "A",
-  "next_receiver": "B",
-  "approved_against_commit_sha": "05dff207484eda385c943dde57742eaf535a6906",
+  "next_receiver": "HUMAN",
+  "approved_against_commit_sha": "cb61b52affd5ecdb4095312087400fb482d8301b",
   "blocked_by": [
-    "B PR #18 is changes-required: it completes the runner inventory and validator CLI byte checks, but tools.audit_run still does not verify artifact files, resolved_config.json is not cross-checked against manifest.config/config_hash, and prediction/checkpoint top-level hashes are not contractually cross-checked with artifact entries",
-    "human decision for the PR #10 cross-role ownership exception",
-    "human confirmation or completion record for PR #15 temporary manual-gate review; GitHub records a non-bot merge but no formal review entry"
+    "PR #22 merged an additional B modification to E-owned tools/audit_run.py after the repository owner's exact PR #20 ratification; the prior exact exception does not authorize this later change",
+    "a human must ratify the exact PR #22 tools/audit_run.py change or require an ownership-correct revert and E reimplementation",
+    "after the ownership decision, E must independently rereview the complete artifact contract through PR #22 before A may consider REAL_VALID_RUN_ALLOWED"
   ],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
@@ -31,19 +31,19 @@
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED_PENDING_B_ARTIFACT_CONTRACT_AND_HUMAN_GOVERNANCE_DECISIONS",
+      "status": "BLOCKED_PENDING_PR_22_HUMAN_DECISION_AND_E_REREVIEW",
       "permits": "nothing until A records a later ALLOWED state on main; test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "CHANGES_REQUIRED_PR_18_ARTIFACT_AUDIT_INCOMPLETE",
+    "B": "TECHNICAL_ARTIFACT_FOLLOWUP_COMPLETE_PENDING_PR_22_GOVERNANCE_DECISION",
     "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
     "D": "SETUP_READY_NO_ACTION_REQUIRED",
-    "E": "PRE_EVALUATION_BLOCKED_WAIT_FOR_B_ARTIFACT_FIX"
+    "E": "WAIT_FOR_PR_22_HUMAN_DECISION_THEN_INDEPENDENT_REREVIEW"
   },
   "readiness_snapshot": {
-    "observed_at_utc": "2026-08-30T09:37:19Z",
-    "main_sha": "05dff207484eda385c943dde57742eaf535a6906",
+    "observed_at_utc": "2026-08-30T11:40:00Z",
+    "main_sha": "cb61b52affd5ecdb4095312087400fb482d8301b",
     "d_setup": {
       "pr_number": 14,
       "status": "MERGED",
@@ -68,35 +68,61 @@
       "required_actions_checks": "PASS_4_OF_4",
       "human_review_present": false,
       "merged_by_non_bot": "LedCalamity",
-      "manual_gate_confirmation_required": true,
+      "manual_gate_confirmation_required": false,
+      "manual_gate_completion_recorded": true,
       "pytest_policy_blocker": false,
       "pytest_basis": "AGENTS.md requires unittest and the temporary manual gate requires four named Actions checks; latest B evidence additionally reports pytest PASS",
       "evidence": "coordination/inbox/B/exp_001_freeze_readiness.md"
     },
     "b_artifact_fix_review": {
-      "pr_number": 18,
+      "pr_number": 20,
       "github_pr_head_ref_present": true,
-      "head_sha": "66451f58a76a403af062c6e98d9d859e750a4cf3",
-      "implementation_sha": "4fd009818a27afa198b49bf037aa24d48c2aa5b1",
-      "review_status": "CHANGES_REQUIRED",
-      "local_clean_pytest": "PASS_79",
-      "local_clean_unittest": "PASS_79_OF_79",
-      "github_checks": "NOT_VERIFIED_BY_GIT_REFS",
+      "head_sha": "adee38640b589bd618963c3d637977f97e9ec783",
+      "implementation_sha": "24235daf9a0a5e6d4272aa16270befd9cb18bb2b",
+      "merge_sha": "1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c",
+      "github_state": "MERGED",
+      "review_status": "TECHNICAL_PASS_GOVERNANCE_HUMAN_DECISION_REQUIRED",
+      "local_clean_pytest": "PASS_85",
+      "local_clean_unittest": "PASS_85_OF_85",
+      "local_clean_audit_tests": "PASS_20_OF_20",
+      "github_checks": "PASS_4_OF_4_VERIFIED_VIA_GITHUB_API",
       "completed": [
         "five required artifact paths in completed manifests",
-        "raw SHA-256 entry for resolved_config.json",
-        "validator CLI file-byte verification",
-        "missing, duplicate, traversal, and artifact tamper regression coverage"
+        "artifact file-byte verification in validator and audit_manifest",
+        "resolved_config object and canonical config_hash matching",
+        "prediction and checkpoint three-way hash matching",
+        "missing, tampered, duplicate, traversal, and symlink regression coverage"
       ],
-      "remaining": [
-        "tools.audit_run must invoke artifact byte verification relative to the manifest directory",
-        "audit_manifest tests must reject missing and tampered artifact files",
-        "resolved_config.json content and canonical hash must match manifest.config and config_hash",
-        "prediction_hash and checkpoint_hash must match their artifact entries and actual bytes"
+      "technical_remaining": [],
+      "cross_role_exception_recorded": true,
+      "manual_gate_completion_recorded": true,
+      "governance_remaining": [
+        "independent E re-review of the merged immutable artifact contract and PR #21 cross-platform hardening"
       ]
     },
+    "b_cross_platform_hardening": {
+      "pr_number": 21,
+      "head_sha": "d28621f9df791c2d88cebaf0782505cbe5c3d269",
+      "merge_sha": "b7001f693bb412a68398fb2ac47c6c40efe76ca0",
+      "github_state": "MERGED",
+      "github_checks": "PASS_4_OF_4_VERIFIED_VIA_GITHUB_API",
+      "scope": "cross-platform absolute-path rejection and non-completed run artifact fail-closed behavior"
+    },
+    "b_final_artifact_followup": {
+      "pr_number": 22,
+      "head_sha": "7477009032f37e57a38099955b7e6aff3c261c19",
+      "implementation_sha": "366951c06be3aedddca4f6da7f35e479ed374df4",
+      "merge_sha": "cb61b52affd5ecdb4095312087400fb482d8301b",
+      "github_state": "MERGED",
+      "github_checks": "PASS_4_OF_4_VERIFIED_VIA_GITHUB_API",
+      "technical_claim": "closes executed-config, spec/config/data input-race, fixed-handle artifact, and BaseException fail-closed gaps",
+      "cross_role_change": "B modified E-owned tools/audit_run.py",
+      "cross_role_exception_recorded": false,
+      "decision_request": "coordination/inbox/A/exp_001_pr_22_ownership_decision_request.json",
+      "evidence": "coordination/inbox/B/exp_001_artifact_contract_readiness.md"
+    },
     "e_setup": {
-      "status": "PRE_EVALUATION_BLOCKED_ON_B_ARTIFACT_CONTRACT",
+      "status": "WAIT_FOR_PR_22_HUMAN_DECISION_THEN_FULL_ARTIFACT_REREVIEW",
       "b_technical_acceptance": true,
       "human_governance_decision_required": true,
       "pre_evaluation_pr_number": 17,
@@ -104,21 +130,37 @@
       "expected_artifact_contract": "FAIL",
       "prediction_contract": "PASS",
       "protected_hashes": "PASS",
-      "next_receiver": "B",
+      "next_receiver": "HUMAN",
       "evidence": "coordination/inbox/E/exp_001_pre_evaluation_readiness.md"
     }
   },
+  "setup_decision": {
+    "decision": "HUMAN_DECISION_REQUIRED_AFTER_PR_22",
+    "decided_at_utc": "2026-08-30T11:40:00Z",
+    "subject": "PR #22 technical artifact follow-up with a new unratified cross-role audit change",
+    "reason": "the earlier human decision remains valid for PR #10 and PR #20 only; PR #22 introduced a later B change to E-owned tools/audit_run.py and therefore requires its own exact disposition",
+    "score_comparison_performed": false,
+    "formal_metrics_available": false,
+    "remaining_sequence": [
+      "human ratifies the exact PR #22 tools/audit_run.py change or requires an ownership-correct revert and E reimplementation",
+      "A records that exact decision in governance/manual_interventions.jsonl",
+      "E independently repeats pre-evaluation review of the complete artifact contract through PR #22 without training or scoring",
+      "A reviews E evidence before considering REAL_VALID_RUN_ALLOWED"
+    ]
+  },
   "github_branch_protection": {
-    "status": "TEMPORARY_MANUAL_GATE_APPROVED",
+    "status": "TEMPORARY_CHECKS_ONLY_PR_GATE_APPROVED",
     "verification": "GitHub rulesets API returned 403: upgrade to GitHub Pro or make this repository public",
     "repository_visibility_change_authorized": false,
     "manual_gate_approved_at_utc": "2026-08-29T17:00:38Z",
     "manual_gate_conditions": [
       "all four listed Actions checks pass on the PR head",
-      "the PR receives human review before merge",
+      "the PR is conflict-free and reviewed by the acting Codex integration agent; no separate human review is required",
+      "protected-file changes, test access, leakage, and unrecorded ownership conflicts still require human escalation",
       "direct pushes to main are forbidden",
       "force pushes to main are forbidden"
     ],
+    "human_review_clause_superseded_at_utc": "2026-08-30T11:32:38Z",
     "manual_gate_expires_when": "the repository supports and enables the four required checks",
     "required_checks": [
       "protected-files / verify-protected-files",
