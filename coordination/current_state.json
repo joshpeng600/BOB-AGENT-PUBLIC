@@ -1,10 +1,11 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_REAL_VALID_GATE_PENDING_HUMAN",
+  "state": "EXP_001_ARTIFACT_CONTRACT_FIX_REQUIRED",
   "owner": "A",
-  "next_receiver": "HUMAN_REVIEWER",
-  "approved_against_commit_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
+  "next_receiver": "B",
+  "approved_against_commit_sha": "05dff207484eda385c943dde57742eaf535a6906",
   "blocked_by": [
+    "B PR #18 is changes-required: it completes the runner inventory and validator CLI byte checks, but tools.audit_run still does not verify artifact files, resolved_config.json is not cross-checked against manifest.config/config_hash, and prediction/checkpoint top-level hashes are not contractually cross-checked with artifact entries",
     "human decision for the PR #10 cross-role ownership exception",
     "human confirmation or completion record for PR #15 temporary manual-gate review; GitHub records a non-bot merge but no formal review entry"
   ],
@@ -30,19 +31,19 @@
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED_PENDING_HUMAN_GOVERNANCE_DECISIONS",
+      "status": "BLOCKED_PENDING_B_ARTIFACT_CONTRACT_AND_HUMAN_GOVERNANCE_DECISIONS",
       "permits": "nothing until A records a later ALLOWED state on main; test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "READINESS_MERGED_CHECKS_PASS",
+    "B": "CHANGES_REQUIRED_PR_18_ARTIFACT_AUDIT_INCOMPLETE",
     "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
     "D": "SETUP_READY_NO_ACTION_REQUIRED",
-    "E": "SETUP_READY_WAIT_FOR_IMMUTABLE_B_OUTPUT"
+    "E": "PRE_EVALUATION_BLOCKED_WAIT_FOR_B_ARTIFACT_FIX"
   },
   "readiness_snapshot": {
-    "observed_at_utc": "2026-08-30T09:15:21Z",
-    "main_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
+    "observed_at_utc": "2026-08-30T09:37:19Z",
+    "main_sha": "05dff207484eda385c943dde57742eaf535a6906",
     "d_setup": {
       "pr_number": 14,
       "status": "MERGED",
@@ -72,11 +73,39 @@
       "pytest_basis": "AGENTS.md requires unittest and the temporary manual gate requires four named Actions checks; latest B evidence additionally reports pytest PASS",
       "evidence": "coordination/inbox/B/exp_001_freeze_readiness.md"
     },
+    "b_artifact_fix_review": {
+      "pr_number": 18,
+      "github_pr_head_ref_present": true,
+      "head_sha": "66451f58a76a403af062c6e98d9d859e750a4cf3",
+      "implementation_sha": "4fd009818a27afa198b49bf037aa24d48c2aa5b1",
+      "review_status": "CHANGES_REQUIRED",
+      "local_clean_pytest": "PASS_79",
+      "local_clean_unittest": "PASS_79_OF_79",
+      "github_checks": "NOT_VERIFIED_BY_GIT_REFS",
+      "completed": [
+        "five required artifact paths in completed manifests",
+        "raw SHA-256 entry for resolved_config.json",
+        "validator CLI file-byte verification",
+        "missing, duplicate, traversal, and artifact tamper regression coverage"
+      ],
+      "remaining": [
+        "tools.audit_run must invoke artifact byte verification relative to the manifest directory",
+        "audit_manifest tests must reject missing and tampered artifact files",
+        "resolved_config.json content and canonical hash must match manifest.config and config_hash",
+        "prediction_hash and checkpoint_hash must match their artifact entries and actual bytes"
+      ]
+    },
     "e_setup": {
-      "status": "TECHNICALLY_READY_WITH_CROSS_ROLE_EXCEPTION_PENDING",
+      "status": "PRE_EVALUATION_BLOCKED_ON_B_ARTIFACT_CONTRACT",
       "b_technical_acceptance": true,
       "human_governance_decision_required": true,
-      "evidence": "coordination/inbox/E/setup_result.md and PR #15 readiness evidence"
+      "pre_evaluation_pr_number": 17,
+      "pre_evaluation_merge_sha": "05dff207484eda385c943dde57742eaf535a6906",
+      "expected_artifact_contract": "FAIL",
+      "prediction_contract": "PASS",
+      "protected_hashes": "PASS",
+      "next_receiver": "B",
+      "evidence": "coordination/inbox/E/exp_001_pre_evaluation_readiness.md"
     }
   },
   "github_branch_protection": {
