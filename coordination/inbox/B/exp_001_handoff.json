@@ -2,10 +2,10 @@
   "schema_version": 1,
   "contract_type": "handoff",
   "experiment_id": "exp_001",
-  "approved_against_commit_sha": "7b8a17044e481430273fd594e8487f01a1b4daf5",
+  "approved_against_commit_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
   "from_role": "A",
   "to_role": "B",
-  "status": "READINESS_PR_OPEN_PENDING_HUMAN_GATE",
+  "status": "COMPLETED_READINESS_MERGED",
   "branch": "B-Part",
   "branch_sync_commands": [
     "git fetch origin",
@@ -48,15 +48,18 @@
     "pr_number": 15,
     "pr_url": "https://github.com/joshpeng600/BOB-AGENT/pull/15",
     "pr_head_sha": "2ff640d3b695d8b6e3a4ee05ea2b07038e5ac43c",
-    "pr_state": "OPEN",
+    "pr_state": "MERGED",
+    "merge_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
     "mergeable": true,
     "required_actions_checks": "PASS_4_OF_4",
     "latest_evidence_status": "READY_FOR_A_REAL_VALID_GATE",
     "pytest_policy_blocker": false,
     "pytest_basis": "not required by AGENTS.md or the temporary four-check manual gate; latest B evidence also reports pytest PASS",
-    "human_review_present": false
+    "human_review_present": false,
+    "merged_by_non_bot": "LedCalamity",
+    "manual_gate_confirmation_required": true
   },
-  "next_action": "human review and merge PR #15; A must then re-evaluate and explicitly record REAL_VALID_RUN_ALLOWED",
+  "next_action": "do not run real data until the pending human governance decisions are recorded and A explicitly opens REAL_VALID_RUN_ALLOWED",
   "rollback_config": "configs/approved/baseline_fm.json",
   "experiment_spec": "experiments/exp_001.json"
 }

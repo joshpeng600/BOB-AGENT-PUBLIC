@@ -2,7 +2,7 @@
   "schema_version": 1,
   "contract_type": "handoff",
   "experiment_id": "exp_001",
-  "approved_against_commit_sha": "7b8a17044e481430273fd594e8487f01a1b4daf5",
+  "approved_against_commit_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
   "from_role": "A",
   "to_role": "E",
   "status": "WAIT_FOR_IMMUTABLE_B_OUTPUT_AFTER_REAL_VALID_GATE",

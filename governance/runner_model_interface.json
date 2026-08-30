@@ -2,7 +2,7 @@
   "schema_version": 2,
   "decision": "B_RUNNER_ADAPTS_D_NATIVE_INTERFACE",
   "approved_by_role": "A",
-  "approved_against_commit_sha": "7b8a17044e481430273fd594e8487f01a1b4daf5",
+  "approved_against_commit_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
   "runner_owner": "B",
   "model_owner": "D",
   "model_entry": "src.models.FactorizationMachine",
@@ -47,12 +47,13 @@
     "pointwise_binary_cross_entropy": "src.training.fit_pointwise",
     "same_user_bpr": "src.training.bpr.fit_bpr_epoch"
   },
-  "implementation_status": "VERIFIED_ON_B_PART_PENDING_HUMAN_GATE",
+  "implementation_status": "VERIFIED_AND_MERGED_PENDING_HUMAN_GOVERNANCE_GATE",
   "verification": {
     "d_setup_pr": 14,
     "d_setup_merge_sha": "7b8a17044e481430273fd594e8487f01a1b4daf5",
     "b_readiness_pr": 15,
     "b_readiness_head_sha": "2ff640d3b695d8b6e3a4ee05ea2b07038e5ac43c",
+    "b_readiness_merge_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
     "required_actions_checks": "PASS_4_OF_4",
     "pytest_policy_blocker": false,
     "real_training_performed": false,

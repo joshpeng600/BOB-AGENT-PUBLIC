@@ -3,10 +3,10 @@
   "state": "EXP_001_REAL_VALID_GATE_PENDING_HUMAN",
   "owner": "A",
   "next_receiver": "HUMAN_REVIEWER",
-  "approved_against_commit_sha": "7b8a17044e481430273fd594e8487f01a1b4daf5",
+  "approved_against_commit_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
   "blocked_by": [
     "human decision for the PR #10 cross-role ownership exception",
-    "human review and merge of PR #15 under the temporary manual main gate"
+    "human confirmation or completion record for PR #15 temporary manual-gate review; GitHub records a non-bot merge but no formal review entry"
   ],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
@@ -26,23 +26,23 @@
     },
     "SYNTHETIC_SMOKE_ALLOWED": {
       "status": "ALLOWED",
-      "evidence": "PR #15 head 2ff640d3b695d8b6e3a4ee05ea2b07038e5ac43c reports synthetic smoke PASS and all four required Actions checks pass",
+      "evidence": "PR #15 merged as 5dd9460d5904b3bf69627b005ebe4ebeb67bafe9; its head reports synthetic smoke PASS and all four required Actions checks pass",
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED_PENDING_HUMAN_GOVERNANCE_DECISION_AND_PR_15_MERGE",
+      "status": "BLOCKED_PENDING_HUMAN_GOVERNANCE_DECISIONS",
       "permits": "nothing until A records a later ALLOWED state on main; test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "READINESS_PR_OPEN_CHECKS_PASS",
+    "B": "READINESS_MERGED_CHECKS_PASS",
     "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
     "D": "SETUP_READY_NO_ACTION_REQUIRED",
     "E": "SETUP_READY_WAIT_FOR_IMMUTABLE_B_OUTPUT"
   },
   "readiness_snapshot": {
-    "observed_at_utc": "2026-08-30T09:09:22Z",
-    "main_sha": "7b8a17044e481430273fd594e8487f01a1b4daf5",
+    "observed_at_utc": "2026-08-30T09:15:21Z",
+    "main_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
     "d_setup": {
       "pr_number": 14,
       "status": "MERGED",
@@ -60,14 +60,17 @@
     },
     "b_readiness": {
       "pr_number": 15,
-      "status": "OPEN",
+      "status": "MERGED",
       "pr_head_sha": "2ff640d3b695d8b6e3a4ee05ea2b07038e5ac43c",
+      "merge_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
       "mergeable": true,
       "required_actions_checks": "PASS_4_OF_4",
       "human_review_present": false,
+      "merged_by_non_bot": "LedCalamity",
+      "manual_gate_confirmation_required": true,
       "pytest_policy_blocker": false,
       "pytest_basis": "AGENTS.md requires unittest and the temporary manual gate requires four named Actions checks; latest B evidence additionally reports pytest PASS",
-      "evidence": "coordination/inbox/B/exp_001_freeze_readiness.md on PR #15"
+      "evidence": "coordination/inbox/B/exp_001_freeze_readiness.md"
     },
     "e_setup": {
       "status": "TECHNICALLY_READY_WITH_CROSS_ROLE_EXCEPTION_PENDING",
