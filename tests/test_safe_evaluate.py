@@ -1,10 +1,15 @@
+import contextlib
 import csv
+import io
 import json
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+
+from tools import safe_evaluate
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -76,6 +81,14 @@ class SafeEvaluateIntegrationTests(unittest.TestCase):
         self.assertEqual(evidence["users"], 2)
         self.assertEqual(evidence["primary"], 1.0)
         self.assertEqual(len(evidence["evaluator_hash"]), 64)
+        self.assertEqual(evidence["evaluator_role"], "E")
+        self.assertEqual(evidence["split"], "valid")
+        self.assertTrue(evidence["worktree_clean"])
+        self.assertFalse(evidence["test_access"])
+        self.assertEqual(
+            evidence["primary"],
+            (evidence["GAUC"] + evidence["nDCG@5"]) / 2.0,
+        )
 
     def test_test_split_is_denied_without_approval_before_data_access(self):
         result = subprocess.run(
@@ -98,6 +111,50 @@ class SafeEvaluateIntegrationTests(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Normal mode only permits valid", result.stdout)
+
+    def test_dirty_worktree_is_denied_before_evaluation(self):
+        argv = [
+            "safe_evaluate",
+            "--prediction",
+            str(self.prediction),
+            "--split",
+            "valid",
+            "--data-dir",
+            str(self.data_dir),
+            "--output",
+            str(self.output),
+        ]
+        stdout = io.StringIO()
+        with (
+            patch.object(sys, "argv", argv),
+            patch.object(safe_evaluate, "git_is_dirty", return_value=True),
+            contextlib.redirect_stdout(stdout),
+        ):
+            result = safe_evaluate.main()
+        self.assertNotEqual(result, 0)
+        self.assertIn("Worktree is dirty", stdout.getvalue())
+        self.assertFalse(self.output.exists())
+
+    def test_output_cannot_overwrite_immutable_prediction(self):
+        self.prediction.write_text("immutable prediction bytes\n", encoding="utf-8")
+        before = self.prediction.read_bytes()
+        argv = [
+            "safe_evaluate",
+            "--prediction",
+            str(self.prediction),
+            "--split",
+            "valid",
+            "--data-dir",
+            str(self.data_dir),
+            "--output",
+            str(self.prediction),
+        ]
+        stdout = io.StringIO()
+        with patch.object(sys, "argv", argv), contextlib.redirect_stdout(stdout):
+            result = safe_evaluate.main()
+        self.assertNotEqual(result, 0)
+        self.assertIn("must not overwrite", stdout.getvalue())
+        self.assertEqual(self.prediction.read_bytes(), before)
 
 
 if __name__ == "__main__":

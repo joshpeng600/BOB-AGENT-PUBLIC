@@ -1,4 +1,5 @@
 import csv
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -27,6 +28,21 @@ class BuildDevDatasetTests(unittest.TestCase):
                 rows = list(csv.DictReader(handle))
             self.assertEqual([row["user_id"] for row in rows], ["u1", "u2"])
             self.assertTrue(all(int(row["date"]) <= 20220428 for row in rows))
+            manifest = json.loads((output / "dataset_manifest.json").read_text())
+            self.assertEqual(manifest["test_rows"], 0)
+            self.assertEqual(manifest["max_date"], 20220428)
+            self.assertEqual(manifest["rows"], 4)
+            self.assertTrue(manifest["files"]["log_standard_4_08_to_4_21_pure.csv"]["sha256"])
+
+    def test_rejects_nonempty_output_directory(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source, output = root / "input", root / "output"
+            source.mkdir()
+            output.mkdir()
+            (output / "old_file.txt").write_text("do not mix old data")
+            with self.assertRaisesRegex(ValueError, "must be empty"):
+                build_dev_dataset(source, output)
 
 
 if __name__ == "__main__":

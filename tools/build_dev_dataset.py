@@ -29,10 +29,15 @@ def build_dev_dataset(
 
     source = Path(data_dir)
     destination = Path(output_dir)
+    if destination.exists() and any(destination.iterdir()):
+        raise ValueError("output directory must be empty to prevent stale or mixed-split files")
     destination.mkdir(parents=True, exist_ok=True)
     copied: dict[str, int] = {}
+    files: dict[str, dict[str, Any]] = {}
+    observed_dates: list[int] = []
     for filename in LOG_FILES:
         count = 0
+        dates: list[int] = []
         source_path = source / filename
         destination_path = destination / filename
         with (
@@ -53,9 +58,30 @@ def build_dev_dataset(
                     continue
                 writer.writerow(row)
                 count += 1
+                dates.append(int(row["date"]))
                 if count >= rows_per_log:
                     break
         copied[filename] = count
+        files[filename] = {
+            "kind": "log",
+            "rows": count,
+            "min_date": min(dates) if dates else None,
+            "max_date": max(dates) if dates else None,
+            "sha256": sha256_file(destination_path),
+        }
+        observed_dates.extend(dates)
+    write_json(
+        destination / "dataset_manifest.json",
+        {
+            "format_version": 1,
+            "max_date_requested": DEV_MAX_DATE,
+            "rows": sum(copied.values()),
+            "min_date": min(observed_dates) if observed_dates else None,
+            "max_date": max(observed_dates) if observed_dates else None,
+            "test_rows": 0,
+            "files": files,
+        },
+    )
     return copied
 
 
