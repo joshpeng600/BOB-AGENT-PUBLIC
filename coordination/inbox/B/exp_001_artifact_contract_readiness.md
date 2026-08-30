@@ -1,18 +1,21 @@
 # exp_001 formal artifact-contract readiness — B
 
-STATUS=READY_FOR_E_ARTIFACT_CONTRACT_REREVIEW
+STATUS=READY_FOR_A_AND_E_ARTIFACT_CONTRACT_REREVIEW
 ROLE=B
 BRANCH=B-Part
-ORIGIN_MAIN_SHA=4170b2e1377be89205fbe9c93cbafafa81c7e4c0
-IMPLEMENTATION_COMMIT_SHA=dba130047e944842de51f75db69a6411a42f74b4
+ORIGIN_MAIN_SHA=b7001f693bb412a68398fb2ac47c6c40efe76ca0
+IMPLEMENTATION_COMMIT_SHA=b99cba67224781652079793ba00bac5921593393
 WORKTREE_CLEAN_AT_VERIFICATION=true
 EXPERIMENT_ID=exp_001
 E_BLOCKER_SOURCE=coordination/inbox/E/exp_001_pre_evaluation_readiness.md
 EXPECTED_ARTIFACT_CONTRACT=PASS
 ARTIFACT_BYTES_VERIFIED=true
 REQUIRED_ARTIFACT_COUNT=5
-PYTEST=PASS_85_TESTS_28_SUBTESTS_1_PLATFORM_SKIP
-UNIT_TESTS=PASS_86_OF_86_1_PLATFORM_SKIP
+EXACT_ARTIFACT_PATH_SET=true
+EXECUTED_CONFIG_BINDING=true
+FOCUSED_SYNTHETIC_TESTS=PASS_34_OF_34_1_PLATFORM_SKIP
+PYTEST=NOT_RUN_FOR_FOLLOWUP_NOT_REQUIRED_BY_AGENTS_MD
+UNIT_TESTS=PASS_88_OF_88_1_PLATFORM_SKIP
 PROTECTED_HASHES=PASS
 REPOSITORY_CONTRACTS=PASS
 PREDICTION_CONTRACT=PASS
@@ -20,14 +23,16 @@ REAL_DATA_TRAINING_PERFORMED=false
 FORMAL_VALID_METRICS_PRODUCED=false
 TEST_ACCESS=false
 REAL_VALID_RUN_ALLOWED=false
-BLOCKERS=human governance decisions recorded in coordination/current_state.json remain pending; this B change closes only E's artifact-contract blocker
-NEXT_RECEIVER=E
+BLOCKERS=A and E must review this follow-up before changing REAL_VALID_RUN_ALLOWED
+NEXT_RECEIVER=A_AND_E
 
 ## Scope
 
-This is a setup contract correction only. It does not authorize or record a
-real baseline/BPR run, formal validation metrics, or test access. B did not
-modify E-owned audit/evaluation logic or any protected `starter/` file.
+This follow-up is based on merged `main`
+`b7001f693bb412a68398fb2ac47c6c40efe76ca0`. It is a setup contract correction
+only and does not authorize or record a real baseline/BPR run, formal validation
+metrics, or test access. B did not modify metric logic or any protected
+`starter/` file.
 
 ## E blocker resolution
 
@@ -49,7 +54,8 @@ artifacts.
 The complete correction provides all of the following:
 
 - the runner records a raw SHA-256 entry for `resolved_config.json`;
-- completed manifests reject a missing required artifact;
+- completed manifests reject both missing and unexpected artifacts, so the
+  inventory is exactly the five non-self formal outputs;
 - duplicate, absolute, non-normalized, and parent-traversal artifact paths are
   rejected consistently for both POSIX and Windows path syntax;
 - `validate_artifact_files()` resolves declared files below the run directory,
@@ -58,7 +64,8 @@ The complete correction provides all of the following:
 - `prediction_hash` and `checkpoint_hash` must equal their corresponding
   artifact-inventory hashes, which in turn must equal the actual file bytes;
 - `resolved_config.json` must parse to the same object as `manifest.config`,
-  and its canonical object hash must equal `manifest.config_hash`;
+  and its canonical object hash must equal `manifest.config_hash`; canonical
+  comparison distinguishes JSON values such as `1` and `1.0`;
 - `tools/audit_run.py` invokes the complete artifact verifier relative to the
   directory containing `run_manifest.json`, so E cannot accept a manifest-only
   claim without the immutable files;
@@ -69,6 +76,10 @@ The complete correction provides all of the following:
   default, with an explicit `--artifact-root` override when required;
 - the runner invokes byte verification before it can retain a successful
   manifest;
+- after training, the runner canonically compares the configuration returned by
+  `execute()` with the configuration bound during preflight. A config/spec
+  change between the two reads fails closed rather than producing a completed
+  manifest for a different executed configuration;
 - any late artifact-validation exception resets the manifest to
   `status=failed` and `exit_code=1`.
 
@@ -77,6 +88,7 @@ The complete correction provides all of the following:
 - `tools/run_experiment.py`
 - `tools/validate_contract.py`
 - `tools/audit_run.py`
+- `contracts/run_manifest.template.json`
 - `tests/test_run_experiment.py`
 - `tests/test_protected_and_contracts.py`
 - `tests/test_audit.py`
@@ -91,17 +103,17 @@ B's authorized implementation scope.
 Implementation commit:
 
 ```text
-dba130047e944842de51f75db69a6411a42f74b4
+b99cba67224781652079793ba00bac5921593393
 ```
 
 Results:
 
 ```text
-python -m pytest -q
-PASS: 85 tests, 28 subtests, 1 Windows privilege skip
+python -m unittest tests.test_run_experiment tests.test_protected_and_contracts tests.test_audit -v
+PASS: 34/34, 1 Windows privilege skip
 
 python -m unittest discover -s tests -v
-PASS: 86/86, 1 Windows privilege skip
+PASS: 88/88, 1 Windows privilege skip
 
 python scripts/check_repository_contracts.py
 PASS: 22 JSON files plus JSONL/TOML
@@ -121,8 +133,9 @@ PASS: no diff
 
 Synthetic regression coverage verifies the complete inventory, audit entry
 point, file-byte and cross-hash matching, resolved-config semantic binding,
-tamper rejection, missing/duplicate/traversal/symlink rejection, and fail-closed
-manifest status. The symlink regression is present and executes on platforms
+executed-config drift rejection, tamper rejection,
+missing/extra/duplicate/traversal/symlink rejection, and fail-closed manifest
+status. The symlink regression is present and executes on platforms
 that permit unprivileged symlink creation; this Windows account denied creation
 with WinError 1314. Synthetic outputs are not formal evaluation input.
 
