@@ -2,10 +2,10 @@
   "schema_version": 1,
   "contract_type": "handoff",
   "experiment_id": "exp_001",
-  "approved_against_commit_sha": "1374a6e4cdbb820b975430c93d514657bc809d63",
+  "approved_against_commit_sha": "4c07e03663e7d13f11547546da7cc6ac3ea5ff98",
   "from_role": "A",
   "to_role": "B",
-  "status": "WAIT_FOR_HUMAN_PR_25_INCIDENT_DECISION_NO_EXECUTION_ALLOWED",
+  "status": "ACTION_REQUIRED_PRE_CYCLE_AUDIT_ROUTE_SECURITY_REPAIR",
   "branch": "B-Part",
   "branch_sync_commands": [
     "git fetch origin",
@@ -110,9 +110,36 @@
     "evidence_accepted": false,
     "quarantine_status": "QUARANTINED_NOT_ACCEPTED",
     "use_for_experiment_selection": false,
-    "decision_request": "coordination/inbox/A/exp_001_pr_25_gate_incident_decision_request.json"
+    "decision_request": "coordination/inbox/A/exp_001_pr_25_gate_incident_decision_request.json",
+    "human_disposition": "PERMANENT_QUARANTINE_AND_ONE_FRESH_RERUN_APPROVED_PENDING_SECURITY_PRECONDITIONS"
   },
-  "next_action": "do not execute, reproduce, or use PR #25 evidence; wait for the human incident decision and a later explicit A gate state on main",
+  "pre_cycle_security_repair": {
+    "b_owned_implementation": [
+      "tools/validate_contract.py",
+      "tools/run_experiment.py",
+      "tests/"
+    ],
+    "required_behavior": [
+      "audit acceptance binds experiment_id, run variant, experiment_spec_path/hash, config_path/raw hash, and resolved config to the approved exp_001 baseline or candidate route",
+      "forged experiment/config route combinations fail closed before evidence acceptance",
+      "B-owned tests reproduce and reject both forged audit routing and prediction replacement during E evaluation",
+      "no real data, formal metrics, or test access during repair"
+    ],
+    "coordination_boundary": "E owns tools/safe_evaluate.py; B must not edit it without a new exact exception, and E must not edit B-owned tests"
+  },
+  "future_single_run_constraints": {
+    "active_now": false,
+    "attempts_after_later_a_gate": 1,
+    "split": "valid-only",
+    "same_clean_commit": true,
+    "same_data_hash": true,
+    "same_features": true,
+    "seed": 0,
+    "same_training_budget": true,
+    "reuse_pr_25_evidence": false,
+    "test_access": false
+  },
+  "next_action": "repair only the audit-route binding and B-owned regressions on B-Part; do not execute or reproduce a formal run until a later A state on main explicitly says REAL_VALID_RUN_ALLOWED=ALLOWED",
   "rollback_config": "configs/approved/baseline_fm.json",
   "experiment_spec": "experiments/exp_001.json"
 }

@@ -2,10 +2,10 @@
   "schema_version": 1,
   "contract_type": "handoff",
   "experiment_id": "exp_001",
-  "approved_against_commit_sha": "1374a6e4cdbb820b975430c93d514657bc809d63",
+  "approved_against_commit_sha": "4c07e03663e7d13f11547546da7cc6ac3ea5ff98",
   "from_role": "A",
   "to_role": "E",
-  "status": "SETUP_REREVIEW_PASS_PR_25_EVIDENCE_QUARANTINED_WAIT_FOR_HUMAN",
+  "status": "ACTION_REQUIRED_PRE_CYCLE_IMMUTABLE_PREDICTION_INGRESS_REPAIR",
   "required_changes": [
     "pre-review manifest and evidence schema while waiting; do not score before immutable B valid predictions exist",
     "accept experiment_id and runtime commit_sha in evaluation evidence and record evaluator_role=E",
@@ -64,6 +64,19 @@
       "BLOCKED": "B"
     }
   },
-  "next_action": "take no action until A records the human PR #25 incident decision and, if authorized, later receives fresh immutable valid-run evidence; do not inspect, reproduce, or use the quarantined PR #25 metrics",
+  "pre_cycle_security_repair": {
+    "e_owned_implementation": [
+      "tools/safe_evaluate.py"
+    ],
+    "required_behavior": [
+      "open the prediction once through a no-follow ordinary-file handle and evaluate the exact captured bytes whose SHA-256 is recorded",
+      "do not reopen a replaceable prediction path between hashing and official evaluation",
+      "recheck path identity and immutable bytes after evaluation and fail closed on replacement",
+      "coordinate with B for B-owned regression tests; do not modify tests without a new exact exception",
+      "use synthetic fixtures only and do not produce formal metrics"
+    ],
+    "required_rereview": "after B and E fixes merge, independently rereview the combined clean main and route PASS/BLOCKED to A"
+  },
+  "next_action": "repair only immutable prediction evaluation ingress on E-Part and coordinate synthetic B-owned tests; do not inspect, reproduce, or use quarantined PR #25 metrics, and do not perform a formal evaluation while the gate is blocked",
   "experiment_spec": "experiments/exp_001.json"
 }

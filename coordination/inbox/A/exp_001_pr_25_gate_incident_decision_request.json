@@ -5,7 +5,7 @@
   "request_id": "exp_001-pr-25-gate-incident-20260830",
   "requested_at_utc": "2026-08-30T11:55:39Z",
   "requested_by_role": "A",
-  "approved_against_commit_sha": "1374a6e4cdbb820b975430c93d514657bc809d63",
+  "approved_against_commit_sha": "4c07e03663e7d13f11547546da7cc6ac3ea5ff98",
   "trigger": "formal validation evidence was produced and merged while REAL_VALID_RUN_ALLOWED was blocked",
   "summary": "PR #26 independently passed the setup artifact contract but rejected PR #25 as authoritative evidence. PR #25 and its metrics are quarantined, not accepted, excluded from all experiment selection, and do not count as a completed iteration. Human incident disposition is required before any fresh formal valid run.",
   "incident": {
@@ -47,6 +47,35 @@
     "no fresh run occurs until A records a later exact ALLOWED state on main"
   ],
   "automation_scope": "PR_25_INCIDENT_DISPOSITION_ONLY",
+  "resolution": {
+    "resolved_at_utc": "2026-08-30T12:01:12Z",
+    "resolved_by": "repository owner via Codex conversation",
+    "selected_option": "approve_quarantine_and_one_fresh_valid_rerun",
+    "decision": "approve",
+    "quarantine_permanent": true,
+    "history_rewrite_authorized": false,
+    "authorized_fresh_attempts_after_gate_open": 1,
+    "activation_status": "DEFERRED_PENDING_SECURITY_PRECONDITIONS",
+    "security_preconditions": [
+      "B binds audit evidence to the approved experiment identity, run variant, repository spec, and raw baseline/candidate config route and bytes",
+      "E makes safe_evaluate consume the exact prediction bytes whose hash is recorded, without reopening a replaceable path",
+      "B supplies B-owned synthetic regression tests for both gaps",
+      "E independently rereviews the final clean implementation and reports PASS",
+      "A records a later REAL_VALID_RUN_ALLOWED=ALLOWED state on main"
+    ],
+    "run_constraints": {
+      "split": "valid-only",
+      "attempts": 1,
+      "seed": 0,
+      "same_clean_commit": true,
+      "same_data_hash": true,
+      "same_features": true,
+      "same_training_budget": true,
+      "reuse_pr_25_evidence": false,
+      "test_access": false
+    },
+    "next_receiver": "B"
+  },
   "automation_paused": true,
-  "status": "pending_human"
+  "status": "resolved_approved_pending_security_preconditions"
 }

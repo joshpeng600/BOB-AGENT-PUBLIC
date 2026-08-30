@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_GOVERNANCE_INCIDENT_PR_25_HUMAN_DECISION_REQUIRED",
+  "state": "EXP_001_SETUP_SECURITY_REPAIR_REQUIRED_BEFORE_AUTHORIZED_RERUN",
   "owner": "A",
-  "next_receiver": "HUMAN",
-  "approved_against_commit_sha": "1374a6e4cdbb820b975430c93d514657bc809d63",
+  "next_receiver": "B",
+  "approved_against_commit_sha": "4c07e03663e7d13f11547546da7cc6ac3ea5ff98",
   "blocked_by": [
-    "PR #25 produced and merged formal validation metrics while REAL_VALID_RUN_ALLOWED was blocked",
-    "E's merged PR #26 setup rereview passed the artifact contract but explicitly rejected PR #25 as authoritative cycle evidence",
-    "a human must choose the PR #25 incident disposition before A may authorize any fresh formal valid run"
+    "tools/audit_run.py verifies experiment_spec_path/hash but does not bind the manifest experiment_id, run variant, and candidate/baseline config route and raw bytes to the approved spec",
+    "tools/safe_evaluate.py hashes a prediction path and later reopens that path for validation, so temporary replacement and restoration can decouple evaluated bytes from prediction_hash",
+    "B and E must close their owned security gaps with B-owned regression tests, then E must independently rereview before A activates the single authorized fresh run"
   ],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
@@ -31,19 +31,19 @@
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED_PENDING_HUMAN_INCIDENT_DECISION",
+      "status": "BLOCKED_PENDING_B_E_SECURITY_REPAIR_AND_E_REREVIEW",
       "permits": "nothing until A records a later ALLOWED state on main; test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "WAIT_FOR_HUMAN_PR_25_INCIDENT_DECISION_NO_EXECUTION_ALLOWED",
+    "B": "ACTION_REQUIRED_BIND_AUDIT_ROUTE_AND_ADD_SECURITY_REGRESSIONS",
     "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
     "D": "SETUP_READY_NO_ACTION_REQUIRED",
-    "E": "SETUP_REREVIEW_PASS_PR_25_EVIDENCE_QUARANTINED_NO_ACTION_REQUIRED"
+    "E": "ACTION_REQUIRED_IMMUTABLE_PREDICTION_EVALUATION_INGRESS"
   },
   "readiness_snapshot": {
-    "observed_at_utc": "2026-08-30T11:55:39Z",
-    "main_sha": "1374a6e4cdbb820b975430c93d514657bc809d63",
+    "observed_at_utc": "2026-08-30T12:01:12Z",
+    "main_sha": "4c07e03663e7d13f11547546da7cc6ac3ea5ff98",
     "d_setup": {
       "pr_number": 14,
       "status": "MERGED",
@@ -153,22 +153,27 @@
       "use_for_threshold_or_hyperparameter_decisions": false,
       "count_as_completed_iteration": false,
       "reproduction_authorized": false,
+      "human_incident_disposition": "APPROVE_PERMANENT_QUARANTINE_AND_ONE_FRESH_RERUN",
+      "fresh_rerun_attempts_authorized_after_gate_open": 1,
+      "fresh_rerun_authorization_active": false,
       "quarantine_record": "coordination/inbox/A/exp_001_pr_25_gate_incident.md",
       "decision_request": "coordination/inbox/A/exp_001_pr_25_gate_incident_decision_request.json"
     }
   },
   "setup_decision": {
-    "decision": "TECHNICAL_SETUP_PASS_GOVERNANCE_INCIDENT_BLOCKED",
-    "decided_at_utc": "2026-08-30T11:55:39Z",
-    "subject": "E artifact-contract rereview PASS with quarantined pre-gate PR #25 formal metrics",
-    "reason": "technical setup is ready, but PR #25 violated the A-owned real-valid gate; its metrics are isolated and cannot be used for selection, and a human must choose the incident disposition",
+    "decision": "HUMAN_INCIDENT_DISPOSITION_APPROVED_RERUN_DEFERRED_SECURITY_REPAIR",
+    "decided_at_utc": "2026-08-30T12:01:12Z",
+    "subject": "permanent PR #25 quarantine and one fresh valid-only rerun approved subject to unresolved setup security gates",
+    "reason": "the incident decision is complete, but code inspection and merged D evidence show the auditor route and prediction evaluation ingress are not yet immutable end to end; hard safety gates prevent immediate cycle activation",
     "score_comparison_performed": false,
     "formal_metrics_available_for_selection": false,
     "quarantined_formal_metrics_present": true,
     "remaining_sequence": [
-      "human chooses the PR #25 incident disposition",
-      "A records the decision and either authorizes exactly one fresh formal valid rerun from a new clean SHA or keeps the experiment stopped",
-      "PR #25 evidence remains excluded from experiment selection in every disposition"
+      "B binds audit evidence to the approved experiment identity, run variant, spec, and raw candidate/baseline config route and bytes",
+      "E makes safe_evaluate consume the exact immutable prediction bytes whose hash is recorded",
+      "B adds synthetic regression coverage for both security gaps and all four checks pass",
+      "E independently rereviews the final clean implementation",
+      "A activates exactly one fresh valid-only rerun on a new clean main SHA; PR #25 evidence remains excluded"
     ]
   },
   "github_branch_protection": {

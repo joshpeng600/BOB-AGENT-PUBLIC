@@ -1,9 +1,9 @@
 # exp_001 PR #25 gate-incident quarantine
 
-STATUS=QUARANTINED_PENDING_HUMAN_INCIDENT_DECISION
+STATUS=PERMANENTLY_QUARANTINED_FRESH_RERUN_APPROVED_PENDING_SECURITY_PRECONDITIONS
 ROLE=A
 EXPERIMENT_ID=exp_001
-APPROVED_AGAINST_COMMIT_SHA=1374a6e4cdbb820b975430c93d514657bc809d63
+APPROVED_AGAINST_COMMIT_SHA=4c07e03663e7d13f11547546da7cc6ac3ea5ff98
 PR_NUMBER=25
 PR_HEAD_SHA=f4f253fe90fc6813aa0d780864b3d49ab46df033
 PR_MERGE_SHA=afe5b795abacb408c668f05db1a61b6a5af03879
@@ -16,7 +16,9 @@ COUNT_AS_COMPLETED_ITERATION=false
 REPRODUCTION_AUTHORIZED=false
 REAL_VALID_RUN_ALLOWED=false
 TEST_ACCESS_REPORTED=false
-NEXT_RECEIVER=HUMAN
+FRESH_VALID_ATTEMPTS_AUTHORIZED_AFTER_GATE_OPEN=1
+FRESH_VALID_AUTHORIZATION_ACTIVE=false
+NEXT_RECEIVER=B
 
 PR #25 and all files below remain in Git history as incident evidence. They
 must not be deleted, rewritten, treated as an accepted experiment result, used
@@ -33,7 +35,11 @@ in PR #26 therefore explicitly rejected PR #25 as authoritative cycle
 evidence and did not reproduce or rely on it.
 
 No score comparison or experiment-selection conclusion may be drawn from the
-quarantined files. A fresh formal valid-only run is forbidden unless a human
-selects the fresh-rerun disposition and A later records a new, exact
-`REAL_VALID_RUN_ALLOWED` state on `main` bound to a new clean full commit SHA.
-
+quarantined files. The repository owner selected the fresh-rerun disposition,
+but its single-use authorization is not active yet: the audit route must bind
+the approved experiment/spec/config, evaluation must consume the exact bytes
+whose hash is recorded, B-owned regressions must pass, and E must independently
+rereview the final implementation. Only then may A record a later exact
+`REAL_VALID_RUN_ALLOWED=ALLOWED` state on `main` for a new clean full commit
+SHA. The future baseline and candidate must share that commit, data hash,
+feature set, seed 0, and training budget, and must not reuse PR #25 evidence.
