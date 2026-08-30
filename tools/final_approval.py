@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from tools.common import ValidationError
 from tools.project_security import (
     SecurityError,
     expected_protected_hashes,
@@ -16,10 +17,14 @@ from tools.project_security import (
     load_json,
     verify_protected_files,
 )
+from tools.validate_contract import validate_contract
 
 
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
-NON_HUMAN_APPROVERS = {"", "todo", "tbd", "placeholder", "codex", "agent", "ai"}
+NON_HUMAN_APPROVERS = {
+    "", "todo", "tbd", "placeholder", "replace_with_human_name",
+    "codex", "agent", "ai",
+}
 
 
 def validate_approval_record(
@@ -28,6 +33,11 @@ def validate_approval_record(
     actual_dirty: bool,
     protected_hashes: dict[str, str],
 ) -> None:
+    try:
+        validate_contract("final_approval", record)
+    except ValidationError as error:
+        raise SecurityError(f"invalid final_approval contract: {error}") from error
+
     experiment_id = record.get("experiment_id")
     if not isinstance(experiment_id, str) or not experiment_id.strip():
         raise SecurityError("experiment_id is required")

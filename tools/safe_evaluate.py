@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -44,6 +45,11 @@ def main() -> int:
 
     try:
         protected_hashes = verify_protected_files()
+        evaluation_commit = git_head()
+        if git_is_dirty():
+            raise SecurityError("Worktree is dirty; evaluation denied")
+        if args.output.resolve() == args.prediction.resolve():
+            raise SecurityError("Output path must not overwrite the immutable prediction")
         if args.split == "test":
             if args.approval is None:
                 raise SecurityError(
@@ -51,6 +57,7 @@ def main() -> int:
                 )
             verify_final_approval(args.approval)
 
+        prediction_hash = sha256_file(args.prediction)
         splits = load_splits(args.data_dir)
         rows = splits[args.split]
         scores = validate_prediction_file(args.prediction, rows)
@@ -60,6 +67,17 @@ def main() -> int:
             scores,
         )
         metrics = official_evaluator.evaluate(users, labels, scores)
+        expected_primary = (
+            float(metrics["GAUC"]) + float(metrics["nDCG@5"])
+        ) / 2.0
+        if not math.isclose(float(metrics["primary"]), expected_primary):
+            raise SecurityError(
+                "Official primary is not the arithmetic mean of GAUC and nDCG@5"
+            )
+        if sha256_file(args.prediction) != prediction_hash:
+            raise SecurityError("Immutable prediction changed during evaluation")
+        if git_head() != evaluation_commit or git_is_dirty():
+            raise SecurityError("Git commit or worktree changed during evaluation")
     except (OSError, SecurityError, PredictionContractError, ValueError) as error:
         print(f"EVALUATION DENIED: {error}")
         return 1
@@ -71,10 +89,12 @@ def main() -> int:
         "rows": metrics["rows"],
         "users": metrics["users"],
         "evaluator_hash": protected_hashes["starter/evaluate.py"],
+        "evaluator_role": "E",
         "split": args.split,
-        "prediction_hash": sha256_file(args.prediction),
-        "commit_sha": git_head(),
-        "worktree_clean": not git_is_dirty(),
+        "prediction_hash": prediction_hash,
+        "commit_sha": evaluation_commit,
+        "worktree_clean": True,
+        "test_access": args.split == "test",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)

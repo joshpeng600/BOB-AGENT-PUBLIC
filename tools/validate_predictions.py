@@ -16,6 +16,8 @@ HEADER = ["row_id", "user_id", "video_id", "score"]
 
 
 def validate(prediction: Path, data_dir: Path, split: str) -> dict[str, int | str]:
+    if split != "valid":
+        raise ValidationError("ordinary prediction validation only permits split=valid")
     expected = load_split_identity_rows(data_dir.resolve(), split)
     try:
         handle = prediction.resolve().open("r", encoding="utf-8-sig", newline="")
@@ -31,13 +33,9 @@ def validate(prediction: Path, data_dir: Path, split: str) -> dict[str, int | st
             if len(record) != 4:
                 raise ValidationError(f"line {line_number}: expected 4 fields, observed {len(record)}")
             row_id, user_id, video_id, raw_score = record
-            try:
-                parsed_row_id = int(row_id)
-            except ValueError as exc:
-                raise ValidationError(f"line {line_number}: row_id is not an integer") from exc
-            if parsed_row_id != count:
+            if row_id != str(count):
                 raise ValidationError(
-                    f"line {line_number}: row_id {parsed_row_id}, expected contiguous value {count}"
+                    f"line {line_number}: row_id {row_id!r}, expected contiguous value {count}"
                 )
             if count >= len(expected):
                 raise ValidationError(f"prediction has more than {len(expected)} expected rows")
@@ -60,7 +58,7 @@ def validate(prediction: Path, data_dir: Path, split: str) -> dict[str, int | st
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate prediction format and row alignment.")
     parser.add_argument("--prediction", required=True, type=Path)
-    parser.add_argument("--split", required=True, choices=("train", "valid", "test"))
+    parser.add_argument("--split", required=True, choices=("valid",))
     parser.add_argument("--data-dir", required=True, type=Path)
     return parser.parse_args()
 

@@ -17,6 +17,7 @@ class BprTests(unittest.TestCase):
         self.assertTrue(np.all(labels[negative] == 0))
         self.assertEqual(coverage.total_users, 3)
         self.assertEqual(coverage.eligible_users, 1)
+        self.assertEqual(coverage.pair_count, 1)
         self.assertEqual(coverage.pairs, 1)
 
     def test_no_valid_pair_has_readable_failure(self):

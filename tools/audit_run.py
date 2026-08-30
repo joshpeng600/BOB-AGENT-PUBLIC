@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from tools.common import ValidationError, stable_json_hash
 from tools.project_security import (
     SecurityError,
     expected_protected_hashes,
@@ -15,6 +16,7 @@ from tools.project_security import (
     load_json,
     verify_protected_files,
 )
+from tools.validate_contract import validate_contract
 
 
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -37,6 +39,11 @@ def validate_manifest_record(
     actual_dirty: bool,
     protected_hashes: dict[str, str],
 ) -> None:
+    try:
+        validate_contract("run_manifest", record)
+    except ValidationError as error:
+        raise SecurityError(f"invalid run_manifest contract: {error}") from error
+
     experiment_id = record.get("experiment_id")
     if not isinstance(experiment_id, str) or not experiment_id.strip():
         raise SecurityError("experiment_id is required")
@@ -53,11 +60,13 @@ def validate_manifest_record(
     config = record.get("config")
     if not isinstance(config, dict) or not config:
         raise SecurityError("config must be a non-empty object")
+    if record.get("config_hash") != stable_json_hash(config):
+        raise SecurityError("config_hash does not match the recorded config")
     data = record.get("data")
     if not isinstance(data, dict) or not data:
         raise SecurityError("data must be a non-empty object")
-    if not str(data.get("hash", "")).strip():
-        raise SecurityError("data.hash is required")
+    if data.get("hash") != record.get("data_hash"):
+        raise SecurityError("data.hash must match data_hash")
     seed = record.get("seed")
     if isinstance(seed, bool) or not isinstance(seed, int):
         raise SecurityError("seed must be an integer")
