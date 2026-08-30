@@ -3,7 +3,8 @@
 STATUS=PASS
 ROLE=E
 REVIEW_TYPE=SETUP_ONLY
-REVIEWED_MAIN_SHA=bb327fb41c483dec03a056a12100e3229e7fddf0
+REVIEWED_MAIN_SHA=afe5b795abacb408c668f05db1a61b6a5af03879
+REVIEWED_ARTIFACT_CODE_BASE_SHA=bb327fb41c483dec03a056a12100e3229e7fddf0
 REVIEWED_PR_20_MERGE_SHA=1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c
 REVIEWED_PR_21_MERGE_SHA=b7001f693bb412a68398fb2ac47c6c40efe76ca0
 REVIEWED_PR_22_MERGE_SHA=cb61b52affd5ecdb4095312087400fb482d8301b
@@ -16,14 +17,19 @@ FORMAL_METRICS_PRODUCED=false
 REAL_DATA_ACCESSED=false
 TRAINING_PERFORMED=false
 TEST_ACCESS=false
+PR_25_EVIDENCE_ACCEPTED=false
+REAL_VALID_GATE_RECOMMENDATION=BLOCKED_PENDING_A_RECONCILIATION
 NEXT_RECEIVER=A
 
 ## Independent conclusion
 
 E independently reviewed the complete artifact contract merged through PR #22
-against the immutable `origin/main` commit above. The setup contract is ready
-for A's gate decision. This conclusion validates interfaces and fail-closed
-behavior only; it is not validation metric evidence and does not itself set
+against the immutable `origin/main` commit above. PR #25 changed only E evidence
+documents after the artifact-code review baseline; it did not alter the audited
+implementation. The technical setup contract passes, but A must reconcile the
+PR #25 gate incident described below before making any real-valid gate decision.
+This conclusion validates interfaces and fail-closed behavior only; it is not
+validation metric evidence and does not itself set
 `REAL_VALID_RUN_ALLOWED=ALLOWED`.
 
 The completed-run path now provides the required protections:
@@ -70,7 +76,7 @@ python scripts/check_protected_files.py
 PASS: all seven protected starter files
 
 python scripts/check_repository_contracts.py
-PASS: 23 JSON files plus JSONL/TOML
+PASS: 25 JSON files plus JSONL/TOML
 
 python scripts/check_prediction_contract.py
 PASS: 9/9 tests
@@ -101,17 +107,22 @@ explicit `lstat`, regular-file, identity, and `O_NOFOLLOW` checks.
 - PR #22: merged; all four required checks passed.
 - PR #24: the repository owner's exact PR #22 ownership exception is recorded;
   all four required checks passed.
+- PR #25: merged as `afe5b795abacb408c668f05db1a61b6a5af03879`;
+  all four CI checks passed, but CI success did not authorize a formal valid run
+  while the A-owned stage gate remained blocked.
 
 ## Governance anomaly outside this review PR
 
-At review time, GitHub PR #25 from the pre-existing `E-Part` history was open
-and contained formal validation metrics created while main still recorded
-`REAL_VALID_RUN_ALLOWED` as blocked. E did not inspect or rely on its ignored
-run artifacts or development data, and this setup rereview intentionally starts
-from `origin/main` so none of PR #25's metric files are included here.
+During this rereview, another integration actor merged GitHub PR #25 from the
+pre-existing `E-Part` history. It contains formal validation metrics produced
+while main still recorded `REAL_VALID_RUN_ALLOWED` as blocked. Passing CI does
+not supersede that stage gate. E did not inspect or rely on PR #25's ignored run
+artifacts or development data, and this setup rereview did not reproduce or
+validate those metrics.
 
-PR #25 is not eligible for automatic merge under the recorded gate merely
-because CI passes. A must close or otherwise formally reconcile it; its metrics
-must not be treated as approved cycle evidence. A may consider opening the real
-valid gate only from this setup rereview and the existing C/D/B setup evidence,
-after keeping PR #25 outside main.
+PR #25 is therefore not accepted as authoritative cycle evidence. A must record
+and reconcile the incident, explicitly keep the PR #25 result out of experiment
+selection, and decide whether its committed evidence should be reverted through
+a normal PR. Until that A-owned reconciliation is merged, the real-valid gate
+must remain blocked. A may then consider a fresh authorization based on this
+technical setup PASS and the existing C/D/B setup evidence.
