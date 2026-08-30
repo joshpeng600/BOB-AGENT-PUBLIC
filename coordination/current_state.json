@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_CYCLE_VALID_IMPROVEMENT_ACCEPTED",
+  "state": "EXP_001_COMPLETED_KEEP",
   "owner": "A",
-  "next_receiver": "A_FOR_NEXT_EXPERIMENT_OR_RELEASE_DECISION",
+  "next_receiver": "A_FOR_NEXT_EXPERIMENT_PLANNING",
   "approved_against_commit_sha": "2dc456539aa4e75665434b35ba86d23bfd1f0fa1",
   "blocked_by": [
     "test and final release remain blocked pending a separate exact human final approval"
@@ -309,7 +309,8 @@
     ]
   },
   "cycle_decision": {
-    "decision": "VALID_IMPROVEMENT_ACCEPTED",
+    "decision": "KEEP",
+    "result_classification": "IMPROVED",
     "decided_at_utc": "2026-08-30T17:52:48Z",
     "experiment_id": "exp_001",
     "producing_commit_sha": "44fd36aa9b35b7fc9c01389e6dd453e972f16635",
@@ -321,12 +322,21 @@
     "success_rule_pass": true,
     "candidate_primary_threshold": 0.6036,
     "candidate_threshold_pass": true,
-    "champion_config_path": "configs/candidates/bpr_fm.json",
+    "champion_config_path": "configs/approved/exp_001.json",
     "formal_run_authorization_consumed": true,
     "fresh_result_accepted_with_process_incident_disclosure": true,
     "final_approval_created": false,
     "test_access": false,
     "evidence": "coordination/inbox/A/exp_001_fresh_valid_cycle_decision_20260831.md"
+  },
+  "formal_decision_artifacts": {
+    "current_experiment": "coordination/current_experiment.json",
+    "experiment_history": "coordination/experiment_history.jsonl",
+    "latest_metrics": "coordination/results/latest_metrics.json",
+    "iteration_spec": "coordination/iterations/exp_001/experiment_spec.json",
+    "approved_config": "configs/approved/exp_001.json",
+    "github_issue_draft": "coordination/issues/exp_001_keep_decision.md",
+    "recorded_at_utc": "2026-08-30T18:25:11Z"
   },
   "github_branch_protection": {
     "status": "TEMPORARY_CHECKS_ONLY_PR_GATE_APPROVED",

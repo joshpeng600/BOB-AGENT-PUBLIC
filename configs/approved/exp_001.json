@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "contract_type": "approved_config",
+  "experiment_id": "exp_001",
+  "approved_against_commit_sha": "676c79e9661c8cdeb97b04c50f0ddc3a6d3a9767",
+  "status": "APPROVED",
+  "source_candidate": "configs/candidates/bpr_fm.json",
+  "model": {
+    "name": "factorization_machine",
+    "embedding_dim": 16,
+    "learning_rate": 0.001,
+    "l2": 0.000001
+  },
+  "objective": {
+    "name": "same_user_bpr",
+    "formula": "mean(-log(sigmoid(score_positive-score_negative)))",
+    "negatives_per_positive": 1,
+    "skip_all_positive_users": true,
+    "skip_all_negative_users": true
+  },
+  "training": {
+    "seed": 0,
+    "batch_size": 8192,
+    "epochs": 40,
+    "patience": 4,
+    "max_batches": null
+  },
+  "data_mode": "train_valid_only",
+  "allowed_splits": [
+    "train",
+    "valid"
+  ],
+  "maximum_development_date": 20220428,
+  "evaluation_split": "valid",
+  "producing_commit_sha": "44fd36aa9b35b7fc9c01389e6dd453e972f16635",
+  "validated_primary": 0.603871007132627,
+  "baseline_primary": 0.601468756352959,
+  "primary_delta": 0.0024022507796679,
+  "decision": "KEEP",
+  "evidence": "coordination/inbox/E/exp_001_fresh_44fd36_evaluation_result.md",
+  "test_access": false
+}
