@@ -1,11 +1,12 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_ARTIFACT_CONTRACT_FIX_REQUIRED",
+  "state": "EXP_001_SETUP_REPAIR_REQUIRED_AFTER_REJECTED_PR_18",
   "owner": "A",
   "next_receiver": "B",
-  "approved_against_commit_sha": "05dff207484eda385c943dde57742eaf535a6906",
+  "approved_against_commit_sha": "6b71af7fce0bbc4b1da5908b5f698da9a5f16a68",
   "blocked_by": [
-    "B PR #18 is changes-required: it completes the runner inventory and validator CLI byte checks, but tools.audit_run still does not verify artifact files, resolved_config.json is not cross-checked against manifest.config/config_hash, and prediction/checkpoint top-level hashes are not contractually cross-checked with artifact entries",
+    "PR #18 was merged as 6b71af7fce0bbc4b1da5908b5f698da9a5f16a68 while noncompliant: tools.audit_run still does not verify artifact files, resolved_config.json is not cross-checked against manifest.config/config_hash, and prediction/checkpoint top-level hashes are not contractually cross-checked with artifact entries",
+    "ownership-safe completion requires B to finish validator/cross-hash checks and E to wire its audit_run entry point; tests are B-owned, so any E modification to tests/test_audit.py requires explicit human approval or a later B-owned test PR",
     "human decision for the PR #10 cross-role ownership exception",
     "human confirmation or completion record for PR #15 temporary manual-gate review; GitHub records a non-bot merge but no formal review entry"
   ],
@@ -31,19 +32,19 @@
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED_PENDING_B_ARTIFACT_CONTRACT_AND_HUMAN_GOVERNANCE_DECISIONS",
+      "status": "BLOCKED_NONCOMPLIANT_SETUP_REPAIR_REQUIRED",
       "permits": "nothing until A records a later ALLOWED state on main; test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "CHANGES_REQUIRED_PR_18_ARTIFACT_AUDIT_INCOMPLETE",
+    "B": "ACTION_REQUIRED_POST_PR_18_VALIDATOR_REPAIR",
     "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
     "D": "SETUP_READY_NO_ACTION_REQUIRED",
-    "E": "PRE_EVALUATION_BLOCKED_WAIT_FOR_B_ARTIFACT_FIX"
+    "E": "WAIT_FOR_B_VALIDATOR_FIX_THEN_A_OWNERSHIP_DECISION"
   },
   "readiness_snapshot": {
-    "observed_at_utc": "2026-08-30T09:37:19Z",
-    "main_sha": "05dff207484eda385c943dde57742eaf535a6906",
+    "observed_at_utc": "2026-08-30T09:54:00Z",
+    "main_sha": "6b71af7fce0bbc4b1da5908b5f698da9a5f16a68",
     "d_setup": {
       "pr_number": 14,
       "status": "MERGED",
@@ -78,7 +79,9 @@
       "github_pr_head_ref_present": true,
       "head_sha": "66451f58a76a403af062c6e98d9d859e750a4cf3",
       "implementation_sha": "4fd009818a27afa198b49bf037aa24d48c2aa5b1",
-      "review_status": "CHANGES_REQUIRED",
+      "merge_sha": "6b71af7fce0bbc4b1da5908b5f698da9a5f16a68",
+      "github_state": "MERGED",
+      "review_status": "REJECT_NONCOMPLIANT_REPAIR_REQUIRED",
       "local_clean_pytest": "PASS_79",
       "local_clean_unittest": "PASS_79_OF_79",
       "github_checks": "NOT_VERIFIED_BY_GIT_REFS",
@@ -107,6 +110,20 @@
       "next_receiver": "B",
       "evidence": "coordination/inbox/E/exp_001_pre_evaluation_readiness.md"
     }
+  },
+  "setup_decision": {
+    "decision": "REJECT",
+    "decided_at_utc": "2026-08-30T09:54:00Z",
+    "subject": "PR #18 artifact contract setup result",
+    "reason": "the merged change does not close the formal E audit entry-point and cross-hash requirements",
+    "score_comparison_performed": false,
+    "formal_metrics_available": false,
+    "repair_sequence": [
+      "B repairs validator-level resolved-config and prediction/checkpoint cross-hash checks with B-owned tests",
+      "E wires tools.audit_run.audit_manifest to the validated artifact-byte helper without evaluating real data",
+      "B supplies audit entry-point regression tests unless a human explicitly approves an E cross-role test exception",
+      "E repeats pre-evaluation review before A considers REAL_VALID_RUN_ALLOWED"
+    ]
   },
   "github_branch_protection": {
     "status": "TEMPORARY_MANUAL_GATE_APPROVED",
