@@ -75,11 +75,42 @@ class PublishedEvidence:
     directory: DirectoryBinding
 
 
+def _trusted_root_directory_alias(
+    path: Path, metadata: os.stat_result,
+) -> tuple[Path, os.stat_result] | None:
+    """Return a stable target for an OS-owned top-level directory alias.
+
+    macOS exposes temporary directories through the root-owned ``/var``
+    symlink to ``/private/var``.  Treating that immutable platform alias like a
+    caller-controlled output-directory symlink rejects every normal tempfile.
+    Only a root-owned symlink directly below the filesystem root is eligible;
+    user-controlled and nested directory symlinks remain forbidden.
+    """
+
+    root = Path(path.anchor)
+    if (
+        os.name == "nt"
+        or path.parent != root
+        or not stat.S_ISLNK(metadata.st_mode)
+        or getattr(metadata, "st_uid", -1) != 0
+    ):
+        return None
+    try:
+        target = path.resolve(strict=True)
+        target_metadata = os.lstat(target)
+    except OSError:
+        return None
+    if stat.S_ISLNK(target_metadata.st_mode) or not stat.S_ISDIR(
+        target_metadata.st_mode
+    ):
+        return None
+    return target, target_metadata
+
+
 def _bind_output_directory(output: Path) -> DirectoryBinding:
     """Bind an existing, no-symlink directory chain for exclusive publication."""
 
     output = output.absolute()
-    output.parent.mkdir(parents=True, exist_ok=True)
     parts = output.parent.parts
     current = Path(parts[0])
     try:
@@ -97,7 +128,16 @@ def _bind_output_directory(output: Path) -> DirectoryBinding:
             metadata = os.lstat(current)
         except OSError as error:
             raise SecurityError(f"Output directory is unavailable: {error}") from error
-        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
+        if stat.S_ISLNK(metadata.st_mode):
+            trusted_alias = _trusted_root_directory_alias(current, metadata)
+            if trusted_alias is None:
+                raise SecurityError(
+                    "Output directory chain must contain ordinary directories"
+                )
+            target, target_metadata = trusted_alias
+            components.append((target, _file_identity(target_metadata)))
+            continue
+        if not stat.S_ISDIR(metadata.st_mode):
             raise SecurityError("Output directory chain must contain ordinary directories")
         components.append((current, _file_identity(metadata)))
     binding = DirectoryBinding(output.parent, tuple(components))
