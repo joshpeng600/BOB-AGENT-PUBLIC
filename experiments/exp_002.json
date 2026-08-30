@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "contract_type": "experiment_spec",
+  "experiment_id": "exp_002",
+  "author_role": "A",
+  "created_at_utc": "2026-08-30T18:28:43Z",
+  "approved_against_commit_sha": "8eb5bad5d1ce24ee8d68451dddd45a10414119c5",
+  "status": "APPROVED_FOR_IMPLEMENTATION",
+  "change_type": "hyperparameter_only",
+  "objective": "same_user_bpr",
+  "hypothesis": "Using two independently sampled same-user negatives per positive instead of one may reduce the variance of the BPR objective estimate and improve within-user validation ranking without changing the model, features, evaluator, seed, or training budget.",
+  "scope": {
+    "single_variable": "objective.negatives_per_positive: 1 -> 2",
+    "new_features_allowed": false,
+    "model_family_change_allowed": false,
+    "official_evaluator_change_allowed": false,
+    "model_or_training_source_change_allowed": false
+  },
+  "task": {
+    "ranking_scope": "within_user",
+    "label": "long_view",
+    "training_splits": [
+      "train",
+      "valid"
+    ],
+    "maximum_development_date": 20220428,
+    "evaluation_split": "valid",
+    "metrics": [
+      "GAUC",
+      "nDCG@5",
+      "primary"
+    ],
+    "primary_definition": "mean(GAUC,nDCG@5)",
+    "test_access_allowed": false
+  },
+  "baseline": {
+    "baseline_experiment_id": "exp_001",
+    "approved_config": "configs/approved/exp_001.json",
+    "validation_primary": 0.603871007132627,
+    "minimum_improvement": 0.002,
+    "success_rule": "candidate_primary - baseline_primary > 0.002",
+    "candidate_primary_must_be_greater_than": 0.605871007132627
+  },
+  "implementation_config": "configs/candidates/bpr_fm_neg2.json",
+  "role_deliverables": {
+    "B": [
+      "generalize baseline route validation so the expected baseline objective is bound to the approved baseline config instead of hardcoded pointwise BCE",
+      "preserve strict experiment/config/objective binding and add regressions that reject forged route or objective combinations",
+      "verify negatives_per_positive=2 is resolved exactly and run only bounded synthetic smoke before a later A formal-run gate",
+      "do not run real data, produce formal metrics, or access test while REAL_VALID_RUN_ALLOWED is blocked"
+    ],
+    "C": [
+      "confirm exp_002 uses the unchanged exp_001 data hash and features",
+      "estimate pair-count, memory, and runtime impact of negatives_per_positive=2 without changing data or features",
+      "confirm maximum development date is 20220428 and no test access"
+    ],
+    "D": [
+      "add configs/candidates/bpr_fm_neg2.json as a config-only change from the approved champion",
+      "change only objective.negatives_per_positive from 1 to 2",
+      "do not modify model or training source and do not claim a metric improvement"
+    ],
+    "E": [
+      "pre-review the exp_002 baseline and candidate routes, manifest binding, immutable prediction ingress, and valid-only isolation",
+      "do not score until A later authorizes one fresh full-budget pair and B supplies complete immutable artifacts",
+      "do not train, alter predictions, create final approval, or access test"
+    ]
+  },
+  "run_command": [
+    "python",
+    "tools/run_experiment.py",
+    "--experiment-spec",
+    "experiments/exp_002.json",
+    "--config",
+    "configs/candidates/bpr_fm_neg2.json",
+    "--data-dir",
+    "<DEV_DATA_DIR>",
+    "--output-dir",
+    "artifacts/exp_002",
+    "--seed",
+    "0",
+    "--mode",
+    "valid-only"
+  ],
+  "max_runtime_seconds": 3600,
+  "automatic_repair_attempts": 1
+}

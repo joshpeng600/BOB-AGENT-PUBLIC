@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "contract_type": "handoff",
+  "experiment_id": "exp_002",
+  "approved_against_commit_sha": "8eb5bad5d1ce24ee8d68451dddd45a10414119c5",
+  "from_role": "A",
+  "to_role": "D",
+  "status": "ACTION_REQUIRED_CONFIG_ONLY_IMPLEMENTATION",
+  "experiment_spec": "experiments/exp_002.json",
+  "single_change": "objective.negatives_per_positive: 1 -> 2",
+  "required_output": [
+    "add configs/candidates/bpr_fm_neg2.json derived from the accepted exp_001 champion",
+    "keep FactorizationMachine, embedding_dim=16, learning_rate=0.001, l2=0.000001, seed=0, batch_size=8192, epochs=40, patience=4, and max_batches=null unchanged",
+    "change only objective.negatives_per_positive to 2",
+    "do not modify src/models, src/training, the official evaluator, data, or features",
+    "run config/contract checks and report no formal metric claim",
+    "do not access test"
+  ],
+  "real_training_allowed": false,
+  "next_receiver": "A"
+}

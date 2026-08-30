@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "contract_type": "handoff",
+  "experiment_id": "exp_002",
+  "approved_against_commit_sha": "8eb5bad5d1ce24ee8d68451dddd45a10414119c5",
+  "from_role": "A",
+  "to_role": "C",
+  "status": "ACTION_REQUIRED_READ_ONLY_FEASIBILITY_REVIEW",
+  "experiment_spec": "experiments/exp_002.json",
+  "required_checks": [
+    "confirm data and feature definitions are unchanged from the accepted exp_001 champion",
+    "confirm the expected official dev data hash remains 69e5a6f656356832f7e1fa6a9774bc404030f32874e18e57e0f38b6a309a1002",
+    "estimate the pair-count, memory, and runtime effect of negatives_per_positive=2 without creating formal artifacts",
+    "confirm fitting and sampling remain train-only, validation row order remains unchanged, and maximum development date is 20220428",
+    "confirm test_access=false"
+  ],
+  "feature_change_allowed": false,
+  "real_training_allowed": false,
+  "next_receiver": "A"
+}

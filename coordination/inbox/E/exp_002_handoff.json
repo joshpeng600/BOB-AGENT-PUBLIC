@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "contract_type": "handoff",
+  "experiment_id": "exp_002",
+  "approved_against_commit_sha": "8eb5bad5d1ce24ee8d68451dddd45a10414119c5",
+  "from_role": "A",
+  "to_role": "E",
+  "status": "ACTION_REQUIRED_PRE_EVALUATION_REVIEW_ONLY",
+  "experiment_spec": "experiments/exp_002.json",
+  "required_checks": [
+    "pre-review baseline and candidate route binding after B generalizes the baseline objective contract",
+    "confirm approved exp_001 BPR champion is the exp_002 baseline and candidate differs only by negatives_per_positive=2",
+    "confirm manifest hashes, immutable prediction ingress, formal max_batches binding, valid-only evaluation, and test isolation remain fail closed",
+    "run only synthetic and contract tests while no immutable formal B package exists",
+    "do not score, train, modify predictions, create formal metrics, create final approval, or access test"
+  ],
+  "formal_evaluation_allowed": false,
+  "next_receiver": "A"
+}

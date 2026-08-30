@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "contract_type": "handoff",
+  "experiment_id": "exp_002",
+  "approved_against_commit_sha": "8eb5bad5d1ce24ee8d68451dddd45a10414119c5",
+  "from_role": "A",
+  "to_role": "B",
+  "status": "ACTION_REQUIRED_SYNTHETIC_ONLY_BASELINE_ROUTE_GENERALIZATION",
+  "branch": "B-Part",
+  "experiment_spec": "experiments/exp_002.json",
+  "implementation_scope": [
+    "tools/validate_contract.py",
+    "tests/test_run_experiment.py",
+    "tests/test_protected_and_contracts.py",
+    "tests/test_audit.py",
+    "B-owned tests as strictly necessary"
+  ],
+  "required_changes": [
+    "replace the hardcoded pointwise_binary_cross_entropy expectation for baseline manifests with an expectation derived from the approved baseline config bound by the experiment spec",
+    "keep baseline contract_type=approved_config, status=APPROVED, full approved_against_commit_sha, and experiment_id identity checks",
+    "reject candidate config on the baseline route, baseline config on the candidate route, forged objectives, config byte drift, and resolved-config drift",
+    "preserve exp_001 behavior and all existing fail-closed security checks",
+    "verify objective.negatives_per_positive=2 resolves exactly for the candidate route",
+    "run contract/unit tests and at most one bounded synthetic --max-batches 1 smoke",
+    "do not use real data, create formal artifacts or metrics, access test, or consume a formal-run authorization"
+  ],
+  "completion_evidence_required": [
+    "exact files changed and why",
+    "all test commands and results",
+    "synthetic smoke command and result if run",
+    "REAL_DATA_USED=false",
+    "FORMAL_METRICS_PRODUCED=false",
+    "test_access=false"
+  ],
+  "next_receiver": "A"
+}
