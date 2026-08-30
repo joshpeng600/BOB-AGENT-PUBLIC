@@ -2,10 +2,10 @@
   "schema_version": 1,
   "contract_type": "handoff",
   "experiment_id": "exp_001",
-  "approved_against_commit_sha": "cb61b52affd5ecdb4095312087400fb482d8301b",
+  "approved_against_commit_sha": "f3fb11e2242a424c803bb1c98e942ad8d5c15e84",
   "from_role": "A",
   "to_role": "E",
-  "status": "WAIT_FOR_HUMAN_PR_22_RATIFICATION_THEN_INDEPENDENT_REREVIEW",
+  "status": "ACTION_REQUIRED_INDEPENDENT_ARTIFACT_CONTRACT_REREVIEW_THROUGH_PR_22",
   "required_changes": [
     "pre-review manifest and evidence schema while waiting; do not score before immutable B valid predictions exist",
     "accept experiment_id and runtime commit_sha in evaluation evidence and record evaluator_role=E",
@@ -15,16 +15,16 @@
     "do not repair the runner, training, configuration, or candidate predictions"
   ],
   "setup_review": {
-    "technical_status": "PR_22_MERGED_TECHNICAL_PASS_PENDING_GOVERNANCE_AND_E_REREVIEW",
+    "technical_status": "PR_22_MERGED_TECHNICAL_PASS_GOVERNANCE_RECORDED_PENDING_E_REREVIEW",
     "b_accepts_pr_10_validator_and_test_changes": true,
     "cross_role_governance_exception_recorded": true,
     "pr_20_cross_role_exception_recorded": true,
     "pr_15_pr_20_manual_gate_completion_recorded": true,
-    "pr_22_cross_role_exception_recorded": false,
-    "human_decision_required": true,
-    "review_baseline_main_sha": "cb61b52affd5ecdb4095312087400fb482d8301b",
+    "pr_22_cross_role_exception_recorded": true,
+    "human_decision_required": false,
+    "review_baseline_main_sha": "f3fb11e2242a424c803bb1c98e942ad8d5c15e84",
     "resolved_decision_request": "coordination/inbox/A/exp_001_real_valid_gate_decision_request.json",
-    "pending_decision_request": "coordination/inbox/A/exp_001_pr_22_ownership_decision_request.json"
+    "resolved_pr_22_decision_request": "coordination/inbox/A/exp_001_pr_22_ownership_decision_request.json"
   },
   "independent_rereview_contract": {
     "scope": [
@@ -59,6 +59,6 @@
       "BLOCKED": "B"
     }
   },
-  "next_action": "remain idle until the exact PR #22 ownership decision is recorded; if ratified, synchronize E-Part with main at or after cb61b52affd5ecdb4095312087400fb482d8301b and perform the independent artifact-contract rereview only; REAL_VALID_RUN_ALLOWED remains blocked",
+  "next_action": "synchronize E-Part with main at or after f3fb11e2242a424c803bb1c98e942ad8d5c15e84 and perform the independent artifact-contract rereview through PR #22 only; REAL_VALID_RUN_ALLOWED remains blocked until E PASS and a later A decision",
   "experiment_spec": "experiments/exp_001.json"
 }

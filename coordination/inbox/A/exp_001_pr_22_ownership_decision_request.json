@@ -5,7 +5,7 @@
   "request_id": "exp_001-pr-22-ownership-20260830",
   "requested_at_utc": "2026-08-30T11:40:00Z",
   "requested_by_role": "A",
-  "approved_against_commit_sha": "cb61b52affd5ecdb4095312087400fb482d8301b",
+  "approved_against_commit_sha": "f3fb11e2242a424c803bb1c98e942ad8d5c15e84",
   "trigger": "new cross-role ownership conflict after exact PR #20 ratification",
   "summary": "PR #22 passed all four required GitHub checks and merged as cb61b52affd5ecdb4095312087400fb482d8301b, but B again modified E-owned tools/audit_run.py. The repository owner's prior approval was explicitly limited to the exact PR #20 change and does not authorize this later PR #22 edit.",
   "evidence_paths": [
@@ -39,6 +39,23 @@
     }
   ],
   "automation_scope": "SETUP_OWNERSHIP_DECISION_ONLY",
+  "resolution": {
+    "resolved_at_utc": "2026-08-30T11:42:06Z",
+    "resolved_by": "repository owner via Codex conversation",
+    "selected_option": "ratify_exact_pr_22_audit_change",
+    "decision": "approve",
+    "exact_scope": {
+      "pr_number": 22,
+      "pr_head_sha": "7477009032f37e57a38099955b7e6aff3c261c19",
+      "implementation_sha": "366951c06be3aedddca4f6da7f35e479ed374df4",
+      "merge_sha": "cb61b52affd5ecdb4095312087400fb482d8301b",
+      "cross_role_file": "tools/audit_run.py"
+    },
+    "record_path": "governance/manual_interventions.jsonl",
+    "next_receiver": "E",
+    "real_valid_run_allowed": false,
+    "required_next_action": "E independently rereviews the complete artifact contract through PR #22; A alone may later open the real-valid gate after E PASS"
+  },
   "automation_paused": true,
-  "status": "pending_human"
+  "status": "resolved_approved_pending_e_rereview"
 }
