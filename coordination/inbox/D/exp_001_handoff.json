@@ -2,10 +2,10 @@
   "schema_version": 1,
   "contract_type": "handoff",
   "experiment_id": "exp_001",
-  "approved_against_commit_sha": "ab0da74d91cb71606ae99f3b4d7874be28839e1c",
+  "approved_against_commit_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
   "from_role": "A",
   "to_role": "D",
-  "status": "INTERFACE_CONFIRMATION_REQUESTED",
+  "status": "COMPLETED_SETUP_READY",
   "single_change": "replace pointwise binary cross-entropy with same-user BPR",
   "required_output": [
     "confirm FactorizationMachine construction parameters embedding_dim and seed",
@@ -16,5 +16,16 @@
     "do not modify the official evaluator"
   ],
   "configuration": "configs/candidates/bpr_fm.json",
+  "completion_evidence": {
+    "path": "coordination/inbox/D/setup_result.md",
+    "pr_number": 14,
+    "pr_status": "MERGED",
+    "pr_head_sha": "e12e9c7cf8f5c3cec1a7f5efdbbdddf271f667f9",
+    "merge_sha": "7b8a17044e481430273fd594e8487f01a1b4daf5",
+    "status": "SETUP_READY",
+    "test_access": false,
+    "real_training_performed": false
+  },
+  "next_action": "no D code change is requested for exp_001; wait for a new A cycle handoff or a concrete model-training contract gap",
   "experiment_spec": "experiments/exp_001.json"
 }

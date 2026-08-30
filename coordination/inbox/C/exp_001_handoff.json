@@ -2,10 +2,10 @@
   "schema_version": 1,
   "contract_type": "handoff",
   "experiment_id": "exp_001",
-  "approved_against_commit_sha": "ab0da74d91cb71606ae99f3b4d7874be28839e1c",
+  "approved_against_commit_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
   "from_role": "A",
   "to_role": "C",
-  "status": "PAIR_FEASIBILITY_CONFIRMATION_REQUESTED",
+  "status": "COMPLETED_REAL_DATA_READY",
   "required_checks": [
     "confirm the existing dev dataset is available and record its SHA-256",
     "confirm the maximum development date is no later than 20220428",
@@ -15,5 +15,15 @@
   ],
   "bootstrap_audit_repeat_required": false,
   "feature_change_allowed": false,
+  "completion_evidence": {
+    "path": "coordination/inbox/C/exp_001_real_data_readiness.md",
+    "pair_count": 382579,
+    "eligible_users": 24290,
+    "total_users": 26210,
+    "user_coverage": 0.926745516978,
+    "maximum_development_date": 20220428,
+    "test_access": false
+  },
+  "next_action": "no C action unless A requests a new data audit",
   "experiment_spec": "experiments/exp_001.json"
 }

@@ -27,7 +27,11 @@ class CheckpointTests(unittest.TestCase):
             restored, metadata = load_checkpoint(path)
         np.testing.assert_array_equal(restored.predict_scores(features), expected)
         self.assertEqual(restored.t, model.t)
+        for field in ("V", "W", "mV", "vV", "mW", "vW"):
+            np.testing.assert_array_equal(getattr(restored, field), getattr(model, field))
+        self.assertEqual(float(restored.b), float(model.b))
         self.assertEqual(metadata["epoch"], 1)
+        self.assertEqual(metadata["best_metric"], 0.5)
         self.assertEqual(metadata["config"]["seed"], 4)
 
 
