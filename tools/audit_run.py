@@ -68,6 +68,8 @@ def validate_manifest_record(
         validate_contract("run_manifest", record)
     except ValidationError as error:
         raise SecurityError(f"invalid run_manifest contract: {error}") from error
+    if record.get("status") != "completed":
+        raise SecurityError("only a completed formal run may be audited")
 
     experiment_id = record.get("experiment_id")
     if not isinstance(experiment_id, str) or not experiment_id.strip():

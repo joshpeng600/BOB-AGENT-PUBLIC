@@ -243,8 +243,10 @@ def _validate_hash_map(value: Any, path: str) -> None:
 
 
 def _validate_run_manifest(document: dict[str, Any]) -> None:
-    if document["status"] not in {"completed", "failed", "stopped"}:
-        raise ValidationError("run_manifest status must be completed, failed, or stopped")
+    if document["status"] not in {"completed", "failed", "stopped", "synthetic_smoke"}:
+        raise ValidationError(
+            "run_manifest status must be completed, failed, stopped, or synthetic_smoke"
+        )
     if not isinstance(document["worktree_clean"], bool):
         raise ValidationError("worktree_clean must be boolean")
     if document["executor_role"] != "B":
@@ -258,6 +260,13 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
         isinstance(max_batches, bool) or not isinstance(max_batches, int) or max_batches < 1
     ):
         raise ValidationError("max_batches must be null or a positive integer")
+    if document["status"] == "synthetic_smoke":
+        if document.get("evidence_tier") != "synthetic_only":
+            raise ValidationError("synthetic smoke must be marked synthetic_only")
+        if max_batches is None:
+            raise ValidationError("synthetic smoke requires an explicit max_batches bound")
+        if document.get("test_access") is not False:
+            raise ValidationError("synthetic smoke must explicitly deny test access")
     commands = _require_list(document["commands"], "commands")
     if not commands or not all(isinstance(command, str) and command.strip() for command in commands):
         raise ValidationError("commands must be a non-empty array of strings")
@@ -473,6 +482,7 @@ def validate_approved_run_route(
 
 def validate_approved_run_semantics(
     document: dict[str, Any], spec: dict[str, Any], raw_config: dict[str, Any],
+    *, allow_synthetic_smoke: bool = False,
 ) -> None:
     """Cross-check scientific/runtime identity after route bytes are bound."""
 
@@ -526,10 +536,16 @@ def validate_approved_run_semantics(
         raise ValidationError(
             "approved config training.max_batches must be null or a positive integer"
         )
-    if (
-        configured_max_batches is not None
-        and document.get("max_batches") != configured_max_batches
-    ):
+    if allow_synthetic_smoke:
+        if (
+            document.get("status") != "synthetic_smoke"
+            or document.get("evidence_tier") != "synthetic_only"
+            or document.get("max_batches") is None
+        ):
+            raise ValidationError(
+                "synthetic smoke override requires bounded synthetic-only evidence"
+            )
+    elif document.get("max_batches") != configured_max_batches:
         raise ValidationError(
             "manifest max_batches does not match approved config training.max_batches"
         )
@@ -587,14 +603,24 @@ def _assert_artifact_binding(
         raise ValidationError(f"artifact path changed during validation: {path.name}")
 
 
-def validate_artifact_files(document: dict[str, Any], artifact_root: Path) -> None:
+def validate_artifact_files(
+    document: dict[str, Any], artifact_root: Path, *, formal_evidence: bool = True,
+) -> None:
     """Verify every declared artifact against bytes below the run directory."""
     validate_contract("run_manifest", document)
-    if document.get("status") != "completed":
+    if formal_evidence:
+        if document.get("status") != "completed":
+            raise ValidationError(
+                "only a completed run_manifest can be accepted as artifact evidence"
+            )
+        validate_approved_run_route(document)
+    elif (
+        document.get("status") != "synthetic_smoke"
+        or document.get("evidence_tier") != "synthetic_only"
+    ):
         raise ValidationError(
-            "only a completed run_manifest can be accepted as artifact evidence"
+            "non-formal artifact verification requires synthetic-only smoke evidence"
         )
-    validate_approved_run_route(document)
     root = artifact_root.resolve()
     resolved_config_bytes: bytes | None = None
     bindings: list[

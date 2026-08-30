@@ -430,6 +430,13 @@ class ArtifactAuditTests(unittest.TestCase):
         with self.assertRaisesRegex(ValidationError, "max_batches"):
             validate_approved_run_semantics(forged_limit, spec, limited)
 
+        unapproved_cli_limit = deepcopy(self.manifest)
+        unapproved_cli_limit["max_batches"] = 1
+        with self.assertRaisesRegex(ValidationError, "max_batches"):
+            validate_approved_run_semantics(
+                unapproved_cli_limit, spec, raw_candidate
+            )
+
         baseline_path = self.repo_root / "configs" / "approved" / "baseline_fm.json"
         raw_baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
         raw_baseline["experiment_id"] = "baseline_forged"

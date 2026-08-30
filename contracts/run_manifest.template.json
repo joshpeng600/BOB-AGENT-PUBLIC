@@ -27,6 +27,7 @@
   "seed": 0,
   "mode": "valid-only",
   "max_batches": null,
+  "evidence_tier": "formal_valid|synthetic_only",
   "dev_max_date": 20220428,
   "environment": {
     "python": "X.Y.Z",
@@ -64,5 +65,5 @@
       "sha256": "REPLACE_WITH_RUNNER_METRICS_SHA256"
     }
   ],
-  "status": "completed|failed|stopped"
+  "status": "completed|failed|stopped|synthetic_smoke"
 }
