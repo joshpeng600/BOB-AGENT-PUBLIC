@@ -200,6 +200,13 @@ class ProtectedAndContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValidationError, "normalized relative path"):
             validate_contract("run-manifest", manifest)
 
+        for unsafe_path in ("C:/outside/checkpoint.npz", "C:\\outside\\checkpoint.npz"):
+            with self.subTest(unsafe_path=unsafe_path):
+                manifest = deepcopy(canonical_documents()["run-manifest"])
+                manifest["artifacts"][1]["path"] = unsafe_path
+                with self.assertRaisesRegex(ValidationError, "normalized relative path"):
+                    validate_contract("run-manifest", manifest)
+
 
 if __name__ == "__main__":
     unittest.main()

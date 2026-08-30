@@ -4,7 +4,7 @@ import argparse
 import math
 import re
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 if __package__ in (None, ""):
@@ -259,7 +259,17 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
         if not isinstance(raw_path, str) or not raw_path:
             raise ValidationError(f"artifacts[{index}].path is required")
         path = Path(raw_path)
-        if path.is_absolute() or ".." in path.parts or path.as_posix() != raw_path:
+        posix_path = PurePosixPath(raw_path)
+        windows_path = PureWindowsPath(raw_path)
+        if (
+            path.is_absolute()
+            or posix_path.is_absolute()
+            or windows_path.is_absolute()
+            or bool(windows_path.drive)
+            or "\\" in raw_path
+            or ".." in posix_path.parts
+            or posix_path.as_posix() != raw_path
+        ):
             raise ValidationError(
                 f"artifacts[{index}].path must be a normalized relative path"
             )
@@ -293,6 +303,10 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
 def validate_artifact_files(document: dict[str, Any], artifact_root: Path) -> None:
     """Verify every declared artifact against bytes below the run directory."""
     validate_contract("run_manifest", document)
+    if document.get("status") != "completed":
+        raise ValidationError(
+            "only a completed run_manifest can be accepted as artifact evidence"
+        )
     root = artifact_root.resolve()
     resolved_paths: dict[str, Path] = {}
     for index, artifact in enumerate(document["artifacts"]):

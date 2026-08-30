@@ -182,6 +182,16 @@ class ArtifactAuditTests(unittest.TestCase):
             manifest_path = self._write_package(Path(tmp))
             self.assertEqual(self._audit(manifest_path)["status"], "completed")
 
+    def test_audit_manifest_rejects_non_completed_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path = self._write_package(root)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["status"] = "failed"
+            write_json(manifest_path, manifest)
+            with self.assertRaisesRegex(SecurityError, "only a completed"):
+                self._audit(manifest_path)
+
     def test_audit_manifest_rejects_tampered_and_missing_artifacts(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
