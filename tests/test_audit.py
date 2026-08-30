@@ -46,6 +46,9 @@ class AuditTests(unittest.TestCase):
             "artifacts": [
                 {"path": "valid_predictions.csv", "sha256": self.digest},
                 {"path": "checkpoint.npz", "sha256": self.digest},
+                {"path": "resolved_config.json", "sha256": self.digest},
+                {"path": "training_history.json", "sha256": self.digest},
+                {"path": "runner_metrics.json", "sha256": self.digest},
             ],
             "status": "completed",
         }
