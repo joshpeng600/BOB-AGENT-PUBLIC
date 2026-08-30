@@ -13,7 +13,12 @@ from src.training.config import ResolvedTrainingConfig
 class PairCoverage:
     total_users: int
     eligible_users: int
-    pairs: int
+    pair_count: int
+
+    @property
+    def pairs(self) -> int:
+        """Backward-compatible alias for B runner code written before the contract rename."""
+        return self.pair_count
 
     @property
     def user_coverage(self) -> float:
