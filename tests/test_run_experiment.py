@@ -12,9 +12,18 @@ from unittest.mock import patch
 import numpy as np
 
 from tests.helpers import LOG_HEADER, make_dataset, write_csv
-from tools.common import ValidationError, write_json
+from tools.audit_run import audit_manifest
+from tools.common import (
+    OFFICIAL_LOG_FILES,
+    REQUIRED_STATIC_FILES,
+    ValidationError,
+    sha256_file,
+    write_json,
+)
+from tools.project_security import expected_protected_hashes
 from tools.run_experiment import (
     TransientInfrastructureError,
+    _capture_data_snapshot,
     _execute_with_retry,
     _settings,
     execute,
@@ -106,6 +115,53 @@ def make_pair_dataset(root: Path) -> Path:
     return root
 
 
+def write_dataset_manifest(root: Path) -> None:
+    names = (*OFFICIAL_LOG_FILES, *REQUIRED_STATIC_FILES)
+    write_json(
+        root / "dataset_manifest.json",
+        {
+            "format_version": 1,
+            "test_rows": 0,
+            "files": {
+                name: {"sha256": sha256_file(root / name)}
+                for name in names
+            },
+        },
+    )
+
+
+def make_runner_fixture(base: Path, *, with_manifest: bool = False) -> dict[str, Path]:
+    data_dir = make_pair_dataset(base / "data")
+    if with_manifest:
+        write_dataset_manifest(data_dir)
+    candidate_path = base / "candidate.json"
+    baseline_path = base / "baseline.json"
+    spec_path = base / "experiment.json"
+    write_json(candidate_path, candidate_config())
+    write_json(baseline_path, pointwise_config())
+    write_json(spec_path, approved_spec(candidate_path, baseline_path))
+    return {
+        "data": data_dir,
+        "output": base / "run",
+        "candidate": candidate_path,
+        "baseline": baseline_path,
+        "spec": spec_path,
+    }
+
+
+def runner_argv(paths: dict[str, Path]) -> list[str]:
+    return [
+        "run_experiment.py",
+        "--experiment-spec", str(paths["spec"]),
+        "--config", str(paths["candidate"]),
+        "--data-dir", str(paths["data"]),
+        "--output-dir", str(paths["output"]),
+        "--seed", "0",
+        "--max-batches", "1",
+        "--mode", "valid-only",
+    ]
+
+
 class RunExperimentTests(unittest.TestCase):
     def test_repository_spec_routes_candidate_and_baseline_on_synthetic_data(self) -> None:
         repo_root = Path(__file__).resolve().parents[1]
@@ -156,6 +212,7 @@ class RunExperimentTests(unittest.TestCase):
             ]
             with (
                 patch.object(sys, "argv", argv),
+                patch("tools.run_experiment._require_repository_input"),
                 patch("tools.run_experiment._git_state", side_effect=[(COMMIT_SHA, True)] * 2),
                 patch("tools.run_experiment._git_is_ancestor", return_value=True),
                 redirect_stdout(StringIO()),
@@ -192,6 +249,39 @@ class RunExperimentTests(unittest.TestCase):
             with self.assertRaisesRegex(ValidationError, "artifact hash mismatch"):
                 validate_artifact_files(manifest, output_dir)
 
+    def test_repository_inputs_produce_an_auditable_completed_package(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            data_dir = make_pair_dataset(base / "data")
+            output_dir = base / "run"
+            paths = {
+                "spec": repo_root / "experiments" / "exp_001.json",
+                "candidate": repo_root / "configs" / "candidates" / "bpr_fm.json",
+                "data": data_dir,
+                "output": output_dir,
+            }
+            with (
+                patch.object(sys, "argv", runner_argv(paths)),
+                patch(
+                    "tools.run_experiment._git_state",
+                    side_effect=[(COMMIT_SHA, True)] * 2,
+                ),
+                patch("tools.run_experiment._git_is_ancestor", return_value=True),
+                redirect_stdout(StringIO()),
+            ):
+                self.assertEqual(main(), 0)
+
+            protected = expected_protected_hashes()
+            with (
+                patch("tools.audit_run.verify_protected_files", return_value=protected),
+                patch("tools.audit_run.expected_protected_hashes", return_value=protected),
+                patch("tools.audit_run.git_head", return_value=COMMIT_SHA),
+                patch("tools.audit_run.git_is_dirty", return_value=False),
+            ):
+                audited = audit_manifest(output_dir / "run_manifest.json")
+            self.assertEqual(audited["status"], "completed")
+
     def test_dirty_worktree_fails_closed_before_training_and_writes_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -216,6 +306,23 @@ class RunExperimentTests(unittest.TestCase):
             self.assertIn("worktree must be clean", manifest["error"])
             validate_contract("run-manifest", manifest)
 
+    def test_formal_main_rejects_repository_external_spec(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = make_runner_fixture(Path(tmp))
+            with (
+                patch.object(sys, "argv", runner_argv(paths)),
+                patch("tools.run_experiment._git_state", return_value=(COMMIT_SHA, True)),
+                patch("tools.run_experiment.execute") as execute_mock,
+                redirect_stderr(StringIO()),
+            ):
+                self.assertEqual(main(), 1)
+            execute_mock.assert_not_called()
+            manifest = json.loads(
+                (paths["output"] / "run_manifest.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(manifest["status"], "failed")
+            self.assertIn("experiment spec must be inside", manifest["error"])
+
     def test_artifact_hash_failure_cannot_leave_a_completed_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -239,6 +346,7 @@ class RunExperimentTests(unittest.TestCase):
             ]
             with (
                 patch.object(sys, "argv", argv),
+                patch("tools.run_experiment._require_repository_input"),
                 patch("tools.run_experiment._git_state", side_effect=[(COMMIT_SHA, True)] * 2),
                 patch("tools.run_experiment._git_is_ancestor", return_value=True),
                 patch(
@@ -277,6 +385,7 @@ class RunExperimentTests(unittest.TestCase):
             ]
             with (
                 patch.object(sys, "argv", argv),
+                patch("tools.run_experiment._require_repository_input"),
                 patch(
                     "tools.run_experiment._git_state",
                     return_value=(COMMIT_SHA, True),
@@ -297,6 +406,185 @@ class RunExperimentTests(unittest.TestCase):
             self.assertEqual(manifest["exit_code"], 1)
             self.assertEqual(manifest["artifacts"], [])
             self.assertIn("executed resolved config", manifest["error"])
+
+    def test_interrupted_artifact_validation_cannot_leave_completed_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = make_runner_fixture(Path(tmp))
+            with (
+                patch.object(sys, "argv", runner_argv(paths)),
+                patch("tools.run_experiment._require_repository_input"),
+                patch(
+                    "tools.run_experiment._git_state",
+                    side_effect=[(COMMIT_SHA, True)] * 2,
+                ),
+                patch("tools.run_experiment._git_is_ancestor", return_value=True),
+                patch(
+                    "tools.run_experiment.validate_artifact_files",
+                    side_effect=KeyboardInterrupt(),
+                ),
+            ):
+                with self.assertRaises(KeyboardInterrupt):
+                    main()
+
+            manifest = json.loads(
+                (paths["output"] / "run_manifest.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(manifest["status"], "failed")
+            self.assertEqual(manifest["exit_code"], 1)
+            self.assertEqual(manifest["artifacts"], [])
+            self.assertIn("KeyboardInterrupt", manifest["error"])
+
+    def test_dataset_manifest_file_hash_mismatch_fails_before_execute(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = make_runner_fixture(Path(tmp), with_manifest=True)
+            train = paths["data"] / OFFICIAL_LOG_FILES[0]
+            train.write_text(
+                train.read_text(encoding="utf-8").replace("u1,v1", "u9,v1", 1),
+                encoding="utf-8",
+            )
+            with (
+                patch.object(sys, "argv", runner_argv(paths)),
+                patch("tools.run_experiment._require_repository_input"),
+                patch("tools.run_experiment._git_state", return_value=(COMMIT_SHA, True)),
+                patch("tools.run_experiment._git_is_ancestor", return_value=True),
+                patch("tools.run_experiment.execute") as execute_mock,
+                redirect_stderr(StringIO()),
+            ):
+                self.assertEqual(main(), 1)
+            execute_mock.assert_not_called()
+            manifest = json.loads(
+                (paths["output"] / "run_manifest.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(manifest["status"], "failed")
+            self.assertIn("dataset source hash mismatch", manifest["error"])
+
+    def test_dataset_manifest_validates_every_declared_source(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            data_dir = make_pair_dataset(Path(tmp) / "data")
+            extra = data_dir / "user_features_pure.csv"
+            extra.write_text("user_id,feature\nu1,1\n", encoding="utf-8")
+            write_dataset_manifest(data_dir)
+            manifest = json.loads(
+                (data_dir / "dataset_manifest.json").read_text(encoding="utf-8")
+            )
+            manifest["files"][extra.name] = {"sha256": sha256_file(extra)}
+            write_json(data_dir / "dataset_manifest.json", manifest)
+            extra.write_text("user_id,feature\nu1,999\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValidationError, "dataset source hash mismatch"):
+                _capture_data_snapshot(data_dir)
+
+    def test_experiment_spec_drift_during_execute_cannot_complete(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = make_runner_fixture(Path(tmp))
+
+            def drift_spec(*_args: object, **_kwargs: object) -> dict[str, object]:
+                spec = json.loads(paths["spec"].read_text(encoding="utf-8"))
+                spec["max_runtime_seconds"] = 59
+                write_json(paths["spec"], spec)
+                return {}
+
+            with (
+                patch.object(sys, "argv", runner_argv(paths)),
+                patch("tools.run_experiment._require_repository_input"),
+                patch("tools.run_experiment._git_state", return_value=(COMMIT_SHA, True)),
+                patch("tools.run_experiment._git_is_ancestor", return_value=True),
+                patch("tools.run_experiment.execute", side_effect=drift_spec),
+                redirect_stderr(StringIO()),
+            ):
+                self.assertEqual(main(), 1)
+            manifest = json.loads(
+                (paths["output"] / "run_manifest.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(manifest["status"], "failed")
+            self.assertEqual(manifest["exit_code"], 1)
+            self.assertIn("experiment spec changed", manifest["error"])
+
+    def test_approved_config_drift_during_execute_cannot_complete(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = make_runner_fixture(Path(tmp))
+
+            def drift_config(*_args: object, **_kwargs: object) -> dict[str, object]:
+                config = json.loads(paths["candidate"].read_text(encoding="utf-8"))
+                config["model"]["learning_rate"] = 0.02
+                write_json(paths["candidate"], config)
+                return {}
+
+            with (
+                patch.object(sys, "argv", runner_argv(paths)),
+                patch("tools.run_experiment._require_repository_input"),
+                patch("tools.run_experiment._git_state", return_value=(COMMIT_SHA, True)),
+                patch("tools.run_experiment._git_is_ancestor", return_value=True),
+                patch("tools.run_experiment.execute", side_effect=drift_config),
+                redirect_stderr(StringIO()),
+            ):
+                self.assertEqual(main(), 1)
+            manifest = json.loads(
+                (paths["output"] / "run_manifest.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(manifest["status"], "failed")
+            self.assertEqual(manifest["exit_code"], 1)
+            self.assertIn("approved config changed", manifest["error"])
+
+    def test_data_drift_during_execute_cannot_complete(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = make_runner_fixture(Path(tmp), with_manifest=True)
+            train = paths["data"] / OFFICIAL_LOG_FILES[0]
+
+            def drift_data(*_args: object, **_kwargs: object) -> dict[str, object]:
+                train.write_text(
+                    train.read_text(encoding="utf-8").replace("u1,v1", "u9,v1", 1),
+                    encoding="utf-8",
+                )
+                return {}
+
+            with (
+                patch.object(sys, "argv", runner_argv(paths)),
+                patch("tools.run_experiment._require_repository_input"),
+                patch("tools.run_experiment._git_state", return_value=(COMMIT_SHA, True)),
+                patch("tools.run_experiment._git_is_ancestor", return_value=True),
+                patch("tools.run_experiment.execute", side_effect=drift_data),
+                redirect_stderr(StringIO()),
+            ):
+                self.assertEqual(main(), 1)
+            manifest = json.loads(
+                (paths["output"] / "run_manifest.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(manifest["status"], "failed")
+            self.assertEqual(manifest["exit_code"], 1)
+            self.assertIn("dataset source hash mismatch", manifest["error"])
+
+    def test_execute_uses_snapshot_when_source_is_swapped_and_restored(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = make_runner_fixture(Path(tmp), with_manifest=True)
+            source = paths["data"] / OFFICIAL_LOG_FILES[0]
+            original = source.read_bytes()
+            expected = _capture_data_snapshot(paths["data"])
+
+            def observe_bound_snapshot(
+                _spec: dict[str, object], _config: dict[str, object], _variant: str,
+                snapshot_dir: Path, *_args: object,
+            ) -> dict[str, object]:
+                source.write_bytes(b"malicious-but-temporary\n")
+                try:
+                    self.assertNotEqual(source.read_bytes(), original)
+                    self.assertEqual(
+                        (snapshot_dir / OFFICIAL_LOG_FILES[0]).read_bytes(), original
+                    )
+                    return {"snapshot_bound": True}
+                finally:
+                    source.write_bytes(original)
+
+            with patch(
+                "tools.run_experiment._execute_bound_snapshot",
+                side_effect=observe_bound_snapshot,
+            ):
+                result = execute(
+                    paths["spec"], paths["candidate"], paths["data"],
+                    paths["output"], seed=0, max_batches=1, mode="valid-only",
+                    repo_root=Path(tmp), expected_data_snapshot=expected,
+                )
+            self.assertEqual(result, {"snapshot_bound": True})
+            self.assertEqual(source.read_bytes(), original)
 
     def test_only_explicit_transient_error_is_retried_once(self) -> None:
         calls = 0

@@ -66,6 +66,7 @@ def canonical_documents() -> dict[str, dict[str, object]]:
             "finished_at_utc": "2026-08-30T00:01:00Z",
             "executor_role": "B",
             "experiment_spec_path": "experiments/exp_002.json",
+            "experiment_spec_hash": DIGEST,
             "config_path": "configs/candidates/example.json",
             "config_hash": stable_json_hash({}),
             "config": {},

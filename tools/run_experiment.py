@@ -2,15 +2,21 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import importlib
+import json
 import math
+import os
 import platform
 import re
 import shlex
+import stat
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Sequence
@@ -37,6 +43,7 @@ from tools.validate_contract import validate_artifact_files, validate_contract
 
 
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
+FULL_SHA256 = re.compile(r"[0-9a-f]{64}")
 LEGACY_RUNNER_FIELDS = {"k", "lr", "batch", "max_epochs"}
 SUPPORTED_OBJECTIVES = {"pointwise_binary_cross_entropy", "same_user_bpr"}
 
@@ -47,6 +54,15 @@ class TransientInfrastructureError(RuntimeError):
 
 class RunTimeout(ValidationError):
     """Raised when the approved wall-clock budget is exhausted."""
+
+
+@dataclass(frozen=True)
+class DataSnapshot:
+    """Content hashes that bind one inspected/loaded development-data snapshot."""
+
+    data_hash: str
+    manifest_hash: str | None
+    source_hashes: tuple[tuple[str, str], ...]
 
 
 def ensure_aligned_lengths(*arrays: Sequence[Any]) -> int:
@@ -86,15 +102,205 @@ def _git_is_ancestor(repo_root: Path, ancestor: str, descendant: str) -> bool:
     return result.returncode == 0
 
 
+def _read_json_snapshot(path: Path) -> tuple[Any, str]:
+    """Parse JSON from exactly the bytes represented by the returned digest."""
+
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise ValidationError(f"cannot read JSON file {path}: {exc}") from exc
+    digest = hashlib.sha256(raw).hexdigest()
+    try:
+        return json.loads(raw.decode("utf-8")), digest
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValidationError(f"invalid JSON in {path}: {exc}") from exc
+
+
+def _data_signature(metadata: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        int(metadata.st_dev), int(metadata.st_ino), int(metadata.st_mode),
+        int(metadata.st_size),
+        int(metadata.st_mtime_ns), int(metadata.st_ctime_ns),
+    )
+
+
+def _data_identity(metadata: os.stat_result) -> tuple[int, int, int]:
+    return (int(metadata.st_dev), int(metadata.st_ino), int(metadata.st_mode))
+
+
+def _copy_bound_data_file(path: Path, destination: Path | None = None) -> str:
+    """Hash/copy bytes through one no-follow handle bound to a regular file."""
+
+    try:
+        path_metadata = os.lstat(path)
+    except OSError as exc:
+        raise ValidationError(f"missing data source: {path}") from exc
+    if stat.S_ISLNK(path_metadata.st_mode) or not stat.S_ISREG(path_metadata.st_mode):
+        raise ValidationError(f"data source must be an ordinary file: {path}")
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise ValidationError(f"cannot safely open data source {path}: {exc}") from exc
+    digest = hashlib.sha256()
+    destination_created = False
+    try:
+        try:
+            source_handle = os.fdopen(descriptor, "rb")
+        except BaseException:
+            os.close(descriptor)
+            raise
+        with source_handle as source:
+            opened = os.fstat(source.fileno())
+            opened_signature = _data_signature(opened)
+            try:
+                bound_path = os.lstat(path)
+            except OSError as exc:
+                raise ValidationError(
+                    f"data source disappeared while opening: {path}"
+                ) from exc
+            bound_path_signature = _data_signature(bound_path)
+            if (
+                not stat.S_ISREG(opened.st_mode)
+                or _data_identity(path_metadata) != _data_identity(opened)
+                or _data_identity(bound_path) != _data_identity(opened)
+            ):
+                raise ValidationError(f"data source changed while opening: {path}")
+            destination_handle = (
+                destination.open("xb") if destination is not None else None
+            )
+            destination_created = destination_handle is not None
+            try:
+                for block in iter(lambda: source.read(1024 * 1024), b""):
+                    digest.update(block)
+                    if destination_handle is not None:
+                        destination_handle.write(block)
+            finally:
+                if destination_handle is not None:
+                    destination_handle.close()
+            if _data_signature(os.fstat(source.fileno())) != opened_signature:
+                raise ValidationError(f"data source changed while reading: {path}")
+            try:
+                final_path = os.lstat(path)
+            except OSError as exc:
+                raise ValidationError(f"data source disappeared while reading: {path}") from exc
+            if _data_signature(final_path) != bound_path_signature:
+                raise ValidationError(f"data source path changed while reading: {path}")
+    except BaseException:
+        if destination_created and destination is not None:
+            try:
+                destination.unlink()
+            except OSError:
+                pass
+        raise
+    return digest.hexdigest()
+
+
+def _stable_data_file_hash(path: Path) -> str:
+    return _copy_bound_data_file(path)
+
+
+def _safe_manifest_source(data_dir: Path, name: Any) -> Path:
+    if not isinstance(name, str) or not name or name in {".", ".."}:
+        raise ValidationError("dataset_manifest files keys must be non-empty file names")
+    if "\\" in name or Path(name).name != name:
+        raise ValidationError(f"dataset_manifest source path must be a direct file name: {name!r}")
+    candidate = data_dir / name
+    try:
+        candidate.resolve().relative_to(data_dir.resolve())
+    except (OSError, ValueError) as exc:
+        raise ValidationError(f"dataset_manifest source escapes data directory: {name!r}") from exc
+    return candidate
+
+
+def _capture_data_snapshot(data_dir: Path) -> DataSnapshot:
+    """Bind the manifest and every declared source to verified on-disk bytes."""
+
+    data_dir = data_dir.resolve()
+    required = set((*OFFICIAL_LOG_FILES, *REQUIRED_STATIC_FILES))
+    manifest_path = data_dir / "dataset_manifest.json"
+    manifest_hash: str | None = None
+    declared_hashes: dict[str, str] | None = None
+    if manifest_path.is_file():
+        manifest, manifest_hash = _read_json_snapshot(manifest_path)
+        if not isinstance(manifest, dict) or not isinstance(manifest.get("files"), dict):
+            raise ValidationError("dataset_manifest.json must contain a files object")
+        files = manifest["files"]
+        missing = required.difference(files)
+        if missing:
+            raise ValidationError(
+                "dataset_manifest.json is missing required sources: "
+                + ", ".join(sorted(missing))
+            )
+        declared_hashes = {}
+        for name, entry in files.items():
+            source = _safe_manifest_source(data_dir, name)
+            if not isinstance(entry, dict):
+                raise ValidationError(f"dataset_manifest files[{name!r}] must be an object")
+            expected = entry.get("sha256")
+            if not isinstance(expected, str) or not FULL_SHA256.fullmatch(expected):
+                raise ValidationError(
+                    f"dataset_manifest files[{name!r}].sha256 must be lowercase SHA-256"
+                )
+            actual = _stable_data_file_hash(source)
+            if actual != expected:
+                raise ValidationError(
+                    f"dataset source hash mismatch for {name}: expected {expected}, observed {actual}"
+                )
+            declared_hashes[name] = actual
+        _, manifest_hash_after = _read_json_snapshot(manifest_path)
+        if manifest_hash_after != manifest_hash:
+            raise ValidationError("dataset_manifest.json changed while sources were verified")
+        data_hash = manifest_hash
+    else:
+        declared_hashes = {
+            name: _stable_data_file_hash(data_dir / name)
+            for name in sorted(required)
+        }
+        data_hash = stable_json_hash([
+            {"path": name, "sha256": digest}
+            for name, digest in sorted(declared_hashes.items())
+        ])
+    return DataSnapshot(
+        data_hash=data_hash,
+        manifest_hash=manifest_hash,
+        source_hashes=tuple(sorted(declared_hashes.items())),
+    )
+
+
+def _assert_data_snapshot(data_dir: Path, expected: DataSnapshot, phase: str) -> None:
+    observed = _capture_data_snapshot(data_dir)
+    if observed != expected:
+        raise ValidationError(f"development data changed {phase}")
+
+
+def _materialize_data_snapshot(
+    data_dir: Path, expected: DataSnapshot, destination: Path,
+) -> DataSnapshot:
+    """Copy exactly the verified input bytes into a private execution snapshot."""
+
+    destination.mkdir(parents=True, exist_ok=False)
+    expected_sources = dict(expected.source_hashes)
+    required = sorted((*OFFICIAL_LOG_FILES, *REQUIRED_STATIC_FILES))
+    for name in required:
+        expected_hash = expected_sources[name]
+        source = _safe_manifest_source(data_dir.resolve(), name)
+        actual = _copy_bound_data_file(source, destination / name)
+        if actual != expected_hash:
+            raise ValidationError(
+                f"development data changed before execution snapshot: {name}"
+            )
+    observed = _capture_data_snapshot(destination)
+    expected_required_hashes = tuple(
+        (name, expected_sources[name]) for name in required
+    )
+    if observed.source_hashes != expected_required_hashes:
+        raise ValidationError("materialized development-data snapshot is inconsistent")
+    return observed
+
+
 def _data_hash(data_dir: Path) -> str:
-    manifest = data_dir / "dataset_manifest.json"
-    if manifest.is_file():
-        return sha256_file(manifest)
-    files = [
-        {"path": name, "sha256": sha256_file(data_dir / name)}
-        for name in (*OFFICIAL_LOG_FILES, *REQUIRED_STATIC_FILES)
-    ]
-    return stable_json_hash(files)
+    return _capture_data_snapshot(data_dir).data_hash
 
 
 def _reject_legacy_runner_fields(value: Any, path: str = "config") -> None:
@@ -189,16 +395,31 @@ def _display_path(path: Path, repo_root: Path, label: str) -> str:
         return f"<{label}>/{path.name}"
 
 
-def _load_approved_inputs(
-    experiment_spec_path: Path, config_path: Path, repo_root: Path,
+def _require_repository_input(
+    path: Path, repo_root: Path, required_directory: str, label: str,
+) -> None:
+    """Require formal spec/config evidence to be an ordinary tracked-tree input."""
+
+    resolved = path.resolve()
+    try:
+        relative = resolved.relative_to(repo_root.resolve())
+    except ValueError as exc:
+        raise ValidationError(f"{label} must be inside the repository") from exc
+    if not relative.parts or relative.parts[0] != required_directory:
+        raise ValidationError(f"{label} must be under {required_directory}/")
+    if path.is_symlink() or not resolved.is_file():
+        raise ValidationError(f"{label} must be an ordinary repository file")
+
+
+def _validate_approved_inputs(
+    spec: Any, config: Any, experiment_spec_path: Path, config_path: Path,
+    repo_root: Path,
 ) -> tuple[dict[str, Any], dict[str, Any], str]:
-    spec = read_json(experiment_spec_path)
     validate_contract("experiment-spec", spec)
     if spec.get("status") != "APPROVED_FOR_IMPLEMENTATION":
         raise ValidationError("experiment spec is not APPROVED_FOR_IMPLEMENTATION")
     if spec.get("task", {}).get("test_access_allowed") is not False:
         raise ValidationError("ordinary experiment spec must explicitly deny test access")
-    config = read_json(config_path)
     if not isinstance(config, dict):
         raise ValidationError("config root must be an object")
     candidate_path = _resolve_reference(repo_root, str(spec.get("implementation_config", "")))
@@ -219,6 +440,16 @@ def _load_approved_inputs(
     if not isinstance(objective, dict) or objective.get("name") != expected_objective:
         raise ValidationError(f"{variant} config objective must be {expected_objective!r}")
     return spec, config, variant
+
+
+def _load_approved_inputs(
+    experiment_spec_path: Path, config_path: Path, repo_root: Path,
+) -> tuple[dict[str, Any], dict[str, Any], str]:
+    spec, _ = _read_json_snapshot(experiment_spec_path)
+    config, _ = _read_json_snapshot(config_path)
+    return _validate_approved_inputs(
+        spec, config, experiment_spec_path, config_path, repo_root
+    )
 
 
 def _build_model(settings: dict[str, Any], feature_dim: int) -> FactorizationMachine:
@@ -327,20 +558,14 @@ def _train_bpr(
     return history, batches_seen, best_epoch, best_metric, coverage_record
 
 
-def execute(
-    experiment_spec_path: Path, config_path: Path, data_dir: Path,
-    output_dir: Path, seed: int, max_batches: int | None, mode: str,
-    *, repo_root: Path | None = None,
+def _execute_bound_snapshot(
+    spec: dict[str, Any], config: dict[str, Any], variant: str,
+    data_dir: Path, output_dir: Path, seed: int, max_batches: int | None,
+    mode: str, data_snapshot: DataSnapshot,
 ) -> dict[str, Any]:
-    if mode not in {"experiment", "valid-only"}:
-        raise ValidationError("run_experiment only permits experiment/valid-only modes")
-    if max_batches is not None and max_batches <= 0:
-        raise ValidationError("max-batches must be positive")
-    repo_root = (repo_root or Path(__file__).resolve().parents[1]).resolve()
-    spec, config, variant = _load_approved_inputs(
-        experiment_spec_path.resolve(), config_path.resolve(), repo_root
-    )
+    _assert_data_snapshot(data_dir, data_snapshot, "before preflight inspection")
     preflight = inspect_data(data_dir, "experiment", {"spec": spec, "config": config})
+    _assert_data_snapshot(data_dir, data_snapshot, "during preflight inspection")
     settings = _settings(config, seed=seed, max_batches=max_batches)
     try:
         starter_data = importlib.import_module("starter.data")
@@ -348,6 +573,7 @@ def execute(
     except ImportError as exc:
         raise ValidationError("starter.data/evaluate are unavailable") from exc
     splits = starter_data.load(str(data_dir))
+    _assert_data_snapshot(data_dir, data_snapshot, "while loading the training snapshot")
     if not isinstance(splits, dict) or "train" not in splits or "valid" not in splits:
         raise ValidationError("starter.data.load must return train and valid splits")
     if splits.get("test"):
@@ -415,6 +641,7 @@ def execute(
         "status": "PENDING_E_REVIEW", "split": "valid",
         "objective": settings["objective"], "metrics": metrics,
     })
+    _assert_data_snapshot(data_dir, data_snapshot, "during execution")
     return {
         "experiment_id": spec["experiment_id"], "run_variant": variant,
         "objective": settings["objective"], "resolved_config": resolved_config,
@@ -425,6 +652,36 @@ def execute(
         "best_epoch": best_epoch, "coverage": coverage,
         "dev_max_date": preflight["max_date"],
     }
+
+
+def execute(
+    experiment_spec_path: Path, config_path: Path, data_dir: Path,
+    output_dir: Path, seed: int, max_batches: int | None, mode: str,
+    *, repo_root: Path | None = None,
+    approved_inputs: tuple[dict[str, Any], dict[str, Any], str] | None = None,
+    expected_data_snapshot: DataSnapshot | None = None,
+) -> dict[str, Any]:
+    if mode not in {"experiment", "valid-only"}:
+        raise ValidationError("run_experiment only permits experiment/valid-only modes")
+    if max_batches is not None and max_batches <= 0:
+        raise ValidationError("max-batches must be positive")
+    repo_root = (repo_root or Path(__file__).resolve().parents[1]).resolve()
+    if approved_inputs is None:
+        spec, config, variant = _load_approved_inputs(
+            experiment_spec_path.resolve(), config_path.resolve(), repo_root
+        )
+    else:
+        spec, config, variant = approved_inputs
+    source_snapshot = expected_data_snapshot or _capture_data_snapshot(data_dir)
+    with tempfile.TemporaryDirectory(prefix="bob-agent-data-snapshot-") as temp:
+        snapshot_dir = Path(temp) / "data"
+        execution_snapshot = _materialize_data_snapshot(
+            data_dir.resolve(), source_snapshot, snapshot_dir
+        )
+        return _execute_bound_snapshot(
+            spec, config, variant, snapshot_dir, output_dir, seed, max_batches,
+            mode, execution_snapshot,
+        )
 
 
 def _execute_with_retry(
@@ -516,6 +773,7 @@ def main() -> int:
         "manual_interventions": 0, "test_access": False,
     }
     log_lines = [f"started_at_utc={started_at}", f"run_id={run_id}", f"command={command}"]
+    completion_validated = False
     try:
         if output_error:
             raise ValidationError(output_error)
@@ -524,14 +782,25 @@ def main() -> int:
         if not worktree_clean:
             raise ValidationError("worktree must be clean before training")
         manifest["protected_hashes"] = verify_protected_files()
-        spec, config, variant = _load_approved_inputs(
-            args.experiment_spec.resolve(), args.config.resolve(), repo_root
+        _require_repository_input(
+            args.experiment_spec, repo_root, "experiments", "experiment spec"
+        )
+        _require_repository_input(
+            args.config, repo_root, "configs", "approved config"
+        )
+        spec_document, spec_input_hash = _read_json_snapshot(
+            args.experiment_spec.resolve()
+        )
+        config_document, config_input_hash = _read_json_snapshot(args.config.resolve())
+        spec, config, variant = _validate_approved_inputs(
+            spec_document, config_document, args.experiment_spec.resolve(),
+            args.config.resolve(), repo_root,
         )
         approved_against = str(spec["approved_against_commit_sha"])
         if not _git_is_ancestor(repo_root, approved_against, commit_sha):
             raise ValidationError("approved_against_commit_sha is not an ancestor of HEAD")
         manifest["experiment_id"] = str(spec["experiment_id"])
-        manifest["experiment_spec_hash"] = sha256_file(args.experiment_spec.resolve())
+        manifest["experiment_spec_hash"] = spec_input_hash
         resolved_preview = {
             **config,
             "resolved_run": {
@@ -541,8 +810,12 @@ def main() -> int:
         }
         manifest["config"] = resolved_preview
         manifest["config_hash"] = stable_json_hash(resolved_preview)
-        manifest["data_hash"] = _data_hash(args.data_dir.resolve())
+        data_snapshot = _capture_data_snapshot(args.data_dir.resolve())
+        manifest["data_hash"] = data_snapshot.data_hash
         manifest["data"]["hash"] = manifest["data_hash"]
+        manifest["data"]["source_hashes"] = dict(data_snapshot.source_hashes)
+        if data_snapshot.manifest_hash is not None:
+            manifest["data"]["dataset_manifest_hash"] = data_snapshot.manifest_hash
         write_json(output_dir / "resolved_config.json", resolved_preview)
         attempts = int(spec.get("automatic_repair_attempts", 0))
         if attempts not in {0, 1}:
@@ -552,9 +825,20 @@ def main() -> int:
                 args.experiment_spec.resolve(), args.config.resolve(),
                 args.data_dir.resolve(), output_dir, args.seed, args.max_batches,
                 args.mode, repo_root=repo_root,
+                approved_inputs=(spec, config, variant),
+                expected_data_snapshot=data_snapshot,
             ), attempts,
         )
         manifest["retry_count"] = retries
+        _, current_spec_hash = _read_json_snapshot(args.experiment_spec.resolve())
+        if current_spec_hash != spec_input_hash:
+            raise ValidationError("experiment spec changed during execution")
+        _, current_config_hash = _read_json_snapshot(args.config.resolve())
+        if current_config_hash != config_input_hash:
+            raise ValidationError("approved config changed during execution")
+        _assert_data_snapshot(
+            args.data_dir.resolve(), data_snapshot, "during execution"
+        )
         executed_config = result.get("resolved_config")
         if (
             not isinstance(executed_config, dict)
@@ -566,14 +850,15 @@ def main() -> int:
         final_commit, final_clean = _git_state(repo_root)
         if final_commit != commit_sha or not final_clean:
             raise ValidationError("Git commit/worktree changed during execution")
-        manifest.update(
+        completed_manifest = dict(manifest)
+        completed_manifest.update(
             status="completed", exit_code=0, run_variant=result["run_variant"],
             objective=result["objective"], prediction_hash=result["prediction_hash"],
             checkpoint_hash=result["checkpoint_hash"], metrics=result["metrics"],
             batches_seen=result["batches_seen"], best_epoch=result["best_epoch"],
             pair_coverage=result["coverage"], dev_max_date=result["dev_max_date"],
         )
-        manifest["artifacts"] = [
+        completed_manifest["artifacts"] = [
             {"path": "valid_predictions.csv", "sha256": result["prediction_hash"]},
             {"path": "checkpoint.npz", "sha256": result["checkpoint_hash"]},
             {
@@ -583,7 +868,9 @@ def main() -> int:
             {"path": "training_history.json", "sha256": sha256_file(result["history_path"])},
             {"path": "runner_metrics.json", "sha256": sha256_file(result["runner_metrics_path"])},
         ]
-        validate_artifact_files(manifest, output_dir)
+        validate_artifact_files(completed_manifest, output_dir)
+        manifest = completed_manifest
+        completion_validated = True
         log_lines.extend((
             f"batches_seen={result['batches_seen']}", f"retry_count={retries}",
             "status=completed",
@@ -593,7 +880,19 @@ def main() -> int:
         manifest["exit_code"] = 1
         manifest["error"] = str(exc)
         log_lines.extend(("status=failed", f"error={exc}", traceback.format_exc()))
+    except BaseException as exc:
+        manifest["status"] = "failed"
+        manifest["exit_code"] = 1
+        manifest["error"] = f"{type(exc).__name__}: {exc}"
+        log_lines.extend((
+            "status=failed", f"error={type(exc).__name__}: {exc}",
+            traceback.format_exc(),
+        ))
+        raise
     finally:
+        if not completion_validated:
+            manifest["status"] = "failed"
+            manifest["exit_code"] = 1
         manifest["finished_at_utc"] = _now()
         (output_dir / "run.log").write_text("\n".join(log_lines) + "\n", encoding="utf-8")
         write_json(output_dir / "run_manifest.json", manifest)

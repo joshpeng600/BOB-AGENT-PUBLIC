@@ -11,6 +11,7 @@ from tools.common import sha256_file, stable_json_hash, write_json
 from tools.audit_run import audit_manifest, is_test_scoring_command, validate_manifest_record
 from tools.final_approval import validate_approval_record
 from tools.project_security import SecurityError
+from tools.validate_contract import _assert_artifact_binding, _read_open_artifact
 
 
 class AuditTests(unittest.TestCase):
@@ -18,6 +19,9 @@ class AuditTests(unittest.TestCase):
         self.commit = "a" * 40
         self.hashes = {"starter/evaluate.py": "b" * 64}
         self.digest = "c" * 64
+        self.spec_hash = sha256_file(
+            Path(__file__).resolve().parents[1] / "experiments" / "exp_001.json"
+        )
         self.config = {"model": "fm"}
         self.manifest = {
             "schema_version": 1,
@@ -30,6 +34,7 @@ class AuditTests(unittest.TestCase):
             "finished_at_utc": "2026-08-30T00:01:00Z",
             "executor_role": "B",
             "experiment_spec_path": "experiments/exp_001.json",
+            "experiment_spec_hash": self.spec_hash,
             "config_path": "configs/candidates/bpr_fm.json",
             "config_hash": stable_json_hash(self.config),
             "config": self.config,
@@ -207,6 +212,58 @@ class ArtifactAuditTests(unittest.TestCase):
             with self.assertRaisesRegex(SecurityError, "artifact file is missing"):
                 self._audit(manifest_path)
 
+    def test_artifact_replacement_during_hash_is_rejected(self):
+        for target in ("valid_predictions.csv", "resolved_config.json"):
+            with self.subTest(target=target), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                manifest_path = self._write_package(root)
+                changed = False
+
+                def replace_after_hash(handle, path: Path, *, capture_bytes: bool):
+                    nonlocal changed
+                    result = _read_open_artifact(
+                        handle, path, capture_bytes=capture_bytes
+                    )
+                    if path.name == target and not changed:
+                        changed = True
+                        path.write_bytes(b"replacement-after-first-hash\n")
+                    return result
+
+                with patch(
+                    "tools.validate_contract._read_open_artifact",
+                    side_effect=replace_after_hash,
+                ):
+                    with self.assertRaisesRegex(SecurityError, "changed"):
+                        self._audit(manifest_path)
+                self.assertTrue(changed)
+
+    def test_replacement_after_semantic_snapshot_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path = self._write_package(root)
+            checks = 0
+
+            def replace_after_initial_bindings(
+                path, handle, path_signature, handle_signature,
+            ):
+                nonlocal checks
+                _assert_artifact_binding(
+                    path, handle, path_signature, handle_signature
+                )
+                checks += 1
+                if checks == 5:
+                    (root / "resolved_config.json").write_bytes(
+                        b'{"model":"replacement"}\n'
+                    )
+
+            with patch(
+                "tools.validate_contract._assert_artifact_binding",
+                side_effect=replace_after_initial_bindings,
+            ):
+                with self.assertRaisesRegex(SecurityError, "changed"):
+                    self._audit(manifest_path)
+            self.assertGreaterEqual(checks, 5)
+
     def test_audit_manifest_rejects_resolved_config_semantic_mismatch(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -246,6 +303,16 @@ class ArtifactAuditTests(unittest.TestCase):
             manifest["prediction_hash"] = "d" * 64
             write_json(manifest_path, manifest)
             with self.assertRaisesRegex(SecurityError, "prediction_hash must match"):
+                self._audit(manifest_path)
+
+    def test_audit_manifest_rejects_experiment_spec_hash_mismatch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest_path = self._write_package(root)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["experiment_spec_hash"] = "d" * 64
+            write_json(manifest_path, manifest)
+            with self.assertRaisesRegex(SecurityError, "experiment_spec_hash"):
                 self._audit(manifest_path)
 
     def test_audit_manifest_rejects_duplicate_and_traversal_paths(self):

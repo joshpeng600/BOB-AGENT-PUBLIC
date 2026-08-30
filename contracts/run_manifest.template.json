@@ -9,6 +9,7 @@
   "finished_at_utc": "YYYY-MM-DDTHH:MM:SSZ",
   "executor_role": "B",
   "experiment_spec_path": "experiments/exp_NNN.json",
+  "experiment_spec_hash": "REPLACE_WITH_EXPERIMENT_SPEC_SHA256",
   "config_path": "configs/candidates/example.json",
   "config_hash": "REPLACE_WITH_CONFIG_SHA256",
   "config": {
