@@ -1,12 +1,11 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_FINAL_SETUP_REPAIRS_PENDING_PR_MERGE_AND_E_REREVIEW",
+  "state": "EXP_001_SETUP_COMPLETE_AWAITING_EXPLICIT_USER_CYCLE_APPROVAL",
   "owner": "A",
-  "next_receiver": "E_AFTER_FINAL_SETUP_PR_MERGE",
-  "approved_against_commit_sha": "7dfeb682879aac5ecbcf8f3f84a065e5f54d17b2",
+  "next_receiver": "USER_FOR_CYCLE_APPROVAL",
+  "approved_against_commit_sha": "92d4804d719826656e9466c7ff44c4d96b0e5711",
   "blocked_by": [
-    "the final setup semantic, budget, audit, and evidence-publication repairs must merge to main through a conflict-free PR with all four Actions checks passing",
-    "E must independently rereview the resulting merged clean main before A may activate the single authorized fresh run"
+    "setup is complete, but the user instructed A to wait for a new explicit cycle approval before activating or executing any real valid-only run"
   ],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
@@ -30,19 +29,19 @@
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED_PENDING_FINAL_SETUP_PR_MERGE_AND_E_REREVIEW",
-      "permits": "nothing until A records a later ALLOWED state on main; test remains forbidden"
+      "status": "READY_PENDING_EXPLICIT_USER_CYCLE_APPROVAL",
+      "permits": "nothing until the user explicitly approves starting cycle and A records a later exact ALLOWED state on a clean main SHA; test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "APPROVED_RUN_SEMANTICS_AND_FORMAL_BUDGET_BINDING_IN_A_PR_PENDING_MERGE",
-    "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
-    "D": "SETUP_READY_NO_ACTION_REQUIRED",
-    "E": "PUBLICATION_BOUNDARY_REPAIR_IN_A_PR_PENDING_MERGE_AND_INDEPENDENT_REREVIEW"
+    "B": "SETUP_COMPLETE_RUNNER_AND_EVIDENCE_BINDING_PASS",
+    "C": "SETUP_COMPLETE_REAL_DATA_AND_PAIR_FEASIBILITY_PASS",
+    "D": "SETUP_COMPLETE_MODEL_AND_TRAINING_INTERFACE_PASS",
+    "E": "SETUP_COMPLETE_INDEPENDENT_POST_MERGE_REREVIEW_PASS"
   },
   "readiness_snapshot": {
-    "observed_at_utc": "2026-08-30T15:22:38Z",
-    "main_sha": "7dfeb682879aac5ecbcf8f3f84a065e5f54d17b2",
+    "observed_at_utc": "2026-08-30T15:34:10Z",
+    "main_sha": "92d4804d719826656e9466c7ff44c4d96b0e5711",
     "d_setup": {
       "pr_number": 14,
       "status": "MERGED",
@@ -172,8 +171,33 @@
       "real_training_performed": false,
       "formal_metrics_produced": false,
       "test_access": false,
-      "status": "READY_FOR_PR_MERGE_THEN_E_INDEPENDENT_REREVIEW",
+      "pr_number": 33,
+      "pr_head_sha": "387fd28854b6431d96216171b7eb0b25e8520e7e",
+      "merge_sha": "3f972df85ce61f1546b0d55d5096463cdfa418df",
+      "github_checks": "PASS_4_OF_4",
+      "status": "MERGED_AND_VERIFIED",
       "evidence": "coordination/inbox/A/exp_001_setup_final_integration_readiness.md"
+    },
+    "e_final_post_merge_rereview": {
+      "pr_number": 34,
+      "review_commit_sha": "b3095989800f98b368ec9edf2dbc942ef56096a3",
+      "merge_sha": "92d4804d719826656e9466c7ff44c4d96b0e5711",
+      "reviewed_main_sha": "3f972df85ce61f1546b0d55d5096463cdfa418df",
+      "status": "PASS",
+      "approved_route_semantics": "PASS",
+      "formal_max_batches_exact_binding": "PASS",
+      "synthetic_formal_evidence_isolation": "PASS",
+      "audit_formal_completed_only": "PASS",
+      "safe_evaluate_exclusive_publication": "PASS",
+      "post_publication_checks": "PASS_OUTPUT_HASH_PREDICTION_BINDING_GIT",
+      "foreign_inode_cleanup": "PASS",
+      "github_checks": "PASS_4_OF_4",
+      "starter_changed": false,
+      "real_training_performed": false,
+      "formal_metrics_produced": false,
+      "pr_25_evidence_read": false,
+      "test_access": false,
+      "evidence": "coordination/inbox/E/exp_001_setup_final_post_merge_rereview.md"
     },
     "pr_25_gate_incident": {
       "pr_number": 25,
@@ -198,17 +222,21 @@
     }
   },
   "setup_decision": {
-    "decision": "FINAL_SETUP_REPAIRS_READY_FOR_PR_RERUN_DEFERRED_PENDING_E_REREVIEW",
-    "decided_at_utc": "2026-08-30T15:22:38Z",
-    "subject": "permanent PR #25 quarantine and one fresh valid-only rerun approved subject to unresolved setup security gates",
-    "reason": "the final semantic, budget, audit, and publication repairs pass combined clean pre-merge verification, but hard safety gates require PR merge and E independent rereview of the resulting clean main before cycle activation",
+    "decision": "SETUP_COMPLETE_AWAITING_EXPLICIT_USER_CYCLE_APPROVAL",
+    "decided_at_utc": "2026-08-30T15:34:10Z",
+    "subject": "all setup code, security, integration, and E independent review gates pass; cycle activation remains held for a new explicit user approval",
+    "reason": "PR #33 merged with all required checks and PR #34 records E independent PASS, but the user instructed A to announce setup completion and wait for renewed consent before starting cycle",
+    "setup_complete": true,
+    "cycle_started": false,
+    "explicit_user_cycle_approval_received": false,
+    "authorized_attempts_active": 0,
     "score_comparison_performed": false,
     "formal_metrics_available_for_selection": false,
     "quarantined_formal_metrics_present": true,
     "remaining_sequence": [
-      "merge the final setup repair through a conflict-free PR after all four Actions checks pass",
-      "E independently rereviews the resulting merged clean main implementation and immutable evidence boundary",
-      "A activates exactly one fresh valid-only rerun on a new clean main SHA; PR #25 evidence remains excluded"
+      "inform the user that setup is complete and request explicit approval to begin cycle",
+      "only after that approval, A records an exact REAL_VALID_RUN_ALLOWED state against a new clean main SHA and activates at most the separately authorized single fresh attempt",
+      "B executes the approved valid-only baseline/candidate pair; PR #25 evidence remains permanently excluded"
     ]
   },
   "github_branch_protection": {
