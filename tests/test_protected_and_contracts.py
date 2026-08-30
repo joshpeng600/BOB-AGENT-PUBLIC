@@ -6,7 +6,7 @@ import unittest
 from copy import deepcopy
 from pathlib import Path
 
-from tools.common import ValidationError, sha256_file, write_json
+from tools.common import ValidationError, sha256_file, stable_json_hash, write_json
 from tools.validate_contract import validate_contract
 from tools.verify_protected_files import verify
 
@@ -66,8 +66,9 @@ def canonical_documents() -> dict[str, dict[str, object]]:
             "finished_at_utc": "2026-08-30T00:01:00Z",
             "executor_role": "B",
             "experiment_spec_path": "experiments/exp_002.json",
+            "experiment_spec_hash": DIGEST,
             "config_path": "configs/candidates/example.json",
-            "config_hash": DIGEST,
+            "config_hash": stable_json_hash({}),
             "config": {},
             "data": {"split": "valid", "hash": DIGEST},
             "data_hash": DIGEST,
@@ -196,6 +197,13 @@ class ProtectedAndContractTests(unittest.TestCase):
             validate_contract("run-manifest", manifest)
 
         manifest = deepcopy(canonical_documents()["run-manifest"])
+        manifest["artifacts"].append(
+            {"path": "run_manifest.json", "sha256": DIGEST}
+        )
+        with self.assertRaisesRegex(ValidationError, "unexpected artifacts"):
+            validate_contract("run-manifest", manifest)
+
+        manifest = deepcopy(canonical_documents()["run-manifest"])
         manifest["artifacts"][0]["path"] = "../valid_predictions.csv"
         with self.assertRaisesRegex(ValidationError, "normalized relative path"):
             validate_contract("run-manifest", manifest)
@@ -206,6 +214,12 @@ class ProtectedAndContractTests(unittest.TestCase):
                 manifest["artifacts"][1]["path"] = unsafe_path
                 with self.assertRaisesRegex(ValidationError, "normalized relative path"):
                     validate_contract("run-manifest", manifest)
+
+    def test_completed_run_config_hash_binds_manifest_config(self) -> None:
+        manifest = deepcopy(canonical_documents()["run-manifest"])
+        manifest["config_hash"] = DIGEST
+        with self.assertRaisesRegex(ValidationError, "config_hash"):
+            validate_contract("run-manifest", manifest)
 
 
 if __name__ == "__main__":
