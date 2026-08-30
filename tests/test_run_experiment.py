@@ -73,6 +73,18 @@ def pointwise_config() -> dict[str, object]:
     return config
 
 
+def approved_bpr_config() -> dict[str, object]:
+    config = candidate_config()
+    config.update(
+        schema_version=1,
+        contract_type="approved_config",
+        experiment_id="exp_001",
+        approved_against_commit_sha=COMMIT_SHA,
+        status="APPROVED",
+    )
+    return config
+
+
 def approved_spec(candidate: Path, baseline: Path) -> dict[str, object]:
     return {
         "schema_version": 1,
@@ -200,6 +212,52 @@ class RunExperimentTests(unittest.TestCase):
                     self.assertEqual(result["run_variant"], variant)
                     self.assertEqual(result["objective"], expected_objective)
                     self.assertTrue((output_dir / "valid_predictions.csv").is_file())
+
+    def test_bpr_champion_is_accepted_as_the_next_experiment_baseline(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            data_dir = make_pair_dataset(base / "data")
+            candidate_path = base / "candidate.json"
+            baseline_path = base / "baseline.json"
+            spec_path = base / "experiment.json"
+            candidate = candidate_config()
+            candidate["objective"]["negatives_per_positive"] = 2
+            baseline = approved_bpr_config()
+            spec = approved_spec(candidate_path, baseline_path)
+            spec["experiment_id"] = "exp_002"
+            spec["baseline"]["baseline_experiment_id"] = "exp_001"
+            write_json(candidate_path, candidate)
+            write_json(baseline_path, baseline)
+            write_json(spec_path, spec)
+
+            output_dir = base / "baseline-run"
+            output_dir.mkdir()
+            result = execute(
+                spec_path,
+                baseline_path,
+                data_dir,
+                output_dir,
+                seed=0,
+                max_batches=1,
+                mode="valid-only",
+                repo_root=base,
+                synthetic_smoke=True,
+            )
+            self.assertEqual(result["run_variant"], "baseline")
+            self.assertEqual(result["objective"], "same_user_bpr")
+            self.assertEqual(
+                result["resolved_config"]["objective"]["negatives_per_positive"],
+                1,
+            )
+
+    def test_candidate_negatives_per_positive_two_resolves_exactly(self) -> None:
+        config = candidate_config()
+        config["objective"]["negatives_per_positive"] = 2
+        resolved = _settings(
+            config, seed=0, max_batches=1, synthetic_smoke=True
+        )
+        self.assertEqual(resolved["objective"], "same_user_bpr")
+        self.assertEqual(resolved["negatives_per_positive"], 2)
 
     def test_bpr_synthetic_smoke_writes_canonical_complete_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
