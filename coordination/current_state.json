@@ -1,14 +1,13 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_SETUP_REPAIR_REQUIRED_AFTER_REJECTED_PR_18",
+  "state": "EXP_001_SETUP_HUMAN_DECISION_REQUIRED_AFTER_PR_20",
   "owner": "A",
-  "next_receiver": "B",
-  "approved_against_commit_sha": "6b71af7fce0bbc4b1da5908b5f698da9a5f16a68",
+  "next_receiver": "HUMAN",
+  "approved_against_commit_sha": "1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c",
   "blocked_by": [
-    "PR #18 was merged as 6b71af7fce0bbc4b1da5908b5f698da9a5f16a68 while noncompliant: tools.audit_run still does not verify artifact files, resolved_config.json is not cross-checked against manifest.config/config_hash, and prediction/checkpoint top-level hashes are not contractually cross-checked with artifact entries",
-    "ownership-safe completion requires B to finish validator/cross-hash checks and E to wire its audit_run entry point; tests are B-owned, so any E modification to tests/test_audit.py requires explicit human approval or a later B-owned test PR",
-    "human decision for the PR #10 cross-role ownership exception",
-    "human confirmation or completion record for PR #15 temporary manual-gate review; GitHub records a non-bot merge but no formal review entry"
+    "PR #20 technically closes the artifact-byte, resolved-config, cross-hash, and audit entry-point gaps, but B modified E-owned tools/audit_run.py without a matching manual_interventions.jsonl exception and its readiness incorrectly states that E-owned audit logic was not modified",
+    "the cross-role ownership failure has now repeated after PR #10, so a human must either ratify the exact PR #20 audit_run change or require an ownership-correct revert and E reimplementation",
+    "human confirmation or completion records remain required for the PR #15 and PR #20 temporary manual merge gates; Git history proves non-bot merges but does not prove a formal review entry or the four GitHub check conclusions"
   ],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
@@ -32,19 +31,19 @@
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED_NONCOMPLIANT_SETUP_REPAIR_REQUIRED",
+      "status": "BLOCKED_PENDING_HUMAN_RATIFICATION_AND_E_REREVIEW",
       "permits": "nothing until A records a later ALLOWED state on main; test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "ACTION_REQUIRED_POST_PR_18_VALIDATOR_REPAIR",
+    "B": "TECHNICAL_ARTIFACT_FIX_COMPLETE_PENDING_GOVERNANCE_RATIFICATION",
     "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
     "D": "SETUP_READY_NO_ACTION_REQUIRED",
-    "E": "WAIT_FOR_B_VALIDATOR_FIX_THEN_A_OWNERSHIP_DECISION"
+    "E": "WAIT_FOR_HUMAN_RATIFICATION_THEN_INDEPENDENT_PR_20_REREVIEW"
   },
   "readiness_snapshot": {
-    "observed_at_utc": "2026-08-30T09:54:00Z",
-    "main_sha": "6b71af7fce0bbc4b1da5908b5f698da9a5f16a68",
+    "observed_at_utc": "2026-08-30T10:05:10Z",
+    "main_sha": "1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c",
     "d_setup": {
       "pr_number": 14,
       "status": "MERGED",
@@ -75,31 +74,33 @@
       "evidence": "coordination/inbox/B/exp_001_freeze_readiness.md"
     },
     "b_artifact_fix_review": {
-      "pr_number": 18,
+      "pr_number": 20,
       "github_pr_head_ref_present": true,
-      "head_sha": "66451f58a76a403af062c6e98d9d859e750a4cf3",
-      "implementation_sha": "4fd009818a27afa198b49bf037aa24d48c2aa5b1",
-      "merge_sha": "6b71af7fce0bbc4b1da5908b5f698da9a5f16a68",
+      "head_sha": "adee38640b589bd618963c3d637977f97e9ec783",
+      "implementation_sha": "24235daf9a0a5e6d4272aa16270befd9cb18bb2b",
+      "merge_sha": "1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c",
       "github_state": "MERGED",
-      "review_status": "REJECT_NONCOMPLIANT_REPAIR_REQUIRED",
-      "local_clean_pytest": "PASS_79",
-      "local_clean_unittest": "PASS_79_OF_79",
+      "review_status": "TECHNICAL_PASS_GOVERNANCE_HUMAN_DECISION_REQUIRED",
+      "local_clean_pytest": "PASS_85",
+      "local_clean_unittest": "PASS_85_OF_85",
+      "local_clean_audit_tests": "PASS_20_OF_20",
       "github_checks": "NOT_VERIFIED_BY_GIT_REFS",
       "completed": [
         "five required artifact paths in completed manifests",
-        "raw SHA-256 entry for resolved_config.json",
-        "validator CLI file-byte verification",
-        "missing, duplicate, traversal, and artifact tamper regression coverage"
+        "artifact file-byte verification in validator and audit_manifest",
+        "resolved_config object and canonical config_hash matching",
+        "prediction and checkpoint three-way hash matching",
+        "missing, tampered, duplicate, traversal, and symlink regression coverage"
       ],
-      "remaining": [
-        "tools.audit_run must invoke artifact byte verification relative to the manifest directory",
-        "audit_manifest tests must reject missing and tampered artifact files",
-        "resolved_config.json content and canonical hash must match manifest.config and config_hash",
-        "prediction_hash and checkpoint_hash must match their artifact entries and actual bytes"
+      "technical_remaining": [],
+      "governance_remaining": [
+        "human decision on the repeated cross-role ownership exception for tools/audit_run.py",
+        "human confirmation of temporary manual-gate compliance for PR #15 and PR #20",
+        "independent E re-review of the merged immutable artifact contract"
       ]
     },
     "e_setup": {
-      "status": "PRE_EVALUATION_BLOCKED_ON_B_ARTIFACT_CONTRACT",
+      "status": "WAIT_FOR_HUMAN_RATIFICATION_THEN_PR_20_REREVIEW",
       "b_technical_acceptance": true,
       "human_governance_decision_required": true,
       "pre_evaluation_pr_number": 17,
@@ -107,22 +108,22 @@
       "expected_artifact_contract": "FAIL",
       "prediction_contract": "PASS",
       "protected_hashes": "PASS",
-      "next_receiver": "B",
+      "next_receiver": "HUMAN",
       "evidence": "coordination/inbox/E/exp_001_pre_evaluation_readiness.md"
     }
   },
   "setup_decision": {
-    "decision": "REJECT",
-    "decided_at_utc": "2026-08-30T09:54:00Z",
-    "subject": "PR #18 artifact contract setup result",
-    "reason": "the merged change does not close the formal E audit entry-point and cross-hash requirements",
+    "decision": "HUMAN_DECISION_REQUIRED",
+    "decided_at_utc": "2026-08-30T10:05:10Z",
+    "subject": "PR #20 technical artifact completion with repeated cross-role ownership conflict",
+    "reason": "technical checks pass, but the second cross-role ownership incident requires explicit human disposition before E acceptance or real-valid authorization",
     "score_comparison_performed": false,
     "formal_metrics_available": false,
     "repair_sequence": [
-      "B repairs validator-level resolved-config and prediction/checkpoint cross-hash checks with B-owned tests",
-      "E wires tools.audit_run.audit_manifest to the validated artifact-byte helper without evaluating real data",
-      "B supplies audit entry-point regression tests unless a human explicitly approves an E cross-role test exception",
-      "E repeats pre-evaluation review before A considers REAL_VALID_RUN_ALLOWED"
+      "human ratifies the exact PR #20 tools/audit_run.py cross-role change or requires revert and E reimplementation",
+      "human confirms how PR #15 and PR #20 satisfied the temporary manual merge gate",
+      "A appends the resulting decision to governance/manual_interventions.jsonl",
+      "E independently repeats pre-evaluation review before A considers REAL_VALID_RUN_ALLOWED"
     ]
   },
   "github_branch_protection": {

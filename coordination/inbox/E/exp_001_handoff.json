@@ -2,10 +2,10 @@
   "schema_version": 1,
   "contract_type": "handoff",
   "experiment_id": "exp_001",
-  "approved_against_commit_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
+  "approved_against_commit_sha": "1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c",
   "from_role": "A",
   "to_role": "E",
-  "status": "WAIT_FOR_IMMUTABLE_B_OUTPUT_AFTER_REAL_VALID_GATE",
+  "status": "WAIT_FOR_HUMAN_PR_20_RATIFICATION_THEN_INDEPENDENT_REREVIEW",
   "required_changes": [
     "pre-review manifest and evidence schema while waiting; do not score before immutable B valid predictions exist",
     "accept experiment_id and runtime commit_sha in evaluation evidence and record evaluator_role=E",
@@ -15,12 +15,13 @@
     "do not repair the runner, training, configuration, or candidate predictions"
   ],
   "setup_review": {
-    "technical_status": "READY",
+    "technical_status": "PR_20_LOCAL_VERIFICATION_PASS_PENDING_E_REREVIEW",
     "b_accepts_pr_10_validator_and_test_changes": true,
     "cross_role_governance_exception_recorded": false,
     "human_decision_required": true,
+    "pr_20_cross_role_exception_recorded": false,
     "decision_request": "coordination/inbox/A/exp_001_real_valid_gate_decision_request.json"
   },
-  "next_action": "remain idle until B supplies immutable valid-only artifacts after A explicitly opens REAL_VALID_RUN_ALLOWED",
+  "next_action": "remain idle until the human decision for PR #20 is recorded; then independently rereview the merged artifact validator and audit entry point without training, formal metrics, or test access",
   "experiment_spec": "experiments/exp_001.json"
 }

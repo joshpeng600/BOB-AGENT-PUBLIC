@@ -3,26 +3,35 @@
   "contract_type": "decision_request",
   "experiment_id": "exp_001",
   "request_id": "exp_001-real-valid-gate-20260830",
-  "requested_at_utc": "2026-08-30T09:15:21Z",
+  "requested_at_utc": "2026-08-30T10:05:10Z",
   "requested_by_role": "A",
-  "approved_against_commit_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
-  "trigger": "cross-role ownership exception and temporary manual-gate completion",
-  "summary": "D setup, C real-data pair readiness, and B readiness are complete and PR #15 is merged, but a human must decide the PR #10 cross-role ownership exception and confirm or record how PR #15 satisfied the temporary human-review gate before A can authorize a real valid-only run.",
+  "approved_against_commit_sha": "1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c",
+  "trigger": "repeated cross-role ownership exception and temporary manual-gate completion",
+  "summary": "PR #20 technically closes the immutable artifact contract, but B modified E-owned tools/audit_run.py without a matching manual intervention and its readiness incorrectly says no E-owned audit logic changed. This repeats the PR #10 cross-role ownership class. A requires a human disposition of the exact PR #20 change and confirmation of the PR #15/PR #20 temporary manual gates before E rereview or any real valid-only authorization.",
   "evidence_paths": [
     "coordination/inbox/C/exp_001_real_data_readiness.md",
     "coordination/inbox/D/setup_result.md",
     "coordination/inbox/E/setup_result.md",
     "coordination/inbox/B/exp_001_freeze_readiness.md",
+    "coordination/inbox/B/exp_001_artifact_contract_readiness.md",
+    "coordination/inbox/E/exp_001_pre_evaluation_readiness.md",
     "coordination/current_state.json",
     "governance/manual_interventions.jsonl"
   ],
   "observations": {
-    "main_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
+    "main_sha": "1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c",
     "d_setup_pr_14": "MERGED",
     "b_readiness_pr_15": "MERGED_CHECKS_PASS_NO_FORMAL_REVIEW_ENTRY",
     "b_readiness_head_sha": "2ff640d3b695d8b6e3a4ee05ea2b07038e5ac43c",
     "b_readiness_merge_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
     "b_readiness_merged_by_non_bot": "LedCalamity",
+    "artifact_fix_pr_20": "MERGED_TECHNICAL_PASS_GOVERNANCE_EXCEPTION_MISSING",
+    "artifact_fix_head_sha": "adee38640b589bd618963c3d637977f97e9ec783",
+    "artifact_fix_implementation_sha": "24235daf9a0a5e6d4272aa16270befd9cb18bb2b",
+    "artifact_fix_merge_sha": "1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c",
+    "artifact_fix_local_verification": "pytest 85, unittest 85/85, audit 20/20, repository/protected/prediction contracts PASS",
+    "pr_20_cross_role_change": "B changed E-owned tools/audit_run.py without a matching manual intervention; its accompanying tests/test_audit.py change remained within B test ownership",
+    "repeated_cross_role_failure": true,
     "pytest_policy_blocker": false,
     "pytest_basis": "AGENTS.md requires python3 -m unittest discover -s tests -v; the temporary manual gate names four Actions checks, all of which pass; latest B evidence also reports pytest PASS",
     "test_access": false,
@@ -30,12 +39,12 @@
   },
   "options": [
     {
-      "id": "approve_governance_exceptions",
-      "effect": "approve and record the PR #10 cross-role exception and confirm the non-bot PR #15 merge as satisfying the temporary human-review gate; A may then open REAL_VALID_RUN_ALLOWED"
+      "id": "ratify_exact_cross_role_changes_and_manual_gates",
+      "effect": "ratify the exact PR #10 and PR #20 cross-role changes, confirm PR #15 and PR #20 satisfied the temporary human-review/four-check gate, and authorize A to append precise completion records; E must still independently rereview before A may consider REAL_VALID_RUN_ALLOWED"
     },
     {
-      "id": "require_governance_followup",
-      "effect": "require an ownership-correct B follow-up for PR #10 and/or a separate PR #15 manual-gate completion record before A opens REAL_VALID_RUN_ALLOWED"
+      "id": "require_ownership_correct_repair",
+      "effect": "do not ratify PR #20 cross-role scope; require reverting the tools/audit_run.py portion and have E reimplement it on E-Part, with B retaining ownership of tests"
     }
   ],
   "automation_scope": "REAL_VALID_RUN_ONLY",

@@ -2,10 +2,10 @@
   "schema_version": 1,
   "contract_type": "handoff",
   "experiment_id": "exp_001",
-  "approved_against_commit_sha": "6b71af7fce0bbc4b1da5908b5f698da9a5f16a68",
+  "approved_against_commit_sha": "1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c",
   "from_role": "A",
   "to_role": "B",
-  "status": "ACTION_REQUIRED_POST_PR_18_VALIDATOR_REPAIR",
+  "status": "TECHNICAL_COMPLETE_PR_20_PENDING_HUMAN_RATIFICATION_AND_E_REREVIEW",
   "branch": "B-Part",
   "branch_sync_commands": [
     "git fetch origin",
@@ -65,23 +65,23 @@
     "evidence": "coordination/inbox/E/exp_001_pre_evaluation_readiness.md"
   },
   "artifact_fix_pr_review": {
-    "pr_number": 18,
-    "head_sha": "66451f58a76a403af062c6e98d9d859e750a4cf3",
-    "implementation_sha": "4fd009818a27afa198b49bf037aa24d48c2aa5b1",
-    "merge_sha": "6b71af7fce0bbc4b1da5908b5f698da9a5f16a68",
-    "status": "MERGED_REJECTED_NONCOMPLIANT",
+    "pr_number": 20,
+    "head_sha": "adee38640b589bd618963c3d637977f97e9ec783",
+    "implementation_sha": "24235daf9a0a5e6d4272aa16270befd9cb18bb2b",
+    "merge_sha": "1ae9a35d9324948ca6cac5af2f7b56cf588dcd2c",
+    "status": "TECHNICAL_PASS_GOVERNANCE_HUMAN_DECISION_REQUIRED",
     "passing_evidence": [
-      "clean pytest 79 passed",
-      "clean unittest 79 of 79 passed",
+      "clean pytest 85 passed",
+      "clean unittest 85 of 85 passed",
+      "clean audit tests 20 of 20 passed",
       "repository contracts passed",
       "protected hashes passed",
       "prediction contract passed"
     ],
     "required_followup": [
-      "wire validate_artifact_files into tools.audit_run.audit_manifest using the manifest parent as artifact root",
-      "add audit_manifest tests that reject missing and tampered artifact files",
-      "verify resolved_config.json parses to the same object as manifest.config and hashes to config_hash",
-      "verify prediction_hash and checkpoint_hash equal their artifact entries as well as actual file bytes"
+      "human disposition of the unrecorded B modification to E-owned tools/audit_run.py",
+      "human confirmation of temporary manual-gate compliance for PR #15 and PR #20",
+      "independent E technical rereview after the human decision is recorded"
     ]
   },
   "ownership_boundary": {
@@ -95,7 +95,7 @@
     ],
     "rule": "B must not modify tools/audit_run.py without an explicit recorded human exception; E must not modify B-owned tests without an explicit recorded human exception"
   },
-  "next_action": "on existing B-Part after syncing main, create a follow-up PR that closes validator-level resolved-config and prediction/checkpoint cross-hash gaps with synthetic B-owned tests; do not modify audit_run, run real data, or access test; after merge return to E for audit entry-point wiring",
+  "next_action": "B takes no further action unless A or E identifies a technical defect; wait for the human cross-role/manual-gate decision and independent E rereview; do not run real data or access test",
   "rollback_config": "configs/approved/baseline_fm.json",
   "experiment_spec": "experiments/exp_001.json"
 }
