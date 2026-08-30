@@ -121,6 +121,7 @@
     ],
     "required_behavior": [
       "audit acceptance binds experiment_id, run variant, experiment_spec_path/hash, config_path/raw hash, and resolved config to the approved exp_001 baseline or candidate route",
+      "use config_input_hash exclusively for the raw SHA-256 of config_path bytes; preserve config_hash as the stable canonical hash of the fully resolved manifest.config object",
       "forged experiment/config route combinations fail closed before evidence acceptance",
       "B-owned tests reproduce and reject both forged audit routing and prediction replacement during E evaluation",
       "no real data, formal metrics, or test access during repair"

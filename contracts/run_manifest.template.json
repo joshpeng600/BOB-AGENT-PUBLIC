@@ -10,8 +10,10 @@
   "executor_role": "B",
   "experiment_spec_path": "experiments/exp_NNN.json",
   "experiment_spec_hash": "REPLACE_WITH_EXPERIMENT_SPEC_SHA256",
+  "run_variant": "baseline|candidate",
   "config_path": "configs/candidates/example.json",
-  "config_hash": "REPLACE_WITH_CONFIG_SHA256",
+  "config_input_hash": "REPLACE_WITH_RAW_REPOSITORY_CONFIG_FILE_SHA256",
+  "config_hash": "REPLACE_WITH_CANONICAL_RESOLVED_CONFIG_OBJECT_SHA256",
   "config": {
     "model": "REPLACE_ME"
   },

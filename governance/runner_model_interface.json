@@ -2,7 +2,7 @@
   "schema_version": 2,
   "decision": "B_RUNNER_ADAPTS_D_NATIVE_INTERFACE",
   "approved_by_role": "A",
-  "approved_against_commit_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
+  "approved_against_commit_sha": "75a7ff6afcf9e44abb84718dc7a910e28bc0294a",
   "runner_owner": "B",
   "model_owner": "D",
   "model_entry": "src.models.FactorizationMachine",
@@ -36,12 +36,22 @@
     "worktree_clean",
     "commands",
     "executor_role",
+    "experiment_spec_path",
+    "experiment_spec_hash",
+    "run_variant",
+    "config_path",
+    "config_input_hash",
     "protected_hashes",
     "data_hash",
     "config_hash",
     "prediction_hash",
     "checkpoint_hash"
   ],
+  "manifest_hash_semantics": {
+    "experiment_spec_hash": "raw SHA-256 of the approved experiment_spec_path file bytes",
+    "config_input_hash": "raw SHA-256 of the approved config_path file bytes",
+    "config_hash": "stable canonical JSON hash of the fully resolved run config recorded in run_manifest.config"
+  },
   "executor_role": "B",
   "objective_routes": {
     "pointwise_binary_cross_entropy": "src.training.fit_pointwise",
