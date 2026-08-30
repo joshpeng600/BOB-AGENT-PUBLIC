@@ -254,6 +254,50 @@ class RunExperimentTests(unittest.TestCase):
             self.assertEqual(manifest["exit_code"], 1)
             self.assertIn("artifact hash mismatch", manifest["error"])
 
+    def test_executed_config_drift_cannot_leave_a_completed_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            data_dir = make_pair_dataset(base / "data")
+            output_dir = base / "run"
+            candidate_path = base / "candidate.json"
+            baseline_path = base / "baseline.json"
+            spec_path = base / "experiment.json"
+            write_json(candidate_path, candidate_config())
+            write_json(baseline_path, pointwise_config())
+            write_json(spec_path, approved_spec(candidate_path, baseline_path))
+            argv = [
+                "run_experiment.py",
+                "--experiment-spec", str(spec_path),
+                "--config", str(candidate_path),
+                "--data-dir", str(data_dir),
+                "--output-dir", str(output_dir),
+                "--seed", "0",
+                "--max-batches", "1",
+                "--mode", "valid-only",
+            ]
+            with (
+                patch.object(sys, "argv", argv),
+                patch(
+                    "tools.run_experiment._git_state",
+                    return_value=(COMMIT_SHA, True),
+                ),
+                patch("tools.run_experiment._git_is_ancestor", return_value=True),
+                patch(
+                    "tools.run_experiment.execute",
+                    return_value={"resolved_config": {"drifted": True}},
+                ),
+                redirect_stderr(StringIO()),
+            ):
+                self.assertEqual(main(), 1)
+
+            manifest = json.loads(
+                (output_dir / "run_manifest.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(manifest["status"], "failed")
+            self.assertEqual(manifest["exit_code"], 1)
+            self.assertEqual(manifest["artifacts"], [])
+            self.assertIn("executed resolved config", manifest["error"])
+
     def test_only_explicit_transient_error_is_retried_once(self) -> None:
         calls = 0
 

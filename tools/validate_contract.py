@@ -290,6 +290,14 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
                 "completed run is missing required artifacts: "
                 + ", ".join(sorted(missing_artifacts))
             )
+        extra_artifacts = artifact_paths.difference(REQUIRED_COMPLETED_ARTIFACTS)
+        if extra_artifacts:
+            raise ValidationError(
+                "completed run has unexpected artifacts: "
+                + ", ".join(sorted(extra_artifacts))
+            )
+        if document["config_hash"] != stable_json_hash(document["config"]):
+            raise ValidationError("config_hash does not match run_manifest.config")
         if document["prediction_hash"] != artifact_hashes["valid_predictions.csv"]:
             raise ValidationError(
                 "prediction_hash must match the valid_predictions.csv artifact hash"
@@ -335,11 +343,12 @@ def validate_artifact_files(document: dict[str, Any], artifact_root: Path) -> No
         resolved_paths[relative.as_posix()] = candidate
 
     resolved_config = read_json(resolved_paths["resolved_config.json"])
-    if resolved_config != document["config"]:
+    resolved_config_hash = stable_json_hash(resolved_config)
+    if resolved_config_hash != stable_json_hash(document["config"]):
         raise ValidationError(
             "resolved_config.json content must equal run_manifest.config"
         )
-    if stable_json_hash(resolved_config) != document["config_hash"]:
+    if resolved_config_hash != document["config_hash"]:
         raise ValidationError(
             "resolved_config.json canonical hash must equal run_manifest.config_hash"
         )

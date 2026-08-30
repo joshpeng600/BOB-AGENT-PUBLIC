@@ -36,6 +36,27 @@
   "commands": [],
   "prediction_hash": "REPLACE_WITH_PREDICTION_SHA256",
   "checkpoint_hash": "REPLACE_WITH_CHECKPOINT_SHA256",
-  "artifacts": [],
+  "artifacts": [
+    {
+      "path": "valid_predictions.csv",
+      "sha256": "REPLACE_WITH_PREDICTION_SHA256"
+    },
+    {
+      "path": "checkpoint.npz",
+      "sha256": "REPLACE_WITH_CHECKPOINT_SHA256"
+    },
+    {
+      "path": "resolved_config.json",
+      "sha256": "REPLACE_WITH_RAW_RESOLVED_CONFIG_FILE_SHA256"
+    },
+    {
+      "path": "training_history.json",
+      "sha256": "REPLACE_WITH_TRAINING_HISTORY_SHA256"
+    },
+    {
+      "path": "runner_metrics.json",
+      "sha256": "REPLACE_WITH_RUNNER_METRICS_SHA256"
+    }
+  ],
   "status": "completed|failed|stopped"
 }

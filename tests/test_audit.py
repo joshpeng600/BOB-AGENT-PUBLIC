@@ -210,8 +210,11 @@ class ArtifactAuditTests(unittest.TestCase):
     def test_audit_manifest_rejects_resolved_config_semantic_mismatch(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
+            self.config = {"value": 1}
+            self.manifest["config"] = self.config
+            self.manifest["config_hash"] = stable_json_hash(self.config)
             manifest_path = self._write_package(root)
-            write_json(root / "resolved_config.json", {"model": "different"})
+            write_json(root / "resolved_config.json", {"value": 1.0})
             manifest = self._audit_input_with_current_hashes(root, manifest_path)
             write_json(manifest_path, manifest)
             with self.assertRaisesRegex(SecurityError, "content must equal"):

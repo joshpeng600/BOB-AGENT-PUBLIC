@@ -555,6 +555,14 @@ def main() -> int:
             ), attempts,
         )
         manifest["retry_count"] = retries
+        executed_config = result.get("resolved_config")
+        if (
+            not isinstance(executed_config, dict)
+            or stable_json_hash(executed_config) != manifest["config_hash"]
+        ):
+            raise ValidationError(
+                "executed resolved config does not match the preflight-bound config"
+            )
         final_commit, final_clean = _git_state(repo_root)
         if final_commit != commit_sha or not final_clean:
             raise ValidationError("Git commit/worktree changed during execution")
