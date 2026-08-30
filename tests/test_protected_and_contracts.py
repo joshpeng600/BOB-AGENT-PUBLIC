@@ -78,7 +78,16 @@ def canonical_documents() -> dict[str, dict[str, object]]:
             "commands": ["python tools/run_experiment.py --mode valid-only"],
             "prediction_hash": DIGEST,
             "checkpoint_hash": DIGEST,
-            "artifacts": [{"path": "valid_predictions.csv", "sha256": DIGEST}],
+            "artifacts": [
+                {"path": path, "sha256": DIGEST}
+                for path in (
+                    "valid_predictions.csv",
+                    "checkpoint.npz",
+                    "resolved_config.json",
+                    "training_history.json",
+                    "runner_metrics.json",
+                )
+            ],
             "status": "completed",
         },
         "metrics": {
@@ -173,6 +182,22 @@ class ProtectedAndContractTests(unittest.TestCase):
         manifest = deepcopy(canonical_documents()["run-manifest"])
         manifest["config"] = {"evaluation_split": "test"}
         with self.assertRaisesRegex(ValidationError, "test split denied"):
+            validate_contract("run-manifest", manifest)
+
+    def test_completed_run_requires_a_complete_unique_safe_artifact_inventory(self) -> None:
+        manifest = deepcopy(canonical_documents()["run-manifest"])
+        manifest["artifacts"] = manifest["artifacts"][:-1]
+        with self.assertRaisesRegex(ValidationError, "missing required artifacts"):
+            validate_contract("run-manifest", manifest)
+
+        manifest = deepcopy(canonical_documents()["run-manifest"])
+        manifest["artifacts"].append(deepcopy(manifest["artifacts"][0]))
+        with self.assertRaisesRegex(ValidationError, "duplicate artifact path"):
+            validate_contract("run-manifest", manifest)
+
+        manifest = deepcopy(canonical_documents()["run-manifest"])
+        manifest["artifacts"][0]["path"] = "../valid_predictions.csv"
+        with self.assertRaisesRegex(ValidationError, "normalized relative path"):
             validate_contract("run-manifest", manifest)
 
 

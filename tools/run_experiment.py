@@ -33,7 +33,7 @@ from tools.common import (
 )
 from tools.preflight import inspect_data
 from tools.project_security import verify_protected_files
-from tools.validate_contract import validate_contract
+from tools.validate_contract import validate_artifact_files, validate_contract
 
 
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
@@ -568,14 +568,21 @@ def main() -> int:
         manifest["artifacts"] = [
             {"path": "valid_predictions.csv", "sha256": result["prediction_hash"]},
             {"path": "checkpoint.npz", "sha256": result["checkpoint_hash"]},
+            {
+                "path": "resolved_config.json",
+                "sha256": sha256_file(output_dir / "resolved_config.json"),
+            },
             {"path": "training_history.json", "sha256": sha256_file(result["history_path"])},
             {"path": "runner_metrics.json", "sha256": sha256_file(result["runner_metrics_path"])},
         ]
+        validate_artifact_files(manifest, output_dir)
         log_lines.extend((
             f"batches_seen={result['batches_seen']}", f"retry_count={retries}",
             "status=completed",
         ))
     except Exception as exc:
+        manifest["status"] = "failed"
+        manifest["exit_code"] = 1
         manifest["error"] = str(exc)
         log_lines.extend(("status=failed", f"error={exc}", traceback.format_exc()))
     finally:

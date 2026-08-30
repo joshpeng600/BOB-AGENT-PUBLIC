@@ -10,13 +10,20 @@ from typing import Any
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tools.common import VALID_END, ValidationError, read_json
+from tools.common import VALID_END, ValidationError, read_json, sha256_file
 
 
 FULL_SHA = re.compile(r"[0-9a-f]{40}")
 SHA256 = re.compile(r"[0-9a-f]{64}")
 EXPERIMENT_ID = re.compile(r"exp[-_][A-Za-z0-9][A-Za-z0-9_-]*")
 FORBIDDEN_ALIASES = {"exp_id", "base_commit", "commit", "frozen_commit"}
+REQUIRED_COMPLETED_ARTIFACTS = {
+    "valid_predictions.csv",
+    "checkpoint.npz",
+    "resolved_config.json",
+    "training_history.json",
+    "runner_metrics.json",
+}
 
 REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "experiment_spec": (
@@ -238,10 +245,20 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
     if data.get("split") != "valid":
         raise ValidationError("run manifest data.split must be valid")
     artifacts = _require_list(document["artifacts"], "artifacts")
+    artifact_paths: set[str] = set()
     for index, artifact in enumerate(artifacts):
         item = _require_object(artifact, f"artifacts[{index}]")
-        if not isinstance(item.get("path"), str) or not item["path"]:
+        raw_path = item.get("path")
+        if not isinstance(raw_path, str) or not raw_path:
             raise ValidationError(f"artifacts[{index}].path is required")
+        path = Path(raw_path)
+        if path.is_absolute() or ".." in path.parts or path.as_posix() != raw_path:
+            raise ValidationError(
+                f"artifacts[{index}].path must be a normalized relative path"
+            )
+        if raw_path in artifact_paths:
+            raise ValidationError(f"duplicate artifact path: {raw_path}")
+        artifact_paths.add(raw_path)
         _validate_sha256(item.get("sha256"), f"artifacts[{index}].sha256")
     if document["status"] == "completed":
         if document["worktree_clean"] is not True:
@@ -249,6 +266,33 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
         for field in ("config_hash", "data_hash", "prediction_hash", "checkpoint_hash"):
             _validate_sha256(document[field], field)
         _validate_hash_map(document["protected_hashes"], "protected_hashes")
+        missing_artifacts = REQUIRED_COMPLETED_ARTIFACTS.difference(artifact_paths)
+        if missing_artifacts:
+            raise ValidationError(
+                "completed run is missing required artifacts: "
+                + ", ".join(sorted(missing_artifacts))
+            )
+
+
+def validate_artifact_files(document: dict[str, Any], artifact_root: Path) -> None:
+    """Verify every declared artifact against bytes below the run directory."""
+    validate_contract("run_manifest", document)
+    root = artifact_root.resolve()
+    for index, artifact in enumerate(document["artifacts"]):
+        relative = Path(artifact["path"])
+        candidate = (root / relative).resolve()
+        if candidate.parent != root:
+            raise ValidationError(
+                f"artifacts[{index}].path must name a file directly below the run directory"
+            )
+        if not candidate.is_file():
+            raise ValidationError(f"artifact file is missing: {relative.as_posix()}")
+        actual = sha256_file(candidate)
+        if actual != artifact["sha256"]:
+            raise ValidationError(
+                f"artifact hash mismatch for {relative.as_posix()}: "
+                f"expected {artifact['sha256']}, observed {actual}"
+            )
 
 
 def _validate_metrics(document: dict[str, Any]) -> None:
@@ -316,13 +360,21 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate a canonical team JSON contract.")
     parser.add_argument("--type", required=True, choices=choices)
     parser.add_argument("--path", required=True, type=Path)
+    parser.add_argument(
+        "--artifact-root",
+        type=Path,
+        help="Run directory used to verify completed run-manifest artifact bytes.",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     try:
-        validate_contract(args.type, read_json(args.path))
+        document = read_json(args.path)
+        validate_contract(args.type, document)
+        if _canonical_type(args.type) == "run_manifest" and document.get("status") == "completed":
+            validate_artifact_files(document, args.artifact_root or args.path.resolve().parent)
     except ValidationError as exc:
         print("CONTRACT=FAIL", file=sys.stderr)
         print(f"ERROR={exc}", file=sys.stderr)
