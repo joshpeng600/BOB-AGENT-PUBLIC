@@ -5,7 +5,7 @@
   "next_receiver": "B",
   "approved_against_commit_sha": "05dff207484eda385c943dde57742eaf535a6906",
   "blocked_by": [
-    "E pre-evaluation review requires B to complete the required artifact set, hash resolved_config.json, and make audit_run verify every declared artifact against its file bytes",
+    "B PR #18 is changes-required: it completes the runner inventory and validator CLI byte checks, but tools.audit_run still does not verify artifact files, resolved_config.json is not cross-checked against manifest.config/config_hash, and prediction/checkpoint top-level hashes are not contractually cross-checked with artifact entries",
     "human decision for the PR #10 cross-role ownership exception",
     "human confirmation or completion record for PR #15 temporary manual-gate review; GitHub records a non-bot merge but no formal review entry"
   ],
@@ -36,7 +36,7 @@
     }
   },
   "role_statuses": {
-    "B": "ACTION_REQUIRED_ARTIFACT_CONTRACT_FIX",
+    "B": "CHANGES_REQUIRED_PR_18_ARTIFACT_AUDIT_INCOMPLETE",
     "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
     "D": "SETUP_READY_NO_ACTION_REQUIRED",
     "E": "PRE_EVALUATION_BLOCKED_WAIT_FOR_B_ARTIFACT_FIX"
@@ -72,6 +72,28 @@
       "pytest_policy_blocker": false,
       "pytest_basis": "AGENTS.md requires unittest and the temporary manual gate requires four named Actions checks; latest B evidence additionally reports pytest PASS",
       "evidence": "coordination/inbox/B/exp_001_freeze_readiness.md"
+    },
+    "b_artifact_fix_review": {
+      "pr_number": 18,
+      "github_pr_head_ref_present": true,
+      "head_sha": "66451f58a76a403af062c6e98d9d859e750a4cf3",
+      "implementation_sha": "4fd009818a27afa198b49bf037aa24d48c2aa5b1",
+      "review_status": "CHANGES_REQUIRED",
+      "local_clean_pytest": "PASS_79",
+      "local_clean_unittest": "PASS_79_OF_79",
+      "github_checks": "NOT_VERIFIED_BY_GIT_REFS",
+      "completed": [
+        "five required artifact paths in completed manifests",
+        "raw SHA-256 entry for resolved_config.json",
+        "validator CLI file-byte verification",
+        "missing, duplicate, traversal, and artifact tamper regression coverage"
+      ],
+      "remaining": [
+        "tools.audit_run must invoke artifact byte verification relative to the manifest directory",
+        "audit_manifest tests must reject missing and tampered artifact files",
+        "resolved_config.json content and canonical hash must match manifest.config and config_hash",
+        "prediction_hash and checkpoint_hash must match their artifact entries and actual bytes"
+      ]
     },
     "e_setup": {
       "status": "PRE_EVALUATION_BLOCKED_ON_B_ARTIFACT_CONTRACT",
