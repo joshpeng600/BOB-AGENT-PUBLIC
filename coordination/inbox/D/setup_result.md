@@ -1,4 +1,4 @@
-STATUS=SETUP_GAP
+STATUS=SETUP_READY
 
 BASE_MAIN_SHA=c6703454c2a0030c7bdb0ee6bf2af5a3019ca497
 
@@ -122,12 +122,15 @@ on this Windows checkout.
 
 The protected files have no Git diff, and the full repository tests (including normalized
 LF/CRLF equivalence checks) pass. D did not modify, restore, or repin protected files.
-The standalone verifier failure must be resolved by the owning role or a recorded human
-decision; D must not weaken or modify it.
+GitHub PR #14 independently ran `verify-protected-files` on a clean checkout and passed,
+along with the contracts, prediction-contract, and full tests checks. The remaining local
+raw-hash difference is therefore recorded as a Windows checkout environment note, not a
+D model/training readiness gap. D did not weaken or modify the verifier.
 
 ## Not yet verified
 
-- The standalone protected-file verification command on this Windows working tree.
+- A direct PASS from the standalone protected-file command on this Windows working tree;
+  the corresponding GitHub required check passes on PR #14.
 - Real KuaiRand data compatibility, pair coverage, runtime, and memory consumption.
 - Any real baseline or candidate validation metric.
 - Any test-set behavior or metric.
