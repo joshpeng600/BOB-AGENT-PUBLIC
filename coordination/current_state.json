@@ -1,10 +1,11 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_REAL_VALID_GATE_PENDING_HUMAN",
+  "state": "EXP_001_ARTIFACT_CONTRACT_FIX_REQUIRED",
   "owner": "A",
-  "next_receiver": "HUMAN_REVIEWER",
-  "approved_against_commit_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
+  "next_receiver": "B",
+  "approved_against_commit_sha": "05dff207484eda385c943dde57742eaf535a6906",
   "blocked_by": [
+    "E pre-evaluation review requires B to complete the required artifact set, hash resolved_config.json, and make audit_run verify every declared artifact against its file bytes",
     "human decision for the PR #10 cross-role ownership exception",
     "human confirmation or completion record for PR #15 temporary manual-gate review; GitHub records a non-bot merge but no formal review entry"
   ],
@@ -30,19 +31,19 @@
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED_PENDING_HUMAN_GOVERNANCE_DECISIONS",
+      "status": "BLOCKED_PENDING_B_ARTIFACT_CONTRACT_AND_HUMAN_GOVERNANCE_DECISIONS",
       "permits": "nothing until A records a later ALLOWED state on main; test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "READINESS_MERGED_CHECKS_PASS",
+    "B": "ACTION_REQUIRED_ARTIFACT_CONTRACT_FIX",
     "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
     "D": "SETUP_READY_NO_ACTION_REQUIRED",
-    "E": "SETUP_READY_WAIT_FOR_IMMUTABLE_B_OUTPUT"
+    "E": "PRE_EVALUATION_BLOCKED_WAIT_FOR_B_ARTIFACT_FIX"
   },
   "readiness_snapshot": {
-    "observed_at_utc": "2026-08-30T09:15:21Z",
-    "main_sha": "5dd9460d5904b3bf69627b005ebe4ebeb67bafe9",
+    "observed_at_utc": "2026-08-30T09:37:19Z",
+    "main_sha": "05dff207484eda385c943dde57742eaf535a6906",
     "d_setup": {
       "pr_number": 14,
       "status": "MERGED",
@@ -73,10 +74,16 @@
       "evidence": "coordination/inbox/B/exp_001_freeze_readiness.md"
     },
     "e_setup": {
-      "status": "TECHNICALLY_READY_WITH_CROSS_ROLE_EXCEPTION_PENDING",
+      "status": "PRE_EVALUATION_BLOCKED_ON_B_ARTIFACT_CONTRACT",
       "b_technical_acceptance": true,
       "human_governance_decision_required": true,
-      "evidence": "coordination/inbox/E/setup_result.md and PR #15 readiness evidence"
+      "pre_evaluation_pr_number": 17,
+      "pre_evaluation_merge_sha": "05dff207484eda385c943dde57742eaf535a6906",
+      "expected_artifact_contract": "FAIL",
+      "prediction_contract": "PASS",
+      "protected_hashes": "PASS",
+      "next_receiver": "B",
+      "evidence": "coordination/inbox/E/exp_001_pre_evaluation_readiness.md"
     }
   },
   "github_branch_protection": {
