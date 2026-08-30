@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "contract_type": "metrics",
+  "experiment_id": "exp_001",
+  "run_id": "run-20260830T113717692705Z-exp_001-cb61b52a",
+  "baseline_experiment_id": null,
+  "commit_sha": "cb61b52affd5ecdb4095312087400fb482d8301b",
+  "worktree_clean": true,
+  "evaluator_role": "E",
+  "status": "completed",
+  "hypothesis": "The approved pointwise FM baseline reproduces the protected validation reference under the frozen runner and data snapshot.",
+  "code_diff": "Baseline control using configs/approved/baseline_fm.json on the same frozen commit, data, features, seed, and budget as exp_001.",
+  "split": "valid",
+  "metrics": {
+    "GAUC": 0.6671326321610643,
+    "nDCG@5": 0.5358048805448538,
+    "primary": 0.601468756352959,
+    "rows": 124909,
+    "users": 22377,
+    "evaluator_hash": "ecfde28392eb14fec4f488083251df50624e1af2b86278b962daecfb42d195de"
+  },
+  "errors": [],
+  "recovery": [],
+  "manual_interventions": 1,
+  "tokens": 0,
+  "wall_time_seconds": 18.780901,
+  "iterations": 1,
+  "gpu_hours": 0.0,
+  "config": {
+    "source": "configs/approved/baseline_fm.json",
+    "objective": "pointwise_binary_cross_entropy",
+    "seed": 0,
+    "batch_size": 8192,
+    "epochs": 40,
+    "patience": 4
+  },
+  "data": {
+    "dataset": "KuaiRand-Pure",
+    "split": "valid",
+    "hash": "69e5a6f656356832f7e1fa6a9774bc404030f32874e18e57e0f38b6a309a1002",
+    "dev_max_date": 20220428,
+    "test_rows": 0
+  },
+  "seed": 0,
+  "protected_hashes": {
+    "starter/evaluate.py": "ecfde28392eb14fec4f488083251df50624e1af2b86278b962daecfb42d195de",
+    "starter/data.py": "1bf54f5f3a9f590eab2f87f09a3c27422031867a20a5328d56cbd8c7db36e541",
+    "starter/submit.py": "ab01bb2b970ae2a9f2ead299f5240b71ff4126c2d9bb0e0c4de6c7e245dc148c",
+    "starter/baseline_scores.json": "950f98181770c030a68bdddab7be3c0abbf060531f54455a6a6f81a4cb003324"
+  },
+  "artifact_manifest_path": "artifacts/exp_001_baseline/run_manifest.json",
+  "run_manifest_sha256": "6e64cdc883b7e5c9d2630a3785a722331a8559764c400a44f73e2e0ebb12f889",
+  "prediction_hash": "56d317930cd4bacb0fae0f6c6798834a440bc2a6c5a991a50c1ce81f406b86dc",
+  "checkpoint_hash": "3ef70cf9f9fe7af74d6458ef25aff46002ed6fe0b9695e399805d8cd19110b32",
+  "evaluation_output_sha256": "161ea76fcd1e40875b9e469f769cc062758a0a0d03c983ae6122c170e79deaba",
+  "test_access": false
+}
