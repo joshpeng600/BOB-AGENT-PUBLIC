@@ -4,7 +4,7 @@ STATUS=READY_FOR_A_AND_E_ARTIFACT_CONTRACT_REREVIEW
 ROLE=B
 BRANCH=B-Part
 ORIGIN_MAIN_SHA=b7001f693bb412a68398fb2ac47c6c40efe76ca0
-IMPLEMENTATION_COMMIT_SHA=b99cba67224781652079793ba00bac5921593393
+IMPLEMENTATION_COMMIT_SHA=366951c06be3aedddca4f6da7f35e479ed374df4
 WORKTREE_CLEAN_AT_VERIFICATION=true
 EXPERIMENT_ID=exp_001
 E_BLOCKER_SOURCE=coordination/inbox/E/exp_001_pre_evaluation_readiness.md
@@ -13,9 +13,15 @@ ARTIFACT_BYTES_VERIFIED=true
 REQUIRED_ARTIFACT_COUNT=5
 EXACT_ARTIFACT_PATH_SET=true
 EXECUTED_CONFIG_BINDING=true
-FOCUSED_SYNTHETIC_TESTS=PASS_34_OF_34_1_PLATFORM_SKIP
+SPEC_AND_CONFIG_BYTES_FROZEN=true
+DATA_MANIFEST_SOURCE_HASHES_VERIFIED=true
+PRIVATE_EXECUTION_DATA_SNAPSHOT=true
+BASEEXCEPTION_FAIL_CLOSED=true
+FIXED_HANDLE_ARTIFACT_SNAPSHOT=true
+EXPERIMENT_SPEC_HASH_AUDITED=true
+FOCUSED_SYNTHETIC_TESTS=PASS_45_SKIP_1_OF_46
 PYTEST=NOT_RUN_FOR_FOLLOWUP_NOT_REQUIRED_BY_AGENTS_MD
-UNIT_TESTS=PASS_88_OF_88_1_PLATFORM_SKIP
+UNIT_TESTS=PASS_99_SKIP_1_OF_100
 PROTECTED_HASHES=PASS
 REPOSITORY_CONTRACTS=PASS
 PREDICTION_CONTRACT=PASS
@@ -76,12 +82,31 @@ The complete correction provides all of the following:
   default, with an explicit `--artifact-root` override when required;
 - the runner invokes byte verification before it can retain a successful
   manifest;
-- after training, the runner canonically compares the configuration returned by
-  `execute()` with the configuration bound during preflight. A config/spec
-  change between the two reads fails closed rather than producing a completed
-  manifest for a different executed configuration;
-- any late artifact-validation exception resets the manifest to
-  `status=failed` and `exit_code=1`.
+- formal runs accept only repository-owned specs below `experiments/` and
+  configs below `configs/`, so a runner-completed package is also resolvable by
+  the independent auditor;
+- the exact approved spec/config bytes are parsed once, frozen into execution,
+  and rehashed after execution. Changes to either raw input fail closed;
+- when `dataset_manifest.json` exists, every declared source SHA-256 is checked
+  against its actual file bytes. The three sources consumed by `starter.data`
+  are then copied through fixed no-follow handles into a private verified
+  execution snapshot, so temporary source replacement cannot influence the
+  loader and then be hidden by restoration;
+- the original manifest and all declared source hashes are checked again after
+  execution, and the per-source hashes are recorded in `run_manifest.data`;
+- artifact validation opens every formal output once through a no-follow file
+  descriptor, keeps all handles open, hashes each handle repeatedly, parses
+  `resolved_config.json` from the captured bytes rather than reopening its
+  path, and rechecks both path identity and handle bytes at the end;
+- `experiment_spec_hash` is mandatory for completed run manifests, and
+  `tools/audit_run.py` compares it with the actual repository spec bytes;
+- `status=completed` is constructed in a separate candidate manifest and is
+  assigned only after artifact verification succeeds. `KeyboardInterrupt`,
+  `SystemExit`, and other `BaseException` paths persist `status=failed` and a
+  nonzero exit code before propagation;
+- `tools/safe_evaluate.py` independently hashes the immutable prediction both
+  before and after evaluator consumption and records that hash for E's
+  cross-check against the audited manifest.
 
 ## Changed implementation
 
@@ -103,17 +128,17 @@ B's authorized implementation scope.
 Implementation commit:
 
 ```text
-b99cba67224781652079793ba00bac5921593393
+366951c06be3aedddca4f6da7f35e479ed374df4
 ```
 
 Results:
 
 ```text
 python -m unittest tests.test_run_experiment tests.test_protected_and_contracts tests.test_audit -v
-PASS: 34/34, 1 Windows privilege skip
+PASS: 45 passed, 1 Windows privilege skip (46 total)
 
 python -m unittest discover -s tests -v
-PASS: 88/88, 1 Windows privilege skip
+PASS: 99 passed, 1 Windows privilege skip (100 total)
 
 python scripts/check_repository_contracts.py
 PASS: 22 JSON files plus JSONL/TOML
@@ -131,13 +156,20 @@ git diff -- starter/
 PASS: no diff
 ```
 
-Synthetic regression coverage verifies the complete inventory, audit entry
-point, file-byte and cross-hash matching, resolved-config semantic binding,
-executed-config drift rejection, tamper rejection,
-missing/extra/duplicate/traversal/symlink rejection, and fail-closed manifest
-status. The symlink regression is present and executes on platforms
+Synthetic regression coverage verifies the complete inventory, runner-to-audit
+compatibility, file-byte and cross-hash matching, fixed-handle resolved-config
+semantic binding, raw spec/config drift rejection, every declared dataset
+source hash, persistent and restored CSV replacement, `KeyboardInterrupt`
+fail-closed status, post-hash artifact replacement, and
+missing/extra/duplicate/traversal/symlink rejection. The symlink regression is
+present and executes on platforms
 that permit unprivileged symlink creation; this Windows account denied creation
 with WinError 1314. Synthetic outputs are not formal evaluation input.
+
+No completed formal run evidence predates this contract correction. The
+strengthened version-1 validator intentionally rejects any earlier incomplete
+manifest that lacks `experiment_spec_hash` or the exact five-file inventory;
+such a manifest was never acceptable formal evidence.
 
 E should re-review only the artifact-package blocker after this implementation
 is merged. The two human governance decisions in `coordination/current_state.json`
