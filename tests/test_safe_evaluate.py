@@ -156,6 +156,109 @@ class SafeEvaluateIntegrationTests(unittest.TestCase):
         self.assertIn("must not overwrite", stdout.getvalue())
         self.assertEqual(self.prediction.read_bytes(), before)
 
+    def test_temporary_swap_and_restore_cannot_change_evaluated_bytes(self):
+        self.write_log(
+            "log_standard_4_08_to_4_21_pure.csv",
+            [{"date": 20220421, "user_id": "train", "video_id": "v0", "long_view": "0"}],
+        )
+        self.write_log(
+            "log_standard_4_22_to_5_08_pure.csv",
+            [
+                {"date": 20220422, "user_id": "u1", "video_id": "v1", "long_view": "1"},
+                {"date": 20220422, "user_id": "u1", "video_id": "v2", "long_view": "0"},
+            ],
+        )
+        original = b"row_id,user_id,video_id,score\n0,u1,v1,0.9\n1,u1,v2,0.1\n"
+        replacement = b"row_id,user_id,video_id,score\n0,u1,v1,0.1\n1,u1,v2,0.9\n"
+        self.prediction.write_bytes(original)
+        validator = safe_evaluate.validate_prediction_file
+
+        def swap_source(snapshot, rows):
+            original_path = self.root / "original.csv"
+            replacement_path = self.root / "replacement.csv"
+            replacement_path.write_bytes(replacement)
+            self.prediction.replace(original_path)
+            replacement_path.replace(self.prediction)
+            try:
+                return validator(snapshot, rows)
+            finally:
+                self.prediction.unlink()
+                original_path.replace(self.prediction)
+
+        argv = [
+            "safe_evaluate", "--prediction", str(self.prediction), "--split", "valid",
+            "--data-dir", str(self.data_dir), "--output", str(self.output),
+        ]
+        stdout = io.StringIO()
+        with (
+            patch.object(sys, "argv", argv),
+            patch.object(safe_evaluate, "git_is_dirty", return_value=False),
+            patch.object(safe_evaluate, "git_head", return_value="a" * 40),
+            patch.object(safe_evaluate, "validate_prediction_file", side_effect=swap_source),
+            contextlib.redirect_stdout(stdout),
+        ):
+            self.assertEqual(safe_evaluate.main(), 1)
+        self.assertIn("Prediction path changed", stdout.getvalue())
+        self.assertFalse(self.output.exists())
+
+    def test_permanent_prediction_replacement_fails_closed(self):
+        self.write_log(
+            "log_standard_4_08_to_4_21_pure.csv",
+            [{"date": 20220421, "user_id": "train", "video_id": "v0", "long_view": "0"}],
+        )
+        self.write_log(
+            "log_standard_4_22_to_5_08_pure.csv",
+            [
+                {"date": 20220422, "user_id": "u1", "video_id": "v1", "long_view": "1"},
+                {"date": 20220422, "user_id": "u1", "video_id": "v2", "long_view": "0"},
+            ],
+        )
+        original = b"row_id,user_id,video_id,score\n0,u1,v1,0.9\n1,u1,v2,0.1\n"
+        self.prediction.write_bytes(original)
+        validator = safe_evaluate.validate_prediction_file
+
+        def replace_source(snapshot, rows):
+            replacement_path = self.root / "replacement.csv"
+            replacement_path.write_bytes(original)
+            replacement_path.replace(self.prediction)
+            return validator(snapshot, rows)
+
+        argv = [
+            "safe_evaluate", "--prediction", str(self.prediction), "--split", "valid",
+            "--data-dir", str(self.data_dir), "--output", str(self.output),
+        ]
+        stdout = io.StringIO()
+        with (
+            patch.object(sys, "argv", argv),
+            patch.object(safe_evaluate, "git_is_dirty", return_value=False),
+            patch.object(safe_evaluate, "git_head", return_value="a" * 40),
+            patch.object(safe_evaluate, "validate_prediction_file", side_effect=replace_source),
+            contextlib.redirect_stdout(stdout),
+        ):
+            self.assertEqual(safe_evaluate.main(), 1)
+        self.assertIn("Prediction path changed", stdout.getvalue())
+        self.assertFalse(self.output.exists())
+
+    def test_prediction_symlink_is_rejected(self):
+        target = self.root / "target.csv"
+        target.write_text("row_id,user_id,video_id,score\n", encoding="utf-8")
+        try:
+            self.prediction.symlink_to(target)
+        except OSError as error:
+            self.skipTest(f"symlink creation is unavailable: {error}")
+        argv = [
+            "safe_evaluate", "--prediction", str(self.prediction), "--split", "valid",
+            "--data-dir", str(self.data_dir), "--output", str(self.output),
+        ]
+        stdout = io.StringIO()
+        with (
+            patch.object(sys, "argv", argv),
+            patch.object(safe_evaluate, "git_is_dirty", return_value=False),
+            contextlib.redirect_stdout(stdout),
+        ):
+            self.assertEqual(safe_evaluate.main(), 1)
+        self.assertIn("ordinary file", stdout.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

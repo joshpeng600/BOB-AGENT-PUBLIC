@@ -60,8 +60,9 @@ REQUIRED_FIELDS: dict[str, tuple[str, ...]] = {
     "run_manifest": (
         "schema_version", "contract_type", "experiment_id", "run_id", "commit_sha",
         "worktree_clean", "started_at_utc", "finished_at_utc", "executor_role",
-        "experiment_spec_path", "experiment_spec_hash", "config_path", "config_hash",
-        "config", "data", "data_hash", "seed", "dev_max_date", "environment",
+        "experiment_spec_path", "experiment_spec_hash", "run_variant", "config_path",
+        "config_input_hash", "config_hash", "config", "data", "data_hash", "seed",
+        "dev_max_date", "environment",
         "protected_hashes", "commands", "prediction_hash", "checkpoint_hash",
         "artifacts", "status",
     ),
@@ -245,6 +246,17 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
         raise ValidationError("worktree_clean must be boolean")
     if document["executor_role"] != "B":
         raise ValidationError("run_manifest executor_role must be B")
+    if document.get("run_variant") not in {None, "baseline", "candidate"}:
+        raise ValidationError("run_variant must be baseline or candidate")
+    if document["status"] == "completed" and document.get("mode") not in {
+        "experiment", "valid-only",
+    }:
+        raise ValidationError("mode must be experiment or valid-only")
+    max_batches = document.get("max_batches")
+    if max_batches is not None and (
+        isinstance(max_batches, bool) or not isinstance(max_batches, int) or max_batches < 1
+    ):
+        raise ValidationError("max_batches must be null or a positive integer")
     commands = _require_list(document["commands"], "commands")
     if not commands or not all(isinstance(command, str) and command.strip() for command in commands):
         raise ValidationError("commands must be a non-empty array of strings")
@@ -287,10 +299,14 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
         if document["worktree_clean"] is not True:
             raise ValidationError("completed run must record worktree_clean=true")
         for field in (
-            "experiment_spec_hash", "config_hash", "data_hash", "prediction_hash",
-            "checkpoint_hash",
+            "experiment_spec_hash", "config_input_hash", "config_hash", "data_hash",
+            "prediction_hash", "checkpoint_hash",
         ):
             _validate_sha256(document[field], field)
+        if document["run_variant"] not in {"baseline", "candidate"}:
+            raise ValidationError("completed run requires baseline or candidate run_variant")
+        if "max_batches" not in document:
+            raise ValidationError("completed run requires max_batches runtime input")
         _validate_hash_map(document["protected_hashes"], "protected_hashes")
         missing_artifacts = REQUIRED_COMPLETED_ARTIFACTS.difference(artifact_paths)
         if missing_artifacts:
@@ -314,6 +330,132 @@ def _validate_run_manifest(document: dict[str, Any]) -> None:
             raise ValidationError(
                 "checkpoint_hash must match the checkpoint.npz artifact hash"
             )
+
+
+def _normalized_repository_file(
+    raw_path: Any, repo_root: Path, required_directory: str, label: str,
+) -> Path:
+    if not isinstance(raw_path, str) or not raw_path:
+        raise ValidationError(f"{label} must be a repository-relative path")
+    path = Path(raw_path)
+    posix_path = PurePosixPath(raw_path)
+    windows_path = PureWindowsPath(raw_path)
+    if (
+        path.is_absolute()
+        or posix_path.is_absolute()
+        or windows_path.is_absolute()
+        or bool(windows_path.drive)
+        or "\\" in raw_path
+        or ".." in posix_path.parts
+        or posix_path.as_posix() != raw_path
+        or not posix_path.parts
+        or posix_path.parts[0] != required_directory
+    ):
+        raise ValidationError(
+            f"{label} must be a normalized path below {required_directory}/"
+        )
+    root = repo_root.resolve()
+    candidate = root.joinpath(*posix_path.parts)
+    current = root
+    try:
+        for part in posix_path.parts:
+            current = current / part
+            metadata = os.lstat(current)
+            if stat.S_ISLNK(metadata.st_mode):
+                raise ValidationError(f"{label} must not traverse a symlink")
+        resolved = candidate.resolve(strict=True)
+        resolved.relative_to(root)
+    except ValidationError:
+        raise
+    except (OSError, ValueError) as exc:
+        raise ValidationError(f"{label} is missing or escapes the repository") from exc
+    if not stat.S_ISREG(os.lstat(resolved).st_mode):
+        raise ValidationError(f"{label} must be an ordinary repository file")
+    return resolved
+
+
+def _read_repository_json_snapshot(path: Path, label: str) -> tuple[Any, str]:
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise ValidationError(f"cannot safely open {label}: {exc}") from exc
+    try:
+        with os.fdopen(descriptor, "rb") as handle:
+            before = os.fstat(handle.fileno())
+            raw = handle.read()
+            after = os.fstat(handle.fileno())
+    except OSError as exc:
+        raise ValidationError(f"cannot read {label}: {exc}") from exc
+    if _artifact_signature(before) != _artifact_signature(after):
+        raise ValidationError(f"{label} changed while reading")
+    try:
+        path_after = os.lstat(path)
+    except OSError as exc:
+        raise ValidationError(f"{label} disappeared while reading") from exc
+    if _artifact_signature(path_after) != _artifact_signature(after):
+        raise ValidationError(f"{label} path changed while reading")
+    try:
+        document = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValidationError(f"invalid JSON in {label}: {exc}") from exc
+    return document, hashlib.sha256(raw).hexdigest()
+
+
+def validate_approved_run_route(
+    document: dict[str, Any], repo_root: Path | None = None,
+) -> None:
+    """Bind completed evidence to the approved spec and repository config bytes."""
+
+    repo_root = (repo_root or Path(__file__).resolve().parents[1]).resolve()
+    spec_path = _normalized_repository_file(
+        document.get("experiment_spec_path"), repo_root, "experiments",
+        "experiment_spec_path",
+    )
+    spec, spec_hash = _read_repository_json_snapshot(spec_path, "experiment spec")
+    if spec_hash != document.get("experiment_spec_hash"):
+        raise ValidationError("experiment_spec_hash does not match approved spec bytes")
+    validate_contract("experiment_spec", spec)
+    if spec.get("status") != "APPROVED_FOR_IMPLEMENTATION":
+        raise ValidationError("experiment spec is not APPROVED_FOR_IMPLEMENTATION")
+    if spec.get("experiment_id") != document.get("experiment_id"):
+        raise ValidationError("manifest experiment_id does not match approved spec")
+
+    variant = document.get("run_variant")
+    if variant == "candidate":
+        expected_config = spec.get("implementation_config")
+    elif variant == "baseline":
+        baseline = _require_object(spec.get("baseline"), "experiment_spec.baseline")
+        expected_config = baseline.get("approved_config")
+    else:
+        raise ValidationError("run_variant must be baseline or candidate")
+    if document.get("config_path") != expected_config:
+        raise ValidationError(f"{variant} config_path does not match approved spec route")
+    config_path = _normalized_repository_file(
+        document.get("config_path"), repo_root, "configs", "config_path"
+    )
+    raw_config, config_input_hash = _read_repository_json_snapshot(
+        config_path, "approved config"
+    )
+    if config_input_hash != document.get("config_input_hash"):
+        raise ValidationError("config_input_hash does not match approved config bytes")
+    raw_config = _require_object(raw_config, "approved config")
+    rebuilt = {
+        **raw_config,
+        "resolved_run": {
+            "experiment_id": document.get("experiment_id"),
+            "run_variant": variant,
+            "seed": document.get("seed"),
+            "max_batches": document.get("max_batches"),
+            "mode": document.get("mode"),
+        },
+    }
+    if rebuilt != document.get("config"):
+        raise ValidationError(
+            "run_manifest.config cannot be rebuilt from approved config and runtime inputs"
+        )
+    if stable_json_hash(rebuilt) != document.get("config_hash"):
+        raise ValidationError("config_hash does not match rebuilt resolved config")
 
 
 def _artifact_signature(metadata: os.stat_result) -> tuple[int, int, int, int, int, int]:
@@ -375,6 +517,7 @@ def validate_artifact_files(document: dict[str, Any], artifact_root: Path) -> No
         raise ValidationError(
             "only a completed run_manifest can be accepted as artifact evidence"
         )
+    validate_approved_run_route(document)
     root = artifact_root.resolve()
     resolved_config_bytes: bytes | None = None
     bindings: list[

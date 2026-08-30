@@ -1,13 +1,12 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_SETUP_SECURITY_REPAIR_REQUIRED_BEFORE_AUTHORIZED_RERUN",
+  "state": "EXP_001_SETUP_SECURITY_REPAIRS_INTEGRATED_PENDING_PR_AND_E_REREVIEW",
   "owner": "A",
-  "next_receiver": "B",
+  "next_receiver": "HUMAN_FOR_MERGE",
   "approved_against_commit_sha": "4c07e03663e7d13f11547546da7cc6ac3ea5ff98",
   "blocked_by": [
-    "tools/audit_run.py verifies experiment_spec_path/hash but does not bind the manifest experiment_id, run variant, and candidate/baseline config route and raw bytes to the approved spec",
-    "tools/safe_evaluate.py hashes a prediction path and later reopens that path for validation, so temporary replacement and restoration can decouple evaluated bytes from prediction_hash",
-    "B and E must close their owned security gaps with B-owned regression tests, then E must independently rereview before A activates the single authorized fresh run"
+    "the integrated B/E setup security repair must merge to main through a conflict-free PR with all four Actions checks passing",
+    "E must independently rereview the merged clean main before A may activate the single authorized fresh run"
   ],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
@@ -31,15 +30,15 @@
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED_PENDING_B_E_SECURITY_REPAIR_AND_E_REREVIEW",
+      "status": "BLOCKED_PENDING_SECURITY_REPAIR_PR_MERGE_AND_E_REREVIEW",
       "permits": "nothing until A records a later ALLOWED state on main; test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "ACTION_REQUIRED_BIND_AUDIT_ROUTE_AND_ADD_SECURITY_REGRESSIONS",
+    "B": "SECURITY_REPAIR_COMPLETE_IN_A_INTEGRATION_PENDING_MERGE",
     "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
     "D": "SETUP_READY_NO_ACTION_REQUIRED",
-    "E": "ACTION_REQUIRED_IMMUTABLE_PREDICTION_EVALUATION_INGRESS"
+    "E": "SECURITY_REPAIR_COMPLETE_PENDING_MERGE_AND_POST_MERGE_REREVIEW"
   },
   "readiness_snapshot": {
     "observed_at_utc": "2026-08-30T12:01:12Z",
@@ -139,6 +138,23 @@
       "next_receiver": "A",
       "evidence": "coordination/inbox/E/exp_001_artifact_contract_rereview.md"
     },
+    "pre_cycle_security_integration": {
+      "reviewed_main_sha": "28d4d7480c0a76d5076dc10e694898188af99473",
+      "b_implementation_sha": "5cc237161909b592df0bdb24a8c6f47543c77e92",
+      "b_readiness_sha": "6a73236e8d3e11aa9687f7d44ed7cbb97aed6110",
+      "e_implementation_sha": "6ee8e268e4d07af3224f933da4e194644c0b1273",
+      "e_readiness_sha": "8fae2557219030f2429ed1ca29d6469f62ea2735",
+      "a_integration_fix_sha": "60440cbf98f81f199f9045b87918cb4439a4169b",
+      "combined_clean_tests": "PYTEST_106_PASS_UNITTEST_106_OF_106",
+      "repository_contracts": "PASS",
+      "protected_hashes": "PASS",
+      "prediction_contract": "PASS_9_OF_9",
+      "starter_changed": false,
+      "real_training_performed": false,
+      "formal_metrics_produced": false,
+      "test_access": false,
+      "evidence": "coordination/inbox/A/exp_001_setup_security_integration_readiness.md"
+    },
     "pr_25_gate_incident": {
       "pr_number": 25,
       "head_sha": "f4f253fe90fc6813aa0d780864b3d49ab46df033",
@@ -162,18 +178,16 @@
     }
   },
   "setup_decision": {
-    "decision": "HUMAN_INCIDENT_DISPOSITION_APPROVED_RERUN_DEFERRED_SECURITY_REPAIR",
+    "decision": "SECURITY_REPAIRS_INTEGRATED_RERUN_DEFERRED_PENDING_MERGE_AND_E_REREVIEW",
     "decided_at_utc": "2026-08-30T12:01:12Z",
     "subject": "permanent PR #25 quarantine and one fresh valid-only rerun approved subject to unresolved setup security gates",
-    "reason": "the incident decision is complete, but code inspection and merged D evidence show the auditor route and prediction evaluation ingress are not yet immutable end to end; hard safety gates prevent immediate cycle activation",
+    "reason": "the B/E security repairs pass combined clean pre-merge verification, but hard safety gates require PR merge and E independent rereview of the resulting clean main before cycle activation",
     "score_comparison_performed": false,
     "formal_metrics_available_for_selection": false,
     "quarantined_formal_metrics_present": true,
     "remaining_sequence": [
-      "B binds audit evidence to the approved experiment identity, run variant, spec, and raw candidate/baseline config route and bytes",
-      "E makes safe_evaluate consume the exact immutable prediction bytes whose hash is recorded",
-      "B adds synthetic regression coverage for both security gaps and all four checks pass",
-      "E independently rereviews the final clean implementation",
+      "merge the integrated B/E security repair through a conflict-free PR after all four Actions checks pass",
+      "E independently rereviews the merged clean main implementation",
       "A activates exactly one fresh valid-only rerun on a new clean main SHA; PR #25 evidence remains excluded"
     ]
   },

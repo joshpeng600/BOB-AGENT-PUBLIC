@@ -3,11 +3,17 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
+import os
+import stat
 import sys
+import tempfile
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Iterator
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -28,6 +34,103 @@ from tools.project_security import (
     sha256_file,
     verify_protected_files,
 )
+
+
+def _file_signature(metadata: os.stat_result) -> tuple[int, int, int, int, int, int]:
+    return (
+        int(metadata.st_dev),
+        int(metadata.st_ino),
+        int(metadata.st_mode),
+        int(metadata.st_size),
+        int(metadata.st_mtime_ns),
+        int(metadata.st_ctime_ns),
+    )
+
+
+def _file_identity(metadata: os.stat_result) -> tuple[int, int, int]:
+    return (int(metadata.st_dev), int(metadata.st_ino), int(metadata.st_mode))
+
+
+def _hash_open_file(handle) -> str:
+    digest = hashlib.sha256()
+    handle.seek(0)
+    for block in iter(lambda: handle.read(1024 * 1024), b""):
+        digest.update(block)
+    return digest.hexdigest()
+
+
+@contextmanager
+def immutable_prediction_snapshot(source: Path) -> Iterator[tuple[Path, str]]:
+    """Yield a private snapshot bound to one no-follow source-file handle."""
+
+    source = source.absolute()
+    try:
+        initial_path = os.lstat(source)
+    except OSError as error:
+        raise SecurityError(f"Prediction file is unavailable: {error}") from error
+    if stat.S_ISLNK(initial_path.st_mode) or not stat.S_ISREG(initial_path.st_mode):
+        raise SecurityError("Prediction must be an ordinary file, not a symlink")
+
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(source, flags)
+    except OSError as error:
+        raise SecurityError(f"Cannot safely open prediction: {error}") from error
+
+    try:
+        with os.fdopen(descriptor, "rb") as source_handle:
+            opened = os.fstat(source_handle.fileno())
+            bound_path = os.lstat(source)
+            if (
+                not stat.S_ISREG(opened.st_mode)
+                or _file_identity(initial_path) != _file_identity(opened)
+                or _file_identity(bound_path) != _file_identity(opened)
+            ):
+                raise SecurityError("Prediction path changed while opening")
+            opened_signature = _file_signature(opened)
+            path_signature = _file_signature(bound_path)
+
+            with tempfile.TemporaryDirectory(prefix="track2-e-prediction-") as tmp:
+                snapshot = Path(tmp) / "valid_predictions.csv"
+                digest = hashlib.sha256()
+                source_handle.seek(0)
+                with snapshot.open("xb") as destination:
+                    for block in iter(lambda: source_handle.read(1024 * 1024), b""):
+                        digest.update(block)
+                        destination.write(block)
+                    destination.flush()
+                    os.fsync(destination.fileno())
+                prediction_hash = digest.hexdigest()
+                after_capture = os.fstat(source_handle.fileno())
+                if _file_signature(after_capture) != opened_signature:
+                    raise SecurityError("Prediction changed while creating immutable snapshot")
+                snapshot.chmod(0o400)
+
+                yield snapshot, prediction_hash
+
+                try:
+                    final_path = os.lstat(source)
+                    final_handle = os.fstat(source_handle.fileno())
+                except OSError as error:
+                    raise SecurityError(
+                        f"Prediction binding changed during evaluation: {error}"
+                    ) from error
+                if (
+                    _file_signature(final_path) != path_signature
+                    or _file_signature(final_handle) != opened_signature
+                ):
+                    raise SecurityError("Prediction path changed during evaluation")
+                if _hash_open_file(source_handle) != prediction_hash:
+                    raise SecurityError("Prediction bytes changed during evaluation")
+                if sha256_file(snapshot) != prediction_hash:
+                    raise SecurityError("Immutable prediction snapshot changed")
+    except BaseException:
+        # os.fdopen owns and closes descriptor once entered; close only if entry failed.
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+        raise
 
 
 def main() -> int:
@@ -57,25 +160,26 @@ def main() -> int:
                 )
             verify_final_approval(args.approval)
 
-        prediction_hash = sha256_file(args.prediction)
-        splits = load_splits(args.data_dir)
-        rows = splits[args.split]
-        scores = validate_prediction_file(args.prediction, rows)
-        users, labels, scores = validate_evaluator_arrays(
-            [row[1] for row in rows],
-            [row[6] for row in rows],
-            scores,
-        )
-        metrics = official_evaluator.evaluate(users, labels, scores)
-        expected_primary = (
-            float(metrics["GAUC"]) + float(metrics["nDCG@5"])
-        ) / 2.0
-        if not math.isclose(float(metrics["primary"]), expected_primary):
-            raise SecurityError(
-                "Official primary is not the arithmetic mean of GAUC and nDCG@5"
+        with immutable_prediction_snapshot(args.prediction) as (
+            snapshot_path,
+            prediction_hash,
+        ):
+            splits = load_splits(args.data_dir)
+            rows = splits[args.split]
+            scores = validate_prediction_file(snapshot_path, rows)
+            users, labels, scores = validate_evaluator_arrays(
+                [row[1] for row in rows],
+                [row[6] for row in rows],
+                scores,
             )
-        if sha256_file(args.prediction) != prediction_hash:
-            raise SecurityError("Immutable prediction changed during evaluation")
+            metrics = official_evaluator.evaluate(users, labels, scores)
+            expected_primary = (
+                float(metrics["GAUC"]) + float(metrics["nDCG@5"])
+            ) / 2.0
+            if not math.isclose(float(metrics["primary"]), expected_primary):
+                raise SecurityError(
+                    "Official primary is not the arithmetic mean of GAUC and nDCG@5"
+                )
         if git_head() != evaluation_commit or git_is_dirty():
             raise SecurityError("Git commit or worktree changed during evaluation")
     except (OSError, SecurityError, PredictionContractError, ValueError) as error:
