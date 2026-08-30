@@ -45,8 +45,8 @@
   "improvement_rule": {
     "expression": "candidate_primary - baseline_primary > epsilon",
     "strict": true,
-    "baseline_primary": 0.6016,
-    "candidate_must_be_greater_than": 0.6036
+    "baseline_primary": 0.603871007132627,
+    "candidate_must_be_greater_than": 0.605871007132627
   },
   "test_evaluation": {
     "ordinary_experiments_allowed": false,

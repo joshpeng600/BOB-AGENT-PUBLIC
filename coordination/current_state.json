@@ -1,15 +1,18 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_CYCLE_VALID_IMPROVEMENT_ACCEPTED",
+  "state": "EXP_002_IMPLEMENTATION_SETUP_ALLOWED",
   "owner": "A",
-  "next_receiver": "A_FOR_NEXT_EXPERIMENT_OR_RELEASE_DECISION",
-  "approved_against_commit_sha": "2dc456539aa4e75665434b35ba86d23bfd1f0fa1",
+  "next_receiver": "B_C_D_E_PARALLEL_SETUP",
+  "approved_against_commit_sha": "676c79e9661c8cdeb97b04c50f0ddc3a6d3a9767",
   "blocked_by": [
+    "B must generalize the baseline objective contract before exp_001 BPR can be replayed as the exp_002 baseline",
+    "D config, C feasibility, and E pre-evaluation evidence are pending",
+    "real valid runs remain blocked pending a later exact A authorization",
     "test and final release remain blocked pending a separate exact human final approval"
   ],
-  "active_experiment_id": "exp_001",
-  "experiment_spec_path": "experiments/exp_001.json",
-  "approved_baseline_config_path": "configs/approved/baseline_fm.json",
+  "active_experiment_id": "exp_002",
+  "experiment_spec_path": "experiments/exp_002.json",
+  "approved_baseline_config_path": "configs/approved/exp_001_bpr_fm.json",
   "starter_contract_verified": true,
   "protected_hashes_pinned": true,
   "contract_fields": {
@@ -24,21 +27,38 @@
       "permits": "committed role implementation and synthetic-fixture verification only"
     },
     "SYNTHETIC_SMOKE_ALLOWED": {
-      "status": "ALLOWED",
-      "evidence": "PR #15 merged as 5dd9460d5904b3bf69627b005ebe4ebeb67bafe9; its head reports synthetic smoke PASS and all four required Actions checks pass",
-      "permits": "explicit synthetic fixtures only; no metric conclusion"
+      "status": "PENDING_ROLE_IMPLEMENTATION",
+      "evidence": "experiments/exp_002.json and coordination/inbox/A/exp_002_planning_decision_20260831.md",
+      "permits": "after B and D implementation, at most one bounded explicit synthetic fixture smoke; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "CONSUMED",
-      "evidence": "coordination/inbox/A/exp_001_cycle_gate_activation_20260831.md",
-      "permits": "no additional formal run; the authorized fresh baseline/candidate pair completed on 44fd36aa9b35b7fc9c01389e6dd453e972f16635 and test remains forbidden"
+      "status": "BLOCKED",
+      "evidence": "coordination/inbox/A/exp_002_planning_decision_20260831.md",
+      "permits": "none until B/C/D/E readiness evidence is integrated and A records a separate exact full-budget valid-only authorization"
     }
   },
   "role_statuses": {
-    "B": "FRESH_FORMAL_BASELINE_CANDIDATE_PAIR_COMPLETED_AND_AUDITED",
-    "C": "SETUP_COMPLETE_REAL_DATA_AND_PAIR_FEASIBILITY_PASS",
-    "D": "SETUP_COMPLETE_MODEL_AND_TRAINING_INTERFACE_PASS",
-    "E": "FRESH_INDEPENDENT_VALID_EVALUATION_PASS"
+    "B": "EXP_002_BASELINE_ROUTE_GENERALIZATION_ASSIGNED_SYNTHETIC_ONLY",
+    "C": "EXP_002_READ_ONLY_FEASIBILITY_REVIEW_ASSIGNED",
+    "D": "EXP_002_CONFIG_ONLY_NEGATIVE_SAMPLING_CHANGE_ASSIGNED",
+    "E": "EXP_002_PRE_EVALUATION_REVIEW_ASSIGNED_NO_SCORING"
+  },
+  "exp_002_planning": {
+    "status": "IMPLEMENTATION_SETUP_APPROVED",
+    "approved_against_commit_sha": "676c79e9661c8cdeb97b04c50f0ddc3a6d3a9767",
+    "current_champion_experiment_id": "exp_001_bpr_fm",
+    "current_champion_config_path": "configs/approved/exp_001_bpr_fm.json",
+    "current_champion_primary": 0.603871007132627,
+    "minimum_improvement": 0.002,
+    "candidate_primary_must_be_greater_than": 0.605871007132627,
+    "single_scientific_change": "objective.negatives_per_positive: 1 -> 2",
+    "model_source_change_allowed": false,
+    "feature_change_allowed": false,
+    "official_evaluator_change_allowed": false,
+    "formal_run_authorization_active": false,
+    "formal_metrics_produced": false,
+    "test_access": false,
+    "evidence": "coordination/inbox/A/exp_002_planning_decision_20260831.md"
   },
   "readiness_snapshot": {
     "observed_at_utc": "2026-08-30T17:52:48Z",
