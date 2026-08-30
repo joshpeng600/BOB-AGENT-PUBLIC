@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_SETUP_SECURITY_REPAIRS_INTEGRATED_PENDING_PR_AND_E_REREVIEW",
+  "state": "EXP_001_FINAL_SETUP_REPAIRS_PENDING_PR_MERGE_AND_E_REREVIEW",
   "owner": "A",
-  "next_receiver": "HUMAN_FOR_MERGE",
-  "approved_against_commit_sha": "4c07e03663e7d13f11547546da7cc6ac3ea5ff98",
+  "next_receiver": "E_AFTER_FINAL_SETUP_PR_MERGE",
+  "approved_against_commit_sha": "7dfeb682879aac5ecbcf8f3f84a065e5f54d17b2",
   "blocked_by": [
-    "the integrated B/E setup security repair must merge to main through a conflict-free PR with all four Actions checks passing",
-    "E must independently rereview the merged clean main before A may activate the single authorized fresh run"
+    "the final setup semantic, budget, audit, and evidence-publication repairs must merge to main through a conflict-free PR with all four Actions checks passing",
+    "E must independently rereview the resulting merged clean main before A may activate the single authorized fresh run"
   ],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
@@ -30,19 +30,19 @@
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED_PENDING_SECURITY_REPAIR_PR_MERGE_AND_E_REREVIEW",
+      "status": "BLOCKED_PENDING_FINAL_SETUP_PR_MERGE_AND_E_REREVIEW",
       "permits": "nothing until A records a later ALLOWED state on main; test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "SECURITY_REPAIR_COMPLETE_IN_A_INTEGRATION_PENDING_MERGE",
+    "B": "APPROVED_RUN_SEMANTICS_AND_FORMAL_BUDGET_BINDING_IN_A_PR_PENDING_MERGE",
     "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
     "D": "SETUP_READY_NO_ACTION_REQUIRED",
-    "E": "SECURITY_REPAIR_COMPLETE_PENDING_MERGE_AND_POST_MERGE_REREVIEW"
+    "E": "PUBLICATION_BOUNDARY_REPAIR_IN_A_PR_PENDING_MERGE_AND_INDEPENDENT_REREVIEW"
   },
   "readiness_snapshot": {
-    "observed_at_utc": "2026-08-30T12:01:12Z",
-    "main_sha": "4c07e03663e7d13f11547546da7cc6ac3ea5ff98",
+    "observed_at_utc": "2026-08-30T15:22:38Z",
+    "main_sha": "7dfeb682879aac5ecbcf8f3f84a065e5f54d17b2",
     "d_setup": {
       "pr_number": 14,
       "status": "MERGED",
@@ -155,6 +155,26 @@
       "test_access": false,
       "evidence": "coordination/inbox/A/exp_001_setup_security_integration_readiness.md"
     },
+    "final_setup_security_integration": {
+      "base_main_sha": "7dfeb682879aac5ecbcf8f3f84a065e5f54d17b2",
+      "implementation_commit_sha": "84d725ba9de831dfbeea9e9ed46b8173e540efdb",
+      "source_pr_32_head_sha": "eec4893905d9efbaa634aadc10823c2037079322",
+      "approved_run_semantics_bound": true,
+      "formal_max_batches_exactly_bound": true,
+      "synthetic_smoke_separated_from_formal_evidence": true,
+      "exclusive_evidence_publication_bound": true,
+      "combined_clean_tests": "PYTEST_117_PASS_4_SKIP_39_SUBTESTS_UNITTEST_121_PASS_4_SKIP",
+      "repository_contracts": "PASS_27_JSON_PLUS_JSONL_TOML",
+      "protected_hashes": "PASS_ALL_SEVEN",
+      "prediction_contract": "PASS_9_OF_9",
+      "cross_role_authorization": "governance/manual_interventions.jsonl active_until_setup_completion record at 2026-08-30T13:47:13Z",
+      "starter_changed": false,
+      "real_training_performed": false,
+      "formal_metrics_produced": false,
+      "test_access": false,
+      "status": "READY_FOR_PR_MERGE_THEN_E_INDEPENDENT_REREVIEW",
+      "evidence": "coordination/inbox/A/exp_001_setup_final_integration_readiness.md"
+    },
     "pr_25_gate_incident": {
       "pr_number": 25,
       "head_sha": "f4f253fe90fc6813aa0d780864b3d49ab46df033",
@@ -178,16 +198,16 @@
     }
   },
   "setup_decision": {
-    "decision": "SECURITY_REPAIRS_INTEGRATED_RERUN_DEFERRED_PENDING_MERGE_AND_E_REREVIEW",
-    "decided_at_utc": "2026-08-30T12:01:12Z",
+    "decision": "FINAL_SETUP_REPAIRS_READY_FOR_PR_RERUN_DEFERRED_PENDING_E_REREVIEW",
+    "decided_at_utc": "2026-08-30T15:22:38Z",
     "subject": "permanent PR #25 quarantine and one fresh valid-only rerun approved subject to unresolved setup security gates",
-    "reason": "the B/E security repairs pass combined clean pre-merge verification, but hard safety gates require PR merge and E independent rereview of the resulting clean main before cycle activation",
+    "reason": "the final semantic, budget, audit, and publication repairs pass combined clean pre-merge verification, but hard safety gates require PR merge and E independent rereview of the resulting clean main before cycle activation",
     "score_comparison_performed": false,
     "formal_metrics_available_for_selection": false,
     "quarantined_formal_metrics_present": true,
     "remaining_sequence": [
-      "merge the integrated B/E security repair through a conflict-free PR after all four Actions checks pass",
-      "E independently rereviews the merged clean main implementation",
+      "merge the final setup repair through a conflict-free PR after all four Actions checks pass",
+      "E independently rereviews the resulting merged clean main implementation and immutable evidence boundary",
       "A activates exactly one fresh valid-only rerun on a new clean main SHA; PR #25 evidence remains excluded"
     ]
   },
