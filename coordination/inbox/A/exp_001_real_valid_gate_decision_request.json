@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "contract_type": "decision_request",
+  "experiment_id": "exp_001",
+  "request_id": "exp_001-real-valid-gate-20260830",
+  "requested_at_utc": "2026-08-30T09:09:22Z",
+  "requested_by_role": "A",
+  "approved_against_commit_sha": "7b8a17044e481430273fd594e8487f01a1b4daf5",
+  "trigger": "cross-role ownership exception and temporary manual main gate",
+  "summary": "D setup, C real-data pair readiness, and B synthetic readiness are complete, but a human must decide the PR #10 cross-role ownership exception and review/merge PR #15 before A can authorize a real valid-only run.",
+  "evidence_paths": [
+    "coordination/inbox/C/exp_001_real_data_readiness.md",
+    "coordination/inbox/D/setup_result.md",
+    "coordination/inbox/E/setup_result.md",
+    "coordination/inbox/B/exp_001_freeze_readiness.md on PR #15",
+    "coordination/current_state.json",
+    "governance/manual_interventions.jsonl"
+  ],
+  "observations": {
+    "main_sha": "7b8a17044e481430273fd594e8487f01a1b4daf5",
+    "d_setup_pr_14": "MERGED",
+    "b_readiness_pr_15": "OPEN_CHECKS_PASS_NO_HUMAN_REVIEW",
+    "b_readiness_head_sha": "2ff640d3b695d8b6e3a4ee05ea2b07038e5ac43c",
+    "pytest_policy_blocker": false,
+    "pytest_basis": "AGENTS.md requires python3 -m unittest discover -s tests -v; the temporary manual gate names four Actions checks, all of which pass; latest B evidence also reports pytest PASS",
+    "test_access": false,
+    "real_training_performed": false
+  },
+  "options": [
+    {
+      "id": "approve_cross_role_exception",
+      "effect": "record an explicit human-approved manual intervention for the PR #10 B-owned validator/test changes, human-review and merge PR #15, then ask A to open REAL_VALID_RUN_ALLOWED"
+    },
+    {
+      "id": "require_ownership_correct_followup",
+      "effect": "require a B-owned follow-up for the PR #10 validator/test changes before the real valid-only gate; PR #15 still requires human review and merge"
+    }
+  ],
+  "automation_scope": "REAL_VALID_RUN_ONLY",
+  "automation_paused": true,
+  "status": "pending_human"
+}

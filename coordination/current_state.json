@@ -1,10 +1,13 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_IMPLEMENTATION_ALLOWED",
+  "state": "EXP_001_REAL_VALID_GATE_PENDING_HUMAN",
   "owner": "A",
-  "next_receiver": "B",
-  "approved_against_commit_sha": "ab0da74d91cb71606ae99f3b4d7874be28839e1c",
-  "blocked_by": [],
+  "next_receiver": "HUMAN_REVIEWER",
+  "approved_against_commit_sha": "7b8a17044e481430273fd594e8487f01a1b4daf5",
+  "blocked_by": [
+    "human decision for the PR #10 cross-role ownership exception",
+    "human review and merge of PR #15 under the temporary manual main gate"
+  ],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
   "approved_baseline_config_path": "configs/approved/baseline_fm.json",
@@ -19,22 +22,59 @@
   "stage_gates": {
     "IMPLEMENTATION_ALLOWED": {
       "status": "ALLOWED",
-      "permits": "B runner, validator, and tests using no real data"
+      "permits": "committed role implementation and synthetic-fixture verification only"
     },
     "SYNTHETIC_SMOKE_ALLOWED": {
-      "status": "PENDING_B_IMPLEMENTATION_AND_CLEAN_CHECKS",
+      "status": "ALLOWED",
+      "evidence": "PR #15 head 2ff640d3b695d8b6e3a4ee05ea2b07038e5ac43c reports synthetic smoke PASS and all four required Actions checks pass",
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "PENDING_C_PAIR_CONFIRMATION_B_FROZEN_COMMIT_AND_REQUIRED_CHECKS",
-      "permits": "train/valid only; test remains forbidden"
+      "status": "BLOCKED_PENDING_HUMAN_GOVERNANCE_DECISION_AND_PR_15_MERGE",
+      "permits": "nothing until A records a later ALLOWED state on main; test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "ACTION_REQUIRED",
-    "C": "PAIR_FEASIBILITY_CONFIRMATION_REQUESTED",
-    "D": "INTERFACE_CONFIRMATION_REQUESTED",
-    "E": "WAIT_FOR_IMMUTABLE_B_OUTPUT"
+    "B": "READINESS_PR_OPEN_CHECKS_PASS",
+    "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
+    "D": "SETUP_READY_NO_ACTION_REQUIRED",
+    "E": "SETUP_READY_WAIT_FOR_IMMUTABLE_B_OUTPUT"
+  },
+  "readiness_snapshot": {
+    "observed_at_utc": "2026-08-30T09:09:22Z",
+    "main_sha": "7b8a17044e481430273fd594e8487f01a1b4daf5",
+    "d_setup": {
+      "pr_number": 14,
+      "status": "MERGED",
+      "merge_sha": "7b8a17044e481430273fd594e8487f01a1b4daf5",
+      "evidence": "coordination/inbox/D/setup_result.md"
+    },
+    "c_data_readiness": {
+      "status": "CONFIRMED",
+      "pair_count": 382579,
+      "eligible_users": 24290,
+      "total_users": 26210,
+      "user_coverage": 0.926745516978,
+      "maximum_development_date": 20220428,
+      "evidence": "coordination/inbox/C/exp_001_real_data_readiness.md"
+    },
+    "b_readiness": {
+      "pr_number": 15,
+      "status": "OPEN",
+      "pr_head_sha": "2ff640d3b695d8b6e3a4ee05ea2b07038e5ac43c",
+      "mergeable": true,
+      "required_actions_checks": "PASS_4_OF_4",
+      "human_review_present": false,
+      "pytest_policy_blocker": false,
+      "pytest_basis": "AGENTS.md requires unittest and the temporary manual gate requires four named Actions checks; latest B evidence additionally reports pytest PASS",
+      "evidence": "coordination/inbox/B/exp_001_freeze_readiness.md on PR #15"
+    },
+    "e_setup": {
+      "status": "TECHNICALLY_READY_WITH_CROSS_ROLE_EXCEPTION_PENDING",
+      "b_technical_acceptance": true,
+      "human_governance_decision_required": true,
+      "evidence": "coordination/inbox/E/setup_result.md and PR #15 readiness evidence"
+    }
   },
   "github_branch_protection": {
     "status": "TEMPORARY_MANUAL_GATE_APPROVED",
