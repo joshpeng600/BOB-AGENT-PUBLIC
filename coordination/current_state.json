@@ -1,11 +1,13 @@
 {
   "schema_version": 1,
-  "state": "EXP_001_SETUP_E_INDEPENDENT_REREVIEW_REQUIRED",
+  "state": "EXP_001_GOVERNANCE_INCIDENT_PR_25_HUMAN_DECISION_REQUIRED",
   "owner": "A",
-  "next_receiver": "E",
-  "approved_against_commit_sha": "f3fb11e2242a424c803bb1c98e942ad8d5c15e84",
+  "next_receiver": "HUMAN",
+  "approved_against_commit_sha": "1374a6e4cdbb820b975430c93d514657bc809d63",
   "blocked_by": [
-    "E must independently rereview the complete artifact contract through PR #22 before A may consider REAL_VALID_RUN_ALLOWED"
+    "PR #25 produced and merged formal validation metrics while REAL_VALID_RUN_ALLOWED was blocked",
+    "E's merged PR #26 setup rereview passed the artifact contract but explicitly rejected PR #25 as authoritative cycle evidence",
+    "a human must choose the PR #25 incident disposition before A may authorize any fresh formal valid run"
   ],
   "active_experiment_id": "exp_001",
   "experiment_spec_path": "experiments/exp_001.json",
@@ -29,19 +31,19 @@
       "permits": "explicit synthetic fixtures only; no metric conclusion"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED_PENDING_E_INDEPENDENT_REREVIEW",
+      "status": "BLOCKED_PENDING_HUMAN_INCIDENT_DECISION",
       "permits": "nothing until A records a later ALLOWED state on main; test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "TECHNICAL_ARTIFACT_FOLLOWUP_COMPLETE_NO_ACTION_REQUIRED",
+    "B": "WAIT_FOR_HUMAN_PR_25_INCIDENT_DECISION_NO_EXECUTION_ALLOWED",
     "C": "REAL_DATA_AND_PAIR_FEASIBILITY_CONFIRMED",
     "D": "SETUP_READY_NO_ACTION_REQUIRED",
-    "E": "ACTION_REQUIRED_INDEPENDENT_ARTIFACT_CONTRACT_REREVIEW"
+    "E": "SETUP_REREVIEW_PASS_PR_25_EVIDENCE_QUARANTINED_NO_ACTION_REQUIRED"
   },
   "readiness_snapshot": {
-    "observed_at_utc": "2026-08-30T11:42:06Z",
-    "main_sha": "f3fb11e2242a424c803bb1c98e942ad8d5c15e84",
+    "observed_at_utc": "2026-08-30T11:55:39Z",
+    "main_sha": "1374a6e4cdbb820b975430c93d514657bc809d63",
     "d_setup": {
       "pr_number": 14,
       "status": "MERGED",
@@ -94,9 +96,7 @@
       "technical_remaining": [],
       "cross_role_exception_recorded": true,
       "manual_gate_completion_recorded": true,
-      "governance_remaining": [
-        "independent E re-review of the merged immutable artifact contract and PR #21 cross-platform hardening"
-      ]
+      "governance_remaining": []
     },
     "b_cross_platform_hardening": {
       "pr_number": 21,
@@ -120,28 +120,55 @@
       "evidence": "coordination/inbox/B/exp_001_artifact_contract_readiness.md"
     },
     "e_setup": {
-      "status": "ACTION_REQUIRED_FULL_ARTIFACT_REREVIEW_THROUGH_PR_22",
+      "status": "PASS_INDEPENDENT_ARTIFACT_REREVIEW_THROUGH_PR_22",
       "b_technical_acceptance": true,
       "human_governance_decision_required": false,
       "pre_evaluation_pr_number": 17,
       "pre_evaluation_merge_sha": "05dff207484eda385c943dde57742eaf535a6906",
-      "expected_artifact_contract": "FAIL",
+      "artifact_rereview_pr_number": 26,
+      "artifact_rereview_head_sha": "e8a11c7cd9870685d012053bcec8ff4a6172b92a",
+      "artifact_rereview_merge_sha": "1374a6e4cdbb820b975430c93d514657bc809d63",
+      "artifact_rereview_github_checks": "PASS_4_OF_4_VERIFIED_VIA_GITHUB_API",
+      "expected_artifact_contract": "PASS",
       "prediction_contract": "PASS",
       "protected_hashes": "PASS",
-      "next_receiver": "E",
-      "evidence": "coordination/inbox/E/exp_001_pre_evaluation_readiness.md"
+      "pr_25_evidence_accepted": false,
+      "formal_evaluation_performed_in_setup_rereview": false,
+      "formal_metrics_produced_in_setup_rereview": false,
+      "test_access": false,
+      "next_receiver": "A",
+      "evidence": "coordination/inbox/E/exp_001_artifact_contract_rereview.md"
+    },
+    "pr_25_gate_incident": {
+      "pr_number": 25,
+      "head_sha": "f4f253fe90fc6813aa0d780864b3d49ab46df033",
+      "merge_sha": "afe5b795abacb408c668f05db1a61b6a5af03879",
+      "github_state": "MERGED",
+      "github_checks": "PASS_4_OF_4_VERIFIED_VIA_GITHUB_API_BUT_NOT_A_RUN_AUTHORIZATION",
+      "formal_metrics_present_in_git_history": true,
+      "gate_status_at_production": "BLOCKED",
+      "e_evidence_accepted": false,
+      "quarantine_status": "QUARANTINED_NOT_ACCEPTED",
+      "use_for_experiment_selection": false,
+      "use_for_threshold_or_hyperparameter_decisions": false,
+      "count_as_completed_iteration": false,
+      "reproduction_authorized": false,
+      "quarantine_record": "coordination/inbox/A/exp_001_pr_25_gate_incident.md",
+      "decision_request": "coordination/inbox/A/exp_001_pr_25_gate_incident_decision_request.json"
     }
   },
   "setup_decision": {
-    "decision": "CONDITIONAL_PASS_TO_E_INDEPENDENT_REREVIEW",
-    "decided_at_utc": "2026-08-30T11:42:06Z",
-    "subject": "human ratification of the exact PR #22 tools/audit_run.py cross-role change",
-    "reason": "the repository owner approved the exact ownership exception; E independent technical rereview of the complete contract through PR #22 remains mandatory before any real-valid authorization",
+    "decision": "TECHNICAL_SETUP_PASS_GOVERNANCE_INCIDENT_BLOCKED",
+    "decided_at_utc": "2026-08-30T11:55:39Z",
+    "subject": "E artifact-contract rereview PASS with quarantined pre-gate PR #25 formal metrics",
+    "reason": "technical setup is ready, but PR #25 violated the A-owned real-valid gate; its metrics are isolated and cannot be used for selection, and a human must choose the incident disposition",
     "score_comparison_performed": false,
-    "formal_metrics_available": false,
+    "formal_metrics_available_for_selection": false,
+    "quarantined_formal_metrics_present": true,
     "remaining_sequence": [
-      "E independently repeats pre-evaluation review of the complete artifact contract through PR #22 without training or scoring",
-      "A reviews E evidence before considering REAL_VALID_RUN_ALLOWED"
+      "human chooses the PR #25 incident disposition",
+      "A records the decision and either authorizes exactly one fresh formal valid rerun from a new clean SHA or keeps the experiment stopped",
+      "PR #25 evidence remains excluded from experiment selection in every disposition"
     ]
   },
   "github_branch_protection": {

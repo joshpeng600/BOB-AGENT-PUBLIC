@@ -2,10 +2,10 @@
   "schema_version": 1,
   "contract_type": "handoff",
   "experiment_id": "exp_001",
-  "approved_against_commit_sha": "f3fb11e2242a424c803bb1c98e942ad8d5c15e84",
+  "approved_against_commit_sha": "1374a6e4cdbb820b975430c93d514657bc809d63",
   "from_role": "A",
   "to_role": "E",
-  "status": "ACTION_REQUIRED_INDEPENDENT_ARTIFACT_CONTRACT_REREVIEW_THROUGH_PR_22",
+  "status": "SETUP_REREVIEW_PASS_PR_25_EVIDENCE_QUARANTINED_WAIT_FOR_HUMAN",
   "required_changes": [
     "pre-review manifest and evidence schema while waiting; do not score before immutable B valid predictions exist",
     "accept experiment_id and runtime commit_sha in evaluation evidence and record evaluator_role=E",
@@ -15,14 +15,19 @@
     "do not repair the runner, training, configuration, or candidate predictions"
   ],
   "setup_review": {
-    "technical_status": "PR_22_MERGED_TECHNICAL_PASS_GOVERNANCE_RECORDED_PENDING_E_REREVIEW",
+    "technical_status": "PASS_INDEPENDENT_ARTIFACT_REREVIEW_THROUGH_PR_22",
     "b_accepts_pr_10_validator_and_test_changes": true,
     "cross_role_governance_exception_recorded": true,
     "pr_20_cross_role_exception_recorded": true,
     "pr_15_pr_20_manual_gate_completion_recorded": true,
     "pr_22_cross_role_exception_recorded": true,
     "human_decision_required": false,
-    "review_baseline_main_sha": "f3fb11e2242a424c803bb1c98e942ad8d5c15e84",
+    "review_baseline_main_sha": "bb327fb41c483dec03a056a12100e3229e7fddf0",
+    "rereview_pr_number": 26,
+    "rereview_merge_sha": "1374a6e4cdbb820b975430c93d514657bc809d63",
+    "rereview_evidence": "coordination/inbox/E/exp_001_artifact_contract_rereview.md",
+    "expected_artifact_contract": "PASS",
+    "pr_25_evidence_accepted": false,
     "resolved_decision_request": "coordination/inbox/A/exp_001_real_valid_gate_decision_request.json",
     "resolved_pr_22_decision_request": "coordination/inbox/A/exp_001_pr_22_ownership_decision_request.json"
   },
@@ -59,6 +64,6 @@
       "BLOCKED": "B"
     }
   },
-  "next_action": "synchronize E-Part with main at or after f3fb11e2242a424c803bb1c98e942ad8d5c15e84 and perform the independent artifact-contract rereview through PR #22 only; REAL_VALID_RUN_ALLOWED remains blocked until E PASS and a later A decision",
+  "next_action": "take no action until A records the human PR #25 incident decision and, if authorized, later receives fresh immutable valid-run evidence; do not inspect, reproduce, or use the quarantined PR #25 metrics",
   "experiment_spec": "experiments/exp_001.json"
 }

@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "contract_type": "decision_request",
+  "experiment_id": "exp_001",
+  "request_id": "exp_001-pr-25-gate-incident-20260830",
+  "requested_at_utc": "2026-08-30T11:55:39Z",
+  "requested_by_role": "A",
+  "approved_against_commit_sha": "1374a6e4cdbb820b975430c93d514657bc809d63",
+  "trigger": "formal validation evidence was produced and merged while REAL_VALID_RUN_ALLOWED was blocked",
+  "summary": "PR #26 independently passed the setup artifact contract but rejected PR #25 as authoritative evidence. PR #25 and its metrics are quarantined, not accepted, excluded from all experiment selection, and do not count as a completed iteration. Human incident disposition is required before any fresh formal valid run.",
+  "incident": {
+    "pr_number": 25,
+    "pr_head_sha": "f4f253fe90fc6813aa0d780864b3d49ab46df033",
+    "merge_sha": "afe5b795abacb408c668f05db1a61b6a5af03879",
+    "gate_status_at_production": "BLOCKED",
+    "formal_metrics_present_in_git_history": true,
+    "e_evidence_accepted": false,
+    "quarantined_paths": [
+      "coordination/inbox/E/exp_001_evaluation_result.md",
+      "reports/evaluation/exp_001_baseline_metrics.json",
+      "reports/evaluation/exp_001_candidate_metrics.json"
+    ],
+    "use_for_experiment_selection": false,
+    "count_as_completed_iteration": false,
+    "test_access_reported": false
+  },
+  "evidence_paths": [
+    "coordination/inbox/E/exp_001_artifact_contract_rereview.md",
+    "coordination/inbox/A/exp_001_pr_25_gate_incident.md",
+    "coordination/current_state.json",
+    "governance/manual_interventions.jsonl"
+  ],
+  "options": [
+    {
+      "id": "approve_quarantine_and_one_fresh_valid_rerun",
+      "effect": "approve permanent isolation and non-selection of PR #25 evidence; authorize A to freeze a new clean full SHA and later open exactly one formal valid-only exp_001 rerun attempt using the approved spec, same data, seed, features, and budget; the rerun must produce fresh immutable B evidence for independent E evaluation"
+    },
+    {
+      "id": "stop_exp_001_or_require_other_repair",
+      "effect": "keep REAL_VALID_RUN_ALLOWED blocked, do not rerun, and either stop exp_001 or provide a separately recorded human repair instruction; PR #25 evidence remains quarantined in all cases"
+    }
+  ],
+  "invariants": [
+    "PR #25 evidence is never accepted or used for selection",
+    "no history rewrite or deletion is authorized",
+    "test remains forbidden",
+    "no fresh run occurs until A records a later exact ALLOWED state on main"
+  ],
+  "automation_scope": "PR_25_INCIDENT_DISPOSITION_ONLY",
+  "automation_paused": true,
+  "status": "pending_human"
+}
