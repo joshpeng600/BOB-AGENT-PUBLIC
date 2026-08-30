@@ -760,7 +760,9 @@ def main() -> int:
         "executor_role": "B",
         "experiment_spec_path": _display_path(args.experiment_spec, repo_root, "EXPERIMENT_SPEC"),
         "config_path": _display_path(args.config, repo_root, "CONFIG"),
-        "experiment_spec_hash": None, "config_hash": None, "config": {},
+        "experiment_spec_hash": None, "run_variant": None,
+        "config_input_hash": None, "config_hash": None, "config": {},
+        "mode": args.mode, "max_batches": args.max_batches,
         "data": {"dataset": "KuaiRand-Pure", "split": "valid", "hash": None},
         "data_hash": None, "seed": args.seed, "dev_max_date": None,
         "environment": {
@@ -801,6 +803,8 @@ def main() -> int:
             raise ValidationError("approved_against_commit_sha is not an ancestor of HEAD")
         manifest["experiment_id"] = str(spec["experiment_id"])
         manifest["experiment_spec_hash"] = spec_input_hash
+        manifest["run_variant"] = variant
+        manifest["config_input_hash"] = config_input_hash
         resolved_preview = {
             **config,
             "resolved_run": {

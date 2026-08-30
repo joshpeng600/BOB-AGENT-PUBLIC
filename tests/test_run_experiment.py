@@ -192,14 +192,11 @@ class RunExperimentTests(unittest.TestCase):
     def test_bpr_synthetic_smoke_writes_canonical_complete_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
+            repo_root = Path(__file__).resolve().parents[1]
             data_dir = make_pair_dataset(base / "data")
             output_dir = base / "run"
-            candidate_path = base / "candidate.json"
-            baseline_path = base / "baseline.json"
-            spec_path = base / "experiment.json"
-            write_json(candidate_path, candidate_config())
-            write_json(baseline_path, pointwise_config())
-            write_json(spec_path, approved_spec(candidate_path, baseline_path))
+            candidate_path = repo_root / "configs" / "candidates" / "bpr_fm.json"
+            spec_path = repo_root / "experiments" / "exp_001.json"
             argv = [
                 "run_experiment.py",
                 "--experiment-spec", str(spec_path),
@@ -212,7 +209,6 @@ class RunExperimentTests(unittest.TestCase):
             ]
             with (
                 patch.object(sys, "argv", argv),
-                patch("tools.run_experiment._require_repository_input"),
                 patch("tools.run_experiment._git_state", side_effect=[(COMMIT_SHA, True)] * 2),
                 patch("tools.run_experiment._git_is_ancestor", return_value=True),
                 redirect_stdout(StringIO()),
@@ -221,7 +217,7 @@ class RunExperimentTests(unittest.TestCase):
 
             manifest = json.loads((output_dir / "run_manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["status"], "completed")
-            self.assertEqual(manifest["experiment_id"], "exp_smoke")
+            self.assertEqual(manifest["experiment_id"], "exp_001")
             self.assertEqual(manifest["commit_sha"], COMMIT_SHA)
             self.assertEqual(manifest["executor_role"], "B")
             self.assertEqual(manifest["objective"], "same_user_bpr")

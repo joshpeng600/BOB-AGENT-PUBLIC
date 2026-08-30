@@ -7,11 +7,15 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from tools.common import sha256_file, stable_json_hash, write_json
+from tools.common import ValidationError, sha256_file, stable_json_hash, write_json
 from tools.audit_run import audit_manifest, is_test_scoring_command, validate_manifest_record
 from tools.final_approval import validate_approval_record
 from tools.project_security import SecurityError
-from tools.validate_contract import _assert_artifact_binding, _read_open_artifact
+from tools.validate_contract import (
+    _assert_artifact_binding,
+    _read_open_artifact,
+    validate_approved_run_route,
+)
 
 
 class AuditTests(unittest.TestCase):
@@ -19,10 +23,21 @@ class AuditTests(unittest.TestCase):
         self.commit = "a" * 40
         self.hashes = {"starter/evaluate.py": "b" * 64}
         self.digest = "c" * 64
-        self.spec_hash = sha256_file(
-            Path(__file__).resolve().parents[1] / "experiments" / "exp_001.json"
-        )
-        self.config = {"model": "fm"}
+        self.repo_root = Path(__file__).resolve().parents[1]
+        self.spec_path = self.repo_root / "experiments" / "exp_001.json"
+        self.config_path = self.repo_root / "configs" / "candidates" / "bpr_fm.json"
+        self.spec_hash = sha256_file(self.spec_path)
+        raw_config = json.loads(self.config_path.read_text(encoding="utf-8"))
+        self.config = {
+            **raw_config,
+            "resolved_run": {
+                "experiment_id": "exp_001",
+                "run_variant": "candidate",
+                "seed": 0,
+                "max_batches": None,
+                "mode": "valid-only",
+            },
+        }
         self.manifest = {
             "schema_version": 1,
             "contract_type": "run_manifest",
@@ -35,9 +50,13 @@ class AuditTests(unittest.TestCase):
             "executor_role": "B",
             "experiment_spec_path": "experiments/exp_001.json",
             "experiment_spec_hash": self.spec_hash,
+            "run_variant": "candidate",
             "config_path": "configs/candidates/bpr_fm.json",
+            "config_input_hash": sha256_file(self.config_path),
             "config_hash": stable_json_hash(self.config),
             "config": self.config,
+            "mode": "valid-only",
+            "max_batches": None,
             "data": {
                 "dataset": "KuaiRand-Pure",
                 "split": "valid",
@@ -92,7 +111,10 @@ class AuditTests(unittest.TestCase):
             validate_manifest_record(self.manifest, self.commit, False, self.hashes)
 
     def test_rejects_missing_required_artifact_hashes(self):
-        for field in ("config_hash", "data_hash", "prediction_hash", "checkpoint_hash"):
+        for field in (
+            "config_input_hash", "config_hash", "data_hash", "prediction_hash",
+            "checkpoint_hash",
+        ):
             with self.subTest(field=field):
                 value = self.manifest.pop(field)
                 try:
@@ -267,11 +289,12 @@ class ArtifactAuditTests(unittest.TestCase):
     def test_audit_manifest_rejects_resolved_config_semantic_mismatch(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            self.config = {"value": 1}
-            self.manifest["config"] = self.config
-            self.manifest["config_hash"] = stable_json_hash(self.config)
             manifest_path = self._write_package(root)
-            write_json(root / "resolved_config.json", {"value": 1.0})
+            drifted = deepcopy(self.config)
+            drifted["model"]["embedding_dim"] = float(
+                drifted["model"]["embedding_dim"]
+            )
+            write_json(root / "resolved_config.json", drifted)
             manifest = self._audit_input_with_current_hashes(root, manifest_path)
             write_json(manifest_path, manifest)
             with self.assertRaisesRegex(SecurityError, "content must equal"):
@@ -314,6 +337,115 @@ class ArtifactAuditTests(unittest.TestCase):
             write_json(manifest_path, manifest)
             with self.assertRaisesRegex(SecurityError, "experiment_spec_hash"):
                 self._audit(manifest_path)
+
+    def test_audit_manifest_rejects_forged_identity_and_config_routes(self):
+        mutations = (
+            ("experiment_id", "exp_forged", "experiment_id"),
+            ("run_variant", "baseline", "config_path"),
+            ("config_path", "configs/approved/baseline_fm.json", "config_path"),
+            ("config_input_hash", "d" * 64, "config_input_hash"),
+        )
+        for field, value, message in mutations:
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                manifest_path = self._write_package(root)
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest[field] = value
+                write_json(manifest_path, manifest)
+                with self.assertRaisesRegex(SecurityError, message):
+                    self._audit(manifest_path)
+
+    def test_route_validator_rejects_unsafe_paths_status_and_config_drift(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "experiments").mkdir()
+            (root / "configs" / "candidates").mkdir(parents=True)
+            (root / "configs" / "approved").mkdir(parents=True)
+            candidate = root / "configs" / "candidates" / "candidate.json"
+            baseline = root / "configs" / "approved" / "baseline.json"
+            candidate.write_text('{"objective":{"name":"same_user_bpr"}}\n', encoding="utf-8")
+            baseline.write_text(
+                '{"objective":{"name":"pointwise_binary_cross_entropy"}}\n',
+                encoding="utf-8",
+            )
+            spec = json.loads(self.spec_path.read_text(encoding="utf-8"))
+            spec["experiment_id"] = "exp_route"
+            spec["implementation_config"] = "configs/candidates/candidate.json"
+            spec["baseline"]["approved_config"] = "configs/approved/baseline.json"
+            spec_path = root / "experiments" / "exp_route.json"
+            write_json(spec_path, spec)
+            raw_config = json.loads(candidate.read_text(encoding="utf-8"))
+            manifest = deepcopy(self.manifest)
+            manifest.update(
+                experiment_id="exp_route",
+                experiment_spec_path="experiments/exp_route.json",
+                experiment_spec_hash=sha256_file(spec_path),
+                config_path="configs/candidates/candidate.json",
+                config_input_hash=sha256_file(candidate),
+            )
+            manifest["config"] = {
+                **raw_config,
+                "resolved_run": {
+                    "experiment_id": "exp_route", "run_variant": "candidate",
+                    "seed": 0, "max_batches": None, "mode": "valid-only",
+                },
+            }
+            manifest["config_hash"] = stable_json_hash(manifest["config"])
+            validate_approved_run_route(manifest, root)
+
+            spec_link = root / "experiments" / "spec-link.json"
+            try:
+                spec_link.symlink_to(spec_path.name)
+            except OSError as error:
+                self.skipTest(f"symlink creation is unavailable: {error}")
+            forged_spec_link = deepcopy(manifest)
+            forged_spec_link["experiment_spec_path"] = "experiments/spec-link.json"
+            with self.assertRaisesRegex(ValidationError, "symlink"):
+                validate_approved_run_route(forged_spec_link, root)
+
+            config_link = root / "configs" / "candidates" / "config-link.json"
+            config_link.symlink_to(candidate.name)
+            linked_spec = deepcopy(spec)
+            linked_spec["implementation_config"] = "configs/candidates/config-link.json"
+            write_json(spec_path, linked_spec)
+            forged_config_link = deepcopy(manifest)
+            forged_config_link["experiment_spec_hash"] = sha256_file(spec_path)
+            forged_config_link["config_path"] = "configs/candidates/config-link.json"
+            with self.assertRaisesRegex(ValidationError, "symlink"):
+                validate_approved_run_route(forged_config_link, root)
+            write_json(spec_path, spec)
+            manifest["experiment_spec_hash"] = sha256_file(spec_path)
+
+            for field, value in (
+                ("experiment_spec_path", "../experiments/exp_route.json"),
+                ("experiment_spec_path", "/absolute/spec.json"),
+                ("experiment_spec_path", "C:\\spec.json"),
+                ("experiment_spec_path", "experiments\\exp_route.json"),
+                ("config_path", "../configs/candidates/candidate.json"),
+                ("config_path", "/absolute/config.json"),
+                ("config_path", "C:\\config.json"),
+                ("config_path", "configs\\candidates\\candidate.json"),
+            ):
+                forged = deepcopy(manifest)
+                forged[field] = value
+                with self.subTest(field=field, value=value), self.assertRaisesRegex(
+                    ValidationError, "normalized|does not match approved spec route"
+                ):
+                    validate_approved_run_route(forged, root)
+
+            unapproved = deepcopy(spec)
+            unapproved["status"] = "PROPOSED"
+            write_json(spec_path, unapproved)
+            manifest["experiment_spec_hash"] = sha256_file(spec_path)
+            with self.assertRaisesRegex(ValidationError, "APPROVED_FOR_IMPLEMENTATION"):
+                validate_approved_run_route(manifest, root)
+
+            write_json(spec_path, spec)
+            manifest["experiment_spec_hash"] = sha256_file(spec_path)
+            manifest["config"]["resolved_run"]["mode"] = "experiment"
+            manifest["config_hash"] = stable_json_hash(manifest["config"])
+            with self.assertRaisesRegex(ValidationError, "cannot be rebuilt"):
+                validate_approved_run_route(manifest, root)
 
     def test_audit_manifest_rejects_duplicate_and_traversal_paths(self):
         with tempfile.TemporaryDirectory() as tmp:
