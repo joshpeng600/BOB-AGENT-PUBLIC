@@ -1,9 +1,9 @@
 # exp_001 freeze readiness — B
 
-STATUS=BLOCKED
+STATUS=READY_FOR_A_REAL_VALID_GATE
 ROLE=B
 BRANCH=B-Part
-ORIGIN_MAIN_SHA=4d26e44f39dd6f9d1c42462411c19a2ddfbe49d3
+ORIGIN_MAIN_SHA=7b8a17044e481430273fd594e8487f01a1b4daf5
 IMPLEMENTATION_COMMIT_SHA=5ab859b135be02db07d03a24a1827a81ecac656d
 HEAD_SHA=NOT_EMBEDDED_TO_AVOID_GIT_SELF_REFERENCE
 WORKTREE_CLEAN=true
@@ -27,8 +27,8 @@ PROTECTED_HASHES=PASS
 REPOSITORY_CONTRACTS=PASS
 PREDICTION_CONTRACT=PASS
 UNIT_TESTS=PASS_77_OF_77
-PYTEST=BLOCKED_MODULE_NOT_INSTALLED
-BLOCKERS=python -m pytest -q failed because the active Python runtime has no pytest module; policy forbids automatic dependency installation
+PYTEST=PASS_77_TESTS_26_SUBTESTS
+BLOCKERS=none
 NEXT_RECEIVER=A
 
 ## Scope and freeze semantics
@@ -113,10 +113,8 @@ formal metric claim and no synthetic prediction is intended for E evaluation.
 - `git diff -- starter/` — PASS (no diff).
 - `data/dev` remains ignored and no data, prediction, checkpoint, or generated
   artifact is staged.
-- `python -m pytest -q` — BLOCKED: `No module named pytest` in the active
-  `D:\Program Files\python.exe` runtime. No other installed Python/pytest
-  runtime was found, and no dependency was installed automatically.
+- `python -m pytest -q` — PASS (77 tests, 26 subtests).
 
-Until A resolves or explicitly accepts the missing-pytest verification blocker
-and updates the real-validation gate, B must not run real baseline/BPR or create
-formal valid predictions.
+All B freeze-readiness checks are now satisfied. The repository-owned
+`REAL_VALID_RUN_ALLOWED` gate remains pending, so this evidence does not itself
+permit B to run real baseline/BPR or create formal valid predictions.
