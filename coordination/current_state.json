@@ -2,10 +2,10 @@
   "schema_version": 1,
   "state": "EXP_002_IMPLEMENTATION_SETUP_ALLOWED",
   "owner": "A",
-  "next_receiver": "B_C_D_ASYNC_SETUP",
+  "next_receiver": "B_D_ASYNC_SETUP",
   "approved_against_commit_sha": "8eb5bad5d1ce24ee8d68451dddd45a10414119c5",
   "blocked_by": [
-    "B baseline-route contract generalization, C feasibility recheck, and D config-only candidate are pending merged evidence",
+    "B baseline-route readiness on the required B-Part branch and D config-only candidate are pending merged evidence",
     "E pre-evaluation review waits for merged B and D setup evidence",
     "real valid runs remain blocked pending a later exact A authorization",
     "test and final release remain blocked pending a separate exact human final approval"
@@ -38,8 +38,8 @@
     }
   },
   "role_statuses": {
-    "B": "EXP_002_BASELINE_ROUTE_GENERALIZATION_ASSIGNED_SYNTHETIC_ONLY",
-    "C": "EXP_002_READ_ONLY_FEASIBILITY_REVIEW_ASSIGNED",
+    "B": "TECHNICAL_PASS_BUT_B_PART_SYNC_READINESS_AND_SYNTHETIC_EVIDENCE_REQUIRED",
+    "C": "FEASIBILITY_REVIEW_ACCEPTED_WITH_THIS_A_PR",
     "D": "EXP_002_CONFIG_ONLY_NEGATIVE_SAMPLING_CHANGE_ASSIGNED",
     "E": "WAIT_FOR_MERGED_B_D_SETUP_EVIDENCE"
   },
@@ -64,6 +64,18 @@
     "pr_25_evidence_used": false,
     "test_access": false,
     "evidence": "coordination/inbox/A/exp_002_planning_decision_20260831.md"
+  },
+  "exp_002_setup_reviews": {
+    "reviewed_against_main_sha": "dffc3ddd641024bf72738c002c8028378f399431",
+    "c_source_commit_sha": "ad44dd81a54555d212eec827c49d4bc7455701cc",
+    "c_status": "ACCEPTED_WITH_THIS_A_PR",
+    "b_source_commit_sha": "faccd1a9c4cee07949f2787090285cca5807eae7",
+    "b_status": "TECHNICAL_PASS_GOVERNANCE_AND_READINESS_CORRECTIONS_REQUIRED",
+    "d_status": "NOT_DELIVERED",
+    "e_status": "WAIT_FOR_MERGED_B_D_SETUP_EVIDENCE",
+    "formal_run_authorization_active": false,
+    "test_access": false,
+    "evidence": "coordination/inbox/A/exp_002_setup_delivery_review_20260831.md"
   },
   "readiness_snapshot": {
     "observed_at_utc": "2026-08-30T17:52:48Z",
