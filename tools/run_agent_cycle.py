@@ -508,6 +508,8 @@ def validate_agent_result(
             isinstance(item, str) for item in value[field]
         ):
             raise CycleError(f"agent result {field} must be an array of paths")
+        if len(value[field]) != len(set(value[field])):
+            raise CycleError(f"agent result {field} must not contain duplicate paths")
     normalize_receivers(value.get("next_receiver"))
 
 

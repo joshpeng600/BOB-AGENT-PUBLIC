@@ -119,6 +119,15 @@ class ResultContractTests(unittest.TestCase):
                 safe_result(commit_sha="abc123"), role="B", experiment_id="exp_003"
             )
 
+    def test_rejects_duplicate_evidence_paths(self):
+        duplicate = ["coordination/inbox/B/result.md"] * 2
+        with self.assertRaisesRegex(CycleError, "duplicate paths"):
+            validate_agent_result(
+                safe_result(small_evidence_paths=duplicate),
+                role="B",
+                experiment_id="exp_003",
+            )
+
 
 class DispatchConstructionTests(unittest.TestCase):
     def test_codex_command_uses_reviewable_sandbox(self):
