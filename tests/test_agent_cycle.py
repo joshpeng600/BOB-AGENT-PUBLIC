@@ -390,6 +390,32 @@ class DispatchConstructionTests(unittest.TestCase):
         )
         self.assertNotIn("--dangerously-bypass-approvals-and-sandbox", command)
 
+    def test_codex_command_grants_only_explicit_additional_write_roots(self):
+        command = build_codex_command(
+            executable="codex",
+            worktree=Path("worktree"),
+            schema=Path("schema.json"),
+            last_message=Path("last.json"),
+            git_metadata_dir=Path("/repo/.git"),
+            additional_writable_dirs=(
+                Path("/repo/.git/worktrees/b"),
+                Path("/private/artifacts"),
+            ),
+        )
+        add_dirs = [
+            command[index + 1]
+            for index, value in enumerate(command)
+            if value == "--add-dir"
+        ]
+        self.assertEqual(
+            add_dirs,
+            [
+                str(Path("/repo/.git")),
+                str(Path("/repo/.git/worktrees/b")),
+                str(Path("/private/artifacts")),
+            ],
+        )
+
     def test_role_environment_preserves_exact_python_runtime(self):
         environment = role_command_environment()
         expected = str(Path(sys.executable).absolute())
