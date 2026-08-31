@@ -458,7 +458,6 @@ def build_codex_command(
         str(worktree),
         "-s",
         "workspace-write",
-        "--approve-for-me",
         "--output-schema",
         str(schema),
         "--json",

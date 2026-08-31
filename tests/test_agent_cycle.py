@@ -129,7 +129,7 @@ class DispatchConstructionTests(unittest.TestCase):
             last_message=Path("last.json"),
         )
         self.assertIn("workspace-write", command)
-        self.assertIn("--approve-for-me", command)
+        self.assertNotIn("--approve-for-me", command)
         self.assertIn("--output-schema", command)
         self.assertNotIn("--dangerously-bypass-approvals-and-sandbox", command)
 
