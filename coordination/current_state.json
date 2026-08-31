@@ -1,15 +1,13 @@
 {
   "schema_version": 1,
-  "state": "EXP_003_IMPLEMENTATION_SETUP_ALLOWED",
+  "state": "EXP_003_B_SYNTHETIC_PREFLIGHT_ALLOWED",
   "owner": "A",
-  "next_receiver": "C_AND_D",
-  "approved_against_commit_sha": "4b0bea90b688cc064ddb8f08e572acd448826c87",
+  "next_receiver": "B",
+  "approved_against_commit_sha": "1dc25ed52430df9291f74697c843e1d7d9eb81e0",
   "blocked_by": [
-    "C read-only feasibility and leakage evidence is pending merge",
-    "D config-only embedding-dimension candidate and exact-diff evidence is pending merge",
-    "B synthetic preflight waits for merged C and D evidence",
-    "E independent pre-evaluation review waits for merged B, C, and D evidence",
-    "real valid runs remain blocked pending a later A review of every merged prerequisite",
+    "B must verify the merged exact config binding and complete at most one one-batch synthetic smoke",
+    "E independent pre-evaluation review waits for merged B synthetic readiness",
+    "real valid runs remain blocked pending merged B and E readiness plus a later exact A gate",
     "test and final release remain blocked"
   ],
   "active_experiment_id": "exp_003",
@@ -48,21 +46,21 @@
       "permits": "C read-only review and D config-only implementation; no model/training source or protected-file changes"
     },
     "SYNTHETIC_SMOKE_ALLOWED": {
-      "status": "PENDING_MERGED_C_D_AND_CLEAN_B_PREFLIGHT",
-      "evidence": "experiments/exp_003.json",
-      "permits": "after merged C and D setup evidence, B may run at most one explicit one-batch synthetic smoke; it is never formal metric evidence"
+      "status": "ALLOWED_ONE_BATCH",
+      "evidence": "coordination/inbox/A/exp_003_cd_setup_integration_20260831.md",
+      "permits": "B may verify the exact merged config binding and run at most one explicit one-batch synthetic smoke; synthetic output is never formal metric evidence"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED_PENDING_MERGED_C_D_B_E_READINESS_AND_EXACT_A_GATE",
-      "evidence": "coordination/inbox/A/exp_003_planning_decision_20260831.md",
+      "status": "BLOCKED_PENDING_MERGED_B_E_READINESS_AND_EXACT_A_GATE",
+      "evidence": "coordination/inbox/A/exp_003_cd_setup_integration_20260831.md",
       "permits": "none; no real-data training or formal metrics, and test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "WAIT_FOR_MERGED_C_D_SETUP_EVIDENCE",
-    "C": "EXP_003_READ_ONLY_FEASIBILITY_REVIEW_ASSIGNED",
-    "D": "EXP_003_CONFIG_ONLY_EMBEDDING_DIMENSION_CHANGE_ASSIGNED",
-    "E": "WAIT_FOR_MERGED_B_C_D_SETUP_EVIDENCE"
+    "B": "ACTION_REQUIRED_EXACT_CONFIG_PREFLIGHT_AND_ONE_BATCH_SYNTHETIC_SMOKE",
+    "C": "PASS_MERGED_PR_13",
+    "D": "PASS_MERGED_PR_15_CONFIG_ONLY",
+    "E": "WAIT_FOR_MERGED_B_SYNTHETIC_READINESS"
   },
   "exp_003_planning": {
     "status": "IMPLEMENTATION_SETUP_APPROVED",
@@ -86,6 +84,26 @@
     "final_approval_created": false,
     "test_access": false,
     "evidence": "coordination/inbox/A/exp_003_planning_decision_20260831.md"
+  },
+  "exp_003_setup_reviews": {
+    "reviewed_against_main_sha": "1dc25ed52430df9291f74697c843e1d7d9eb81e0",
+    "c_source_pr": 13,
+    "c_source_commit_sha": "ccaa4a670ca853e4e96f9c383f12679164605611",
+    "c_status": "PASS_DATA_FEATURE_LEAKAGE_AND_MEMORY_FEASIBILITY",
+    "d_source_pr": 15,
+    "d_implementation_commit_sha": "76c7f2ec2ae3867ed33b66f2209090edded0b60a",
+    "d_readiness_commit_sha": "7575140a1d5c5cb7ead5c0e767177087a2052dce",
+    "d_status": "PASS_CONFIG_ONLY_EXACT_DIFF",
+    "config_diff": "model.embedding_dim: 16 -> 32",
+    "config_diff_check": "PASS_EXACTLY_ONE_SCIENTIFIC_FIELD",
+    "b_synthetic_smoke_allowed": true,
+    "real_valid_run_authorization_active": false,
+    "authorized_real_attempts_active": 0,
+    "formal_metrics_produced": false,
+    "pr_25_evidence_used": false,
+    "final_approval_created": false,
+    "test_access": false,
+    "evidence": "coordination/inbox/A/exp_003_cd_setup_integration_20260831.md"
   },
   "exp_002_planning": {
     "status": "COMPLETED_REJECTED_KEEP_EXP_001",
