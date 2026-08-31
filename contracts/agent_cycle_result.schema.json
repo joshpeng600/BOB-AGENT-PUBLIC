@@ -48,13 +48,11 @@
     },
     "small_evidence_paths": {
       "type": "array",
-      "items": {"type": "string"},
-      "uniqueItems": true
+      "items": {"type": "string"}
     },
     "large_artifact_paths": {
       "type": "array",
-      "items": {"type": "string"},
-      "uniqueItems": true
+      "items": {"type": "string"}
     },
     "next_receiver": {
       "type": ["string", "null"]

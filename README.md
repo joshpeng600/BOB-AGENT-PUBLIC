@@ -50,8 +50,8 @@ See [Architecture](docs/ARCHITECTURE.md) for the role and evidence boundaries.
 Python 3.10+ is recommended.
 
 ```bash
-git clone https://github.com/joshpeng600/BOB-AGENT.git
-cd BOB-AGENT
+git clone https://github.com/joshpeng600/BOB-AGENT-PUBLIC.git
+cd BOB-AGENT-PUBLIC
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -86,6 +86,12 @@ The numbers above come from committed, independent E valid-only evidence:
 [exp_001](coordination/inbox/E/exp_001_fresh_44fd36_evaluation_result.md) and
 [exp_002](coordination/inbox/E/exp_002_evaluation_result.md). Quarantined PR #25
 evidence is not used.
+
+**The product is the learning loop, not a single score.** The two scores are evidence
+that the agent can remember a successful change, test a plausible follow-up, reject a
+regression, and keep the verified champion. `exp_001` and `exp_002` are therefore the
+first two recorded learning steps of BOB-Agent rather than two standalone leaderboard
+submissions.
 
 ## Agent-cycle interface
 
@@ -230,5 +236,6 @@ speed matters but leakage and silent regressions are costly.
 - [Submission checklist](docs/SUBMISSION_CHECKLIST.md)
 - [Devpost draft](docs/DEVPOST_DRAFT.md)
 
-The repository currently has no license file. A license is a human legal decision;
-see the submission checklist before making the repository public.
+Released under the [MIT License](LICENSE). Repository publication was completed under
+explicit repository-owner authorization. Video upload and Devpost submission remain
+human-controlled release actions; see the submission checklist before the final submission.

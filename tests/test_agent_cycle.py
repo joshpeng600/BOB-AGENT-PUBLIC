@@ -123,6 +123,15 @@ class ResultContractTests(unittest.TestCase):
                 safe_result(commit_sha="abc123"), role="B", experiment_id="exp_003"
             )
 
+    def test_rejects_duplicate_evidence_paths(self):
+        duplicate = ["coordination/inbox/B/result.md"] * 2
+        with self.assertRaisesRegex(CycleError, "duplicate paths"):
+            validate_agent_result(
+                safe_result(small_evidence_paths=duplicate),
+                role="B",
+                experiment_id="exp_003",
+            )
+
 
 class DispatchConstructionTests(unittest.TestCase):
     def test_codex_command_uses_reviewable_sandbox(self):
@@ -133,7 +142,7 @@ class DispatchConstructionTests(unittest.TestCase):
             last_message=Path("last.json"),
         )
         self.assertIn("workspace-write", command)
-        self.assertIn("--approve-for-me", command)
+        self.assertNotIn("--approve-for-me", command)
         self.assertIn("--output-schema", command)
         self.assertNotIn("--dangerously-bypass-approvals-and-sandbox", command)
 
@@ -462,6 +471,7 @@ class ArtifactAndReportTests(unittest.TestCase):
                 current_experiment={
                     "experiment_id": "exp_002",
                     "status": "COMPLETED_REJECTED",
+                    "retained_champion_experiment_id": "exp_001",
                 },
                 current_state={
                     "next_receiver": "A",
@@ -471,9 +481,13 @@ class ArtifactAndReportTests(unittest.TestCase):
                 },
             )
             self.assertEqual(report["next_receivers"], ["A"])
+            self.assertEqual(report["champion_experiment_id"], "exp_001")
             self.assertTrue((runtime / "cycle_state.json").exists())
             self.assertTrue((runtime / "status.md").exists())
             self.assertTrue((runtime / "demo_summary.json").exists())
+            status = (runtime / "status.md").read_text(encoding="utf-8")
+            self.assertIn("Current champion: `exp_001`", status)
+            self.assertIn("Hidden test was never accessed", status)
 
 
 class CampaignStateTests(unittest.TestCase):

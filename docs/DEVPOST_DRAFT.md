@@ -150,8 +150,8 @@ clear separation between public-valid research and external hidden-test evaluati
 - Same-host artifacts use automatic read-only hash manifests; cross-host artifacts
   still require a private transfer service or human handoff.
 - Formal reproduction requires the external KuaiRand dataset.
-- Repository publication, licensing, video upload, and Devpost submission remain
-  human-controlled release actions.
+- Repository publication and MIT licensing were completed under explicit repository-owner
+  authorization. Video upload and Devpost submission remain human-controlled release actions.
 
 ## What's next
 
@@ -161,5 +161,5 @@ label-free final-submission freeze to organizer upload.
 
 ## Links
 
-- Public repository: `[REPOSITORY_URL]`
+- Public repository: https://github.com/joshpeng600/BOB-AGENT-PUBLIC
 - Public YouTube demo (under three minutes): `[YOUTUBE_URL]`
