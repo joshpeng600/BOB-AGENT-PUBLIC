@@ -9,8 +9,8 @@ history already committed to the repository.
 Use Python 3.10+ in a fresh clone:
 
 ```bash
-git clone https://github.com/joshpeng600/BOB-AGENT.git
-cd BOB-AGENT
+git clone https://github.com/joshpeng600/BOB-AGENT-PUBLIC.git
+cd BOB-AGENT-PUBLIC
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -27,7 +27,7 @@ Do not download data for this demo. Do not pass `--execute`,
 
 ### Beginner setup in VS Code
 
-1. Open the final `BOB-AGENT` folder in VS Code.
+1. Open the final `BOB-AGENT-PUBLIC` folder in VS Code.
 2. Choose **Terminal → New Terminal** and make the terminal text large enough to read
    in a 1080p recording.
 3. Confirm the terminal is on clean `main` with `git status --short --branch`.
