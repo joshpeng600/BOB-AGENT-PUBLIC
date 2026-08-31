@@ -229,6 +229,22 @@ def git_common_dir(worktree: Path) -> Path:
     return common_dir
 
 
+def git_worktree_dir(worktree: Path, common_dir: Path) -> Path:
+    """Return and constrain the linked worktree's writable Git directory."""
+
+    value = require_success(
+        run_command(
+            ("git", "rev-parse", "--path-format=absolute", "--git-dir"),
+            cwd=worktree,
+        ),
+        "git worktree-dir lookup",
+    )
+    worktree_dir = Path(value).resolve()
+    if not worktree_dir.is_dir() or not _is_within(worktree_dir, common_dir):
+        raise CycleError(f"Git worktree-dir is missing or unsafe: {worktree_dir}")
+    return worktree_dir
+
+
 def role_command_environment() -> dict[str, str]:
     """Preserve the runner's Python environment for Codex role subprocesses."""
 
@@ -715,6 +731,7 @@ def build_codex_command(
     last_message: Path,
     session_id: str | None = None,
     git_metadata_dir: Path | None = None,
+    additional_writable_dirs: Sequence[Path] = (),
 ) -> list[str]:
     if session_id:
         return [
@@ -741,8 +758,17 @@ def build_codex_command(
         "-s",
         "workspace-write",
     ]
+    writable_dirs: list[Path] = []
     if git_metadata_dir is not None:
-        command.extend(("--add-dir", str(git_metadata_dir)))
+        writable_dirs.append(git_metadata_dir)
+    writable_dirs.extend(additional_writable_dirs)
+    seen: set[str] = set()
+    for writable_dir in writable_dirs:
+        rendered = str(writable_dir)
+        if rendered in seen:
+            continue
+        seen.add(rendered)
+        command.extend(("--add-dir", rendered))
     command.extend([
         "--output-schema",
         str(schema),
@@ -910,6 +936,7 @@ def dispatch_role(
     handoff_context: str | None = None,
     integration_context: str | None = None,
     private_runtime_context: str | None = None,
+    private_artifact_root: Path | None = None,
 ) -> dict[str, Any]:
     worktree = prepare_role_worktree(
         repo, role=role, experiment_id=experiment_id, worktree_root=worktree_root
@@ -918,6 +945,7 @@ def dispatch_role(
     role_git_dir = git_common_dir(worktree)
     if role_git_dir != repository_git_dir:
         raise CycleError("role worktree does not share the coordinator Git metadata")
+    role_worktree_git_dir = git_worktree_dir(worktree, role_git_dir)
     role_runtime = runtime / role.lower()
     role_runtime.mkdir(parents=True, exist_ok=True)
     schema = repo / "contracts" / "agent_cycle_result.schema.json"
@@ -930,6 +958,11 @@ def dispatch_role(
         last_message=last_message,
         session_id=resume_session,
         git_metadata_dir=role_git_dir,
+        additional_writable_dirs=(
+            [role_worktree_git_dir, private_artifact_root]
+            if role == "B" and private_artifact_root is not None
+            else [role_worktree_git_dir]
+        ),
     )
     prompt = build_role_prompt(
         role=role,
@@ -1864,6 +1897,7 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
             handoff_context=handoff_context,
             integration_context=integration_context,
             private_runtime_context=private_runtime_context,
+            private_artifact_root=runtime_config.artifact_root,
         )
         role_worktree = Path(result["role_worktree"])
         produced_head = require_clean_worktree(role_worktree)
