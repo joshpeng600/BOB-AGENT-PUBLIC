@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "contract_type": "handoff",
+  "experiment_id": "exp_003",
+  "approved_against_commit_sha": "4b0bea90b688cc064ddb8f08e572acd448826c87",
+  "from_role": "A",
+  "to_role": "B",
+  "status": "WAIT_FOR_MERGED_C_D_SETUP_EVIDENCE",
+  "experiment_spec": "experiments/exp_003.json",
+  "required_checks": [
+    "after C and D evidence merges, verify baseline and candidate config routes and exact one-variable difference",
+    "run repository contract and unit checks from a clean full-SHA implementation commit",
+    "run at most one explicit one-batch synthetic smoke and report it only as interface evidence",
+    "do not use real data, create formal artifacts or metrics, consume a formal-run authorization, or access test"
+  ],
+  "real_training_allowed": false,
+  "formal_metrics_allowed": false,
+  "required_return_paths": [
+    "coordination/inbox/B/exp_003_setup_readiness.md"
+  ],
+  "merge_requirement": "return evidence must be merged to main before A may use it as a gate",
+  "next_receiver": "A"
+}

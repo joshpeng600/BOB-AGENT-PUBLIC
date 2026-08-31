@@ -1,14 +1,19 @@
 {
   "schema_version": 1,
-  "state": "EXP_002_COMPLETED_REJECTED",
+  "state": "EXP_003_IMPLEMENTATION_SETUP_ALLOWED",
   "owner": "A",
-  "next_receiver": "A",
-  "approved_against_commit_sha": "a673dbab096aabc19d3e3b8c877b80f03aaccdb3",
+  "next_receiver": "C_AND_D",
+  "approved_against_commit_sha": "4b0bea90b688cc064ddb8f08e572acd448826c87",
   "blocked_by": [
-    "test and final release remain blocked pending a separate exact human final approval"
+    "C read-only feasibility and leakage evidence is pending merge",
+    "D config-only embedding-dimension candidate and exact-diff evidence is pending merge",
+    "B synthetic preflight waits for merged C and D evidence",
+    "E independent pre-evaluation review waits for merged B, C, and D evidence",
+    "real valid runs remain blocked pending a later A review of every merged prerequisite",
+    "test and final release remain blocked"
   ],
-  "active_experiment_id": "exp_002",
-  "experiment_spec_path": "experiments/exp_002.json",
+  "active_experiment_id": "exp_003",
+  "experiment_spec_path": "experiments/exp_003.json",
   "approved_baseline_config_path": "configs/approved/exp_001.json",
   "starter_contract_verified": true,
   "protected_hashes_pinned": true,
@@ -39,24 +44,48 @@
   "stage_gates": {
     "IMPLEMENTATION_ALLOWED": {
       "status": "ALLOWED",
-      "permits": "committed role implementation and synthetic-fixture verification only"
+      "evidence": "coordination/inbox/A/exp_003_planning_decision_20260831.md",
+      "permits": "C read-only review and D config-only implementation; no model/training source or protected-file changes"
     },
     "SYNTHETIC_SMOKE_ALLOWED": {
-      "status": "ALLOWED_AND_COMPLETED",
-      "evidence": "coordination/inbox/B/exp_002_setup_readiness.md",
-      "permits": "the merged one-batch synthetic baseline and candidate smoke only; synthetic evidence is never formal metric evidence"
+      "status": "PENDING_MERGED_C_D_AND_CLEAN_B_PREFLIGHT",
+      "evidence": "experiments/exp_003.json",
+      "permits": "after merged C and D setup evidence, B may run at most one explicit one-batch synthetic smoke; it is never formal metric evidence"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "CONSUMED_BLOCKED",
-      "evidence": "coordination/inbox/A/exp_002_cycle_gate_activation_20260831.md",
-      "permits": "no further exp_002 run; the single authorized pair was consumed and independently evaluated; PR #25 evidence and test remain forbidden"
+      "status": "BLOCKED_PENDING_MERGED_C_D_B_E_READINESS_AND_EXACT_A_GATE",
+      "evidence": "coordination/inbox/A/exp_003_planning_decision_20260831.md",
+      "permits": "none; no real-data training or formal metrics, and test remains forbidden"
     }
   },
   "role_statuses": {
-    "B": "FORMAL_PAIR_COMPLETED_PR_50",
-    "C": "FEASIBILITY_PASS_PR_45",
-    "D": "CONFIG_ONLY_DELIVERY_PASS_PR_46",
-    "E": "FORMAL_EVALUATION_REJECTED_PR_52"
+    "B": "WAIT_FOR_MERGED_C_D_SETUP_EVIDENCE",
+    "C": "EXP_003_READ_ONLY_FEASIBILITY_REVIEW_ASSIGNED",
+    "D": "EXP_003_CONFIG_ONLY_EMBEDDING_DIMENSION_CHANGE_ASSIGNED",
+    "E": "WAIT_FOR_MERGED_B_C_D_SETUP_EVIDENCE"
+  },
+  "exp_003_planning": {
+    "status": "IMPLEMENTATION_SETUP_APPROVED",
+    "approved_against_commit_sha": "4b0bea90b688cc064ddb8f08e572acd448826c87",
+    "current_champion_experiment_id": "exp_001",
+    "current_champion_config_path": "configs/approved/exp_001.json",
+    "current_champion_primary": 0.603871007132627,
+    "minimum_improvement": 0.002,
+    "candidate_primary_must_be_greater_than": 0.605871007132627,
+    "single_scientific_change": "model.embedding_dim: 16 -> 32",
+    "data_mode": "train_valid_only",
+    "dataset_manifest_sha256": "69e5a6f656356832f7e1fa6a9774bc404030f32874e18e57e0f38b6a309a1002",
+    "seeds": [0],
+    "smoke_batches": 1,
+    "max_runtime_seconds": 3600,
+    "consecutive_no_improve_before": 1,
+    "formal_run_authorization_active": false,
+    "authorized_attempts_active": 0,
+    "formal_metrics_produced": false,
+    "pr_25_evidence_used": false,
+    "final_approval_created": false,
+    "test_access": false,
+    "evidence": "coordination/inbox/A/exp_003_planning_decision_20260831.md"
   },
   "exp_002_planning": {
     "status": "COMPLETED_REJECTED_KEEP_EXP_001",
