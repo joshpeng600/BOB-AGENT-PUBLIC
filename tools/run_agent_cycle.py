@@ -455,6 +455,16 @@ def real_valid_gate_status(current_state: Mapping[str, Any]) -> str:
     return str(gate.get("status", "MISSING")).upper()
 
 
+def real_valid_gate_is_allowed(status: str) -> bool:
+    """Recognize only the exact A-owned public-validation gate statuses."""
+
+    return status.upper() in {
+        "ALLOWED",
+        "ALLOWED_EXACTLY_ONE_VALID_ONLY_PAIR",
+        "ALLOWED_EXACTLY_ONE_FULL_BUDGET_VALID_ONLY_PAIR",
+    }
+
+
 def _positive_int(value: Any, field: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise CycleError(f"campaign authorization {field} must be a positive integer")
@@ -586,12 +596,12 @@ def build_role_prompt(
 ) -> str:
     formal_run_allowed = (
         role == "B"
-        and gate_status == "ALLOWED"
+        and real_valid_gate_is_allowed(gate_status)
         and (allow_real_valid or campaign_public_valid_authorized)
     )
     formal_evaluation_allowed = (
         role == "E"
-        and gate_status == "ALLOWED"
+        and real_valid_gate_is_allowed(gate_status)
         and campaign_public_valid_authorized
     )
     if formal_run_allowed and campaign_public_valid_authorized:
@@ -1807,7 +1817,7 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
         role = receivers[0]
         queued_after_role = receivers[1:]
         gate_status = report["real_valid_gate_status"]
-        campaign_public_valid = gate_status == "ALLOWED"
+        campaign_public_valid = real_valid_gate_is_allowed(gate_status)
         data_context = (
             f"development_data_dir={campaign_data_dir}\n"
             f"dataset_manifest={campaign_data_dir / 'dataset_manifest.json'}\n"
@@ -2114,7 +2124,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             role = receivers[0]
         gate_status = report["real_valid_gate_status"]
-        if args.allow_real_valid and not (role == "B" and gate_status == "ALLOWED"):
+        if args.allow_real_valid and not (
+            role == "B" and real_valid_gate_is_allowed(gate_status)
+        ):
             raise CycleError(
                 "--allow-real-valid is valid only for B with recorded gate status ALLOWED"
             )
