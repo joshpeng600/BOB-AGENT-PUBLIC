@@ -19,6 +19,9 @@ write authority or independence into one role.
    private manual transfer.
 5. Generates ignored runtime files containing cycle status, the experiment
    comparison table, and a compact demo summary.
+6. Runs a bounded multi-experiment campaign when A has recorded an explicit
+   valid-only authorization. Every role remains a separate Codex invocation,
+   worktree, commit, PR, and CI decision.
 
 Runtime files are written below `artifacts/agent_cycle/<experiment>/`, which is
 already excluded from Git.
@@ -52,6 +55,54 @@ The process does not assume that A, B, C, D, and E are online together. Invoke
 it again after the previous role's PR is merged and the local clone has the
 latest main.
 
+## Bounded continuous campaign
+
+The continuous entry point is:
+
+```powershell
+python tools/run_agent_cycle.py --experiment exp_003 --action run --max-iterations 3
+```
+
+`--max-iterations` counts newly completed experiments, not individual role
+calls. The runner also enforces A's role-step ceiling; an operator may request a
+smaller ceiling with `--max-role-steps`, but cannot widen it.
+
+The command executes only from a clean `main` checkout and only after A has
+committed a `bounded_campaign_authorization` in
+`coordination/current_state.json`. The required shape is:
+
+```json
+{
+  "bounded_campaign_authorization": {
+    "status": "ALLOWED",
+    "experiment_ids": ["exp_003", "exp_004", "exp_005"],
+    "max_completed_experiments": 3,
+    "max_role_steps": 30,
+    "data_mode": "train_valid_only",
+    "automatic_public_valid": true,
+    "test_access": false,
+    "final_approval_allowed": false
+  }
+}
+```
+
+The runner validates this record but never creates, edits, or extends it. For
+every role step it requires a clean full commit SHA, a PR whose head is exactly
+that SHA, changed paths inside that role's AGENTS.md ownership, all four required
+checks, a conflict-free merge, and a fresh fast-forward of local `main`.
+Reusing a role in the same experiment is safe only when its clean worktree can
+fast-forward to the newly merged `origin/main`; divergence stops the campaign
+without rebase, reset, or force-push.
+
+Continuous mode stops and records `campaign_state.json` when a role waits,
+blocks, or fails; a PR is missing, conflicting, unsafe, or fails CI; a private
+artifact transfer is needed; A-owned routing state does not advance; the
+authorization changes; or either the role-step or consecutive-no-improvement
+limit is reached. After the external condition is resolved, repeat the same
+command to resume the recorded campaign. This is truthful stop/resume behavior:
+the runner does not claim an end-to-end continuation when a manual transfer or
+A integration is still required.
+
 ## PR and CI monitoring
 
 Check a PR without merging it:
@@ -75,17 +126,24 @@ by that role.
 
 ## Formal validation gate
 
-Real validation remains double locked. The repository must record
-`REAL_VALID_RUN_ALLOWED.status=ALLOWED`, the next receiver must be B, and the
-operator must add the explicit flag:
+For a one-step invocation, real validation remains double locked. The
+repository must record `REAL_VALID_RUN_ALLOWED.status=ALLOWED`, the next
+receiver must be B, and the operator must add the explicit flag:
 
 ```powershell
 python tools/run_agent_cycle.py --experiment exp_003 --action step --execute --worker-role B --allow-real-valid
 ```
 
 Without all three conditions the role prompt forbids real-data training and
-formal validation metrics. No ordinary cycle command authorizes test access or
-final approval.
+formal validation metrics.
+
+In continuous mode the explicit operator flag is replaced by the A-recorded
+bounded campaign authorization above. B receives public-validation permission
+only when both that campaign record and the current experiment's
+`REAL_VALID_RUN_ALLOWED.status=ALLOWED` are present. Other roles never receive
+training permission. No ordinary or continuous cycle command authorizes hidden
+test access or final approval, and release-only/final-approval PR paths cannot
+be auto-merged by this coordinator.
 
 ## Large artifact handoff
 

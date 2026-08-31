@@ -4,24 +4,33 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from tools.run_agent_cycle import (
+    CommandResult,
     CycleError,
     REQUIRED_CHECKS,
+    _load_or_initialize_campaign_state,
+    _record_campaign_stop,
     artifact_inventory,
     assess_pr,
     build_codex_command,
     build_role_prompt,
+    build_parser,
+    completed_experiment_ids,
     create_handoff_manifest,
     determine_receivers,
     experiment_comparison,
+    fast_forward_to_origin_main,
     generate_reports,
     is_terminal_state,
     next_experiment_id,
     normalize_receivers,
     parse_pr_number,
     select_target_experiment,
+    validate_campaign_authorization,
     validate_agent_result,
+    watch_pr,
 )
 
 
@@ -56,6 +65,7 @@ def successful_pr(files=None):
     return {
         "state": "OPEN",
         "mergeable": "MERGEABLE",
+        "headRefOid": "a" * 40,
         "files": [{"path": path} for path in (files or ["tools/example.py"])],
         "statusCheckRollup": checks,
     }
@@ -149,6 +159,159 @@ class DispatchConstructionTests(unittest.TestCase):
         )
         self.assertIn("explicitly permits B", prompt)
 
+    def test_campaign_prompt_opens_only_b_valid_gate_and_keeps_test_closed(self):
+        prompt = build_role_prompt(
+            role="B",
+            experiment_id="exp_003",
+            gate_status="ALLOWED",
+            allow_real_valid=False,
+            campaign_public_valid_authorized=True,
+        )
+        self.assertIn("bounded train-valid-only campaign", prompt)
+        self.assertIn("never access, compute, print, or report test", prompt.lower())
+        evaluator = build_role_prompt(
+            role="E",
+            experiment_id="exp_003",
+            gate_status="ALLOWED",
+            allow_real_valid=False,
+            campaign_public_valid_authorized=True,
+        )
+        self.assertIn("Independently evaluate only B's immutable", evaluator)
+        closed = build_role_prompt(
+            role="C",
+            experiment_id="exp_003",
+            gate_status="ALLOWED",
+            allow_real_valid=False,
+            campaign_public_valid_authorized=True,
+        )
+        self.assertIn("Do not run real data training", closed)
+
+
+class CampaignAuthorizationTests(unittest.TestCase):
+    def authorization(self, **overrides):
+        value = {
+            "status": "ALLOWED",
+            "experiment_ids": ["exp_003", "exp_004", "exp_005"],
+            "max_completed_experiments": 3,
+            "max_role_steps": 24,
+            "data_mode": "train_valid_only",
+            "automatic_public_valid": True,
+            "test_access": False,
+            "final_approval_allowed": False,
+        }
+        value.update(overrides)
+        return {"bounded_campaign_authorization": value}
+
+    def test_accepts_explicit_bounded_valid_only_campaign(self):
+        authorization = validate_campaign_authorization(
+            self.authorization(),
+            start_experiment_id="exp_003",
+            requested_iterations=3,
+            requested_role_steps=20,
+        )
+        self.assertEqual(
+            authorization.experiment_ids, ("exp_003", "exp_004", "exp_005")
+        )
+        self.assertTrue(authorization.automatic_public_valid)
+
+    def test_rejects_missing_or_widened_authorization(self):
+        unsafe_states = [
+            {},
+            self.authorization(status="BLOCKED"),
+            self.authorization(data_mode="train_test"),
+            self.authorization(test_access=True),
+            self.authorization(final_approval_allowed=True),
+            self.authorization(automatic_public_valid=False),
+            self.authorization(experiment_ids=["exp_003", "exp_005"]),
+        ]
+        for state in unsafe_states:
+            with self.subTest(state=state), self.assertRaises(CycleError):
+                validate_campaign_authorization(
+                    state,
+                    start_experiment_id="exp_003",
+                    requested_iterations=2,
+                    requested_role_steps=None,
+                )
+
+    def test_rejects_requested_iterations_or_steps_above_a_limits(self):
+        with self.assertRaisesRegex(CycleError, "iterations exceed"):
+            validate_campaign_authorization(
+                self.authorization(max_completed_experiments=2),
+                start_experiment_id="exp_003",
+                requested_iterations=3,
+                requested_role_steps=None,
+            )
+        with self.assertRaisesRegex(CycleError, "role steps exceed"):
+            validate_campaign_authorization(
+                self.authorization(max_role_steps=4),
+                start_experiment_id="exp_003",
+                requested_iterations=2,
+                requested_role_steps=5,
+            )
+
+    def test_parser_exposes_continuous_run_bounds(self):
+        args = build_parser().parse_args(
+            [
+                "--experiment",
+                "exp_003",
+                "--action",
+                "run",
+                "--max-iterations",
+                "3",
+                "--max-role-steps",
+                "20",
+            ]
+        )
+        self.assertEqual(args.action, "run")
+        self.assertEqual(args.max_iterations, 3)
+        self.assertEqual(args.max_role_steps, 20)
+
+
+class WorktreeRefreshTests(unittest.TestCase):
+    def test_existing_role_branch_fast_forwards_for_second_a_step(self):
+        commands = []
+
+        def fake_run(argv, *, cwd, input_text=None, timeout_seconds=None):
+            commands.append(tuple(argv))
+            if tuple(argv) == ("git", "rev-parse", "HEAD"):
+                return CommandResult(0, "a" * 40 + "\n", "")
+            if tuple(argv) == ("git", "rev-parse", "origin/main"):
+                return CommandResult(0, "b" * 40 + "\n", "")
+            return CommandResult(0, "", "")
+
+        with patch("tools.run_agent_cycle.run_command", side_effect=fake_run), patch(
+            "tools.run_agent_cycle.require_clean_worktree",
+            side_effect=["a" * 40, "b" * 40],
+        ):
+            refreshed = fast_forward_to_origin_main(
+                Path("/tmp/a-exp003"), label="existing A role worktree"
+            )
+        self.assertEqual(refreshed, "b" * 40)
+        self.assertIn(("git", "merge", "--ff-only", "origin/main"), commands)
+        self.assertNotIn(("git", "rebase", "origin/main"), commands)
+
+    def test_diverged_role_branch_stops_without_rebase_or_reset(self):
+        commands = []
+
+        def fake_run(argv, *, cwd, input_text=None, timeout_seconds=None):
+            commands.append(tuple(argv))
+            if tuple(argv) == ("git", "rev-parse", "HEAD"):
+                return CommandResult(0, "a" * 40 + "\n", "")
+            if tuple(argv) == ("git", "rev-parse", "origin/main"):
+                return CommandResult(0, "b" * 40 + "\n", "")
+            if tuple(argv[:3]) == ("git", "merge-base", "--is-ancestor"):
+                return CommandResult(1, "", "")
+            return CommandResult(0, "", "")
+
+        with patch("tools.run_agent_cycle.run_command", side_effect=fake_run), patch(
+            "tools.run_agent_cycle.require_clean_worktree", return_value="a" * 40
+        ), self.assertRaisesRegex(CycleError, "refusing rebase or reset"):
+            fast_forward_to_origin_main(
+                Path("/tmp/a-exp003"), label="existing A role worktree"
+            )
+        self.assertFalse(any(command[:2] == ("git", "rebase") for command in commands))
+        self.assertFalse(any(command[:2] == ("git", "reset") for command in commands))
+
 
 class PullRequestGateTests(unittest.TestCase):
     def test_allows_clean_pr_with_all_checks(self):
@@ -160,6 +323,26 @@ class PullRequestGateTests(unittest.TestCase):
         ready, reasons = assess_pr(successful_pr(["starter/data.py"]))
         self.assertFalse(ready)
         self.assertTrue(any("protected paths" in reason for reason in reasons))
+
+    def test_rejects_release_only_change_and_unexpected_head(self):
+        ready, reasons = assess_pr(
+            successful_pr(["tools/final_approval.py"]), expected_head_sha="b" * 40
+        )
+        self.assertFalse(ready)
+        self.assertTrue(any("protected paths" in reason for reason in reasons))
+        self.assertTrue(any("PR head" in reason for reason in reasons))
+
+    def test_continuous_gate_enforces_role_write_authority(self):
+        ready, reasons = assess_pr(
+            successful_pr(["governance/policy.json"]), expected_role="D"
+        )
+        self.assertFalse(ready)
+        self.assertTrue(any("does not own" in reason for reason in reasons))
+        ready, reasons = assess_pr(
+            successful_pr(["src/models/fm.py"]), expected_role="D"
+        )
+        self.assertTrue(ready)
+        self.assertEqual(reasons, [])
 
     def test_rejects_missing_check(self):
         pr = successful_pr()
@@ -173,6 +356,29 @@ class PullRequestGateTests(unittest.TestCase):
             parse_pr_number("https://github.com/example/repo/pull/123"), 123
         )
         self.assertIsNone(parse_pr_number(None))
+
+    def test_auto_merge_waits_for_checks_and_preserves_reusable_role_branch(self):
+        opened = successful_pr()
+        merged = dict(opened, state="MERGED")
+        with patch(
+            "tools.run_agent_cycle.load_pr", side_effect=[opened, merged]
+        ), patch(
+            "tools.run_agent_cycle.run_command",
+            return_value=CommandResult(0, "", ""),
+        ) as command:
+            result = watch_pr(
+                Path("/tmp/repo"),
+                pr_number=54,
+                timeout_seconds=0,
+                poll_seconds=5,
+                auto_merge=True,
+                expected_head_sha="a" * 40,
+                expected_role="B",
+            )
+        self.assertTrue(result["ready"])
+        merge_command = command.call_args.args[0]
+        self.assertEqual(merge_command, ("gh", "pr", "merge", "54", "--merge"))
+        self.assertNotIn("--delete-branch", merge_command)
 
 
 class ArtifactAndReportTests(unittest.TestCase):
@@ -257,6 +463,57 @@ class ArtifactAndReportTests(unittest.TestCase):
             self.assertTrue((runtime / "cycle_state.json").exists())
             self.assertTrue((runtime / "status.md").exists())
             self.assertTrue((runtime / "demo_summary.json").exists())
+
+
+class CampaignStateTests(unittest.TestCase):
+    def test_counts_only_completed_decision_records(self):
+        self.assertEqual(
+            completed_experiment_ids(
+                [
+                    {"record_type": "experiment_plan", "experiment_id": "exp_003"},
+                    {
+                        "record_type": "experiment_decision",
+                        "experiment_id": "exp_003",
+                    },
+                ]
+            ),
+            {"exp_003"},
+        )
+
+    def test_stop_state_is_resumable_but_never_authorizes_test(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = Path(tmp)
+            state = _load_or_initialize_campaign_state(
+                runtime,
+                start_experiment_id="exp_003",
+                authorized_experiment_ids=["exp_003", "exp_004"],
+                max_iterations=2,
+                max_role_steps=12,
+                authorization_hash="a" * 64,
+                existing_decisions={"exp_001", "exp_002"},
+            )
+            _record_campaign_stop(
+                runtime,
+                state,
+                reason="NO_STATE_PROGRESS",
+                detail="A must advance routing state",
+            )
+            saved = json.loads(
+                (runtime / "campaign_state.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(saved["status"], "STOPPED")
+            self.assertFalse(saved["test_access"])
+            self.assertFalse(saved["final_approval_created"])
+            resumed = _load_or_initialize_campaign_state(
+                runtime,
+                start_experiment_id="exp_003",
+                authorized_experiment_ids=["exp_003", "exp_004"],
+                max_iterations=2,
+                max_role_steps=12,
+                authorization_hash="a" * 64,
+                existing_decisions={"exp_001", "exp_002"},
+            )
+            self.assertEqual(resumed["stop_reason"], "NO_STATE_PROGRESS")
 
 
 if __name__ == "__main__":
