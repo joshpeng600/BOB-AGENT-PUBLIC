@@ -724,6 +724,8 @@ def build_codex_command(
         "exec",
         "-c",
         "shell_environment_policy.inherit=all",
+        "-c",
+        "sandbox_workspace_write.network_access=true",
         "-C",
         str(worktree),
         "-s",

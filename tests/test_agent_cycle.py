@@ -384,6 +384,7 @@ class DispatchConstructionTests(unittest.TestCase):
         self.assertNotIn("--approve-for-me", command)
         self.assertIn("--output-schema", command)
         self.assertIn("shell_environment_policy.inherit=all", command)
+        self.assertIn("sandbox_workspace_write.network_access=true", command)
         self.assertEqual(command[command.index("--add-dir") + 1], "/repo/.git")
         self.assertNotIn("--dangerously-bypass-approvals-and-sandbox", command)
 
