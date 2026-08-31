@@ -21,7 +21,7 @@ actions. Do not mark an item complete without evidence from the final merged com
 - [x] `python scripts/check_repository_contracts.py` passes.
 - [x] `python scripts/check_protected_files.py` passes.
 - [x] `python scripts/check_prediction_contract.py` passes.
-- [x] `python tools/run_agent_cycle.py --experiment exp_003 --action report` shows A
+- [x] `python tools/run_agent_cycle.py --experiment exp_002 --action report` shows A
   as next receiver, exp_001 KEEP, exp_002 REJECT, and `test_access=false` without
   creating an experiment or formal metrics.
 - [x] `git diff -- starter/` is empty.

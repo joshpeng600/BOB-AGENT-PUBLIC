@@ -2025,7 +2025,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Safely coordinate asynchronous Track 2 A-E experiment cycles."
     )
-    parser.add_argument("--experiment", help="target experiment, for example exp_003")
+    parser.add_argument("--experiment", help="target experiment, for example exp_010")
     parser.add_argument(
         "--action",
         choices=("status", "step", "run", "watch-pr", "handoff", "report"),

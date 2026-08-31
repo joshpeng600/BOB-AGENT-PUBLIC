@@ -40,7 +40,7 @@ class FinalSubmissionTests(unittest.TestCase):
             identities_path=self.identities,
             output=output,
             manifest_path=manifest_path,
-            approval={"experiment_id": "exp_003"},
+            approval={"experiment_id": "exp_010"},
         )
         self.assertEqual(output.read_bytes(), self.candidate.read_bytes())
         self.assertEqual(manifest["rows"], 2)
@@ -54,7 +54,7 @@ class FinalSubmissionTests(unittest.TestCase):
                 identities_path=self.identities,
                 output=output,
                 manifest_path=manifest_path,
-                approval={"experiment_id": "exp_003"},
+                approval={"experiment_id": "exp_010"},
             )
 
     def test_rejects_identity_label_columns(self):

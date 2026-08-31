@@ -53,7 +53,7 @@ def safe_result(**overrides):
         "status": "COMPLETED",
         "role": "B",
         "phase": "PACKAGE_AUDIT",
-        "experiment_id": "exp_003",
+        "experiment_id": "exp_010",
         "summary": "approved role step completed",
         "commit_sha": "a" * 40,
         "pr_url": "https://github.com/example/repo/pull/54",
@@ -191,7 +191,7 @@ class PrivateRuntimeConfigTests(unittest.TestCase):
             store = root / "private-store"
             stored = snapshot_artifacts_to_store(
                 store,
-                experiment_id="exp_003",
+                experiment_id="exp_010",
                 artifact_paths=[source],
             )
             self.assertEqual(len(stored), 1)
@@ -200,7 +200,7 @@ class PrivateRuntimeConfigTests(unittest.TestCase):
             prediction.write_bytes(b"source changed after snapshot\n")
             manifest = create_handoff_manifest(
                 root / "runtime",
-                experiment_id="exp_003",
+                experiment_id="exp_010",
                 recipient="E",
                 artifact_paths=stored,
                 local_read_only_access=True,
@@ -282,8 +282,8 @@ class PrivateRuntimeConfigTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             runtime = Path(tmp)
             common = {
-                "start_experiment_id": "exp_003",
-                "authorized_experiment_ids": ["exp_003"],
+                "start_experiment_id": "exp_010",
+                "authorized_experiment_ids": ["exp_010"],
                 "max_iterations": 1,
                 "max_role_steps": 10,
                 "authorization_hash": "a" * 64,
@@ -313,41 +313,41 @@ class ReceiverTests(unittest.TestCase):
             normalize_receivers("A_AND_F")
 
     def test_terminal_state_selects_next_experiment_and_A(self):
-        current = {"experiment_id": "exp_002", "status": "COMPLETED_REJECTED"}
+        current = {"experiment_id": "exp_009", "status": "COMPLETED_REJECTED"}
         state = {"next_receiver": "E"}
         self.assertTrue(is_terminal_state(current))
-        self.assertEqual(next_experiment_id("exp_002"), "exp_003")
+        self.assertEqual(next_experiment_id("exp_009"), "exp_010")
         target = select_target_experiment(None, current, state)
-        self.assertEqual(target, "exp_003")
+        self.assertEqual(target, "exp_010")
         self.assertEqual(determine_receivers(target, current, state), ["A"])
 
     def test_active_experiment_cannot_be_skipped(self):
-        current = {"experiment_id": "exp_003", "status": "IMPLEMENTING"}
+        current = {"experiment_id": "exp_010", "status": "IMPLEMENTING"}
         with self.assertRaises(CycleError):
-            select_target_experiment("exp_004", current, {})
+            select_target_experiment("exp_011", current, {})
 
 
 class ResultContractTests(unittest.TestCase):
     def test_accepts_safe_result(self):
-        validate_agent_result(safe_result(), role="B", experiment_id="exp_003")
+        validate_agent_result(safe_result(), role="B", experiment_id="exp_010")
 
     def test_rejects_test_access(self):
         with self.assertRaisesRegex(CycleError, "test_access"):
             validate_agent_result(
-                safe_result(test_access=True), role="B", experiment_id="exp_003"
+                safe_result(test_access=True), role="B", experiment_id="exp_010"
             )
 
     def test_rejects_pr25_or_final_approval(self):
         for field in ("pr_25_evidence_used", "final_approval_created"):
             with self.subTest(field=field), self.assertRaises(CycleError):
                 validate_agent_result(
-                    safe_result(**{field: True}), role="B", experiment_id="exp_003"
+                    safe_result(**{field: True}), role="B", experiment_id="exp_010"
                 )
 
     def test_rejects_short_sha(self):
         with self.assertRaisesRegex(CycleError, "full lowercase SHA"):
             validate_agent_result(
-                safe_result(commit_sha="abc123"), role="B", experiment_id="exp_003"
+                safe_result(commit_sha="abc123"), role="B", experiment_id="exp_010"
             )
 
     def test_rejects_duplicate_evidence_paths(self):
@@ -356,7 +356,7 @@ class ResultContractTests(unittest.TestCase):
             validate_agent_result(
                 safe_result(small_evidence_paths=duplicate),
                 role="B",
-                experiment_id="exp_003",
+                experiment_id="exp_010",
             )
 
 
@@ -425,7 +425,7 @@ class DispatchConstructionTests(unittest.TestCase):
     def test_prompt_requires_preflighted_python_runtime(self):
         prompt = build_role_prompt(
             role="C",
-            experiment_id="exp_003",
+            experiment_id="exp_010",
             gate_status="BLOCKED",
             allow_real_valid=False,
             python_executable="/private/runtime/bin/python",
@@ -445,14 +445,14 @@ class DispatchConstructionTests(unittest.TestCase):
     def test_prompt_keeps_formal_run_closed_without_both_conditions(self):
         prompt = build_role_prompt(
             role="B",
-            experiment_id="exp_003",
+            experiment_id="exp_010",
             gate_status="ALLOWED",
             allow_real_valid=False,
         )
         self.assertIn("Do not run real data training", prompt)
         prompt = build_role_prompt(
             role="B",
-            experiment_id="exp_003",
+            experiment_id="exp_010",
             gate_status="ALLOWED",
             allow_real_valid=True,
         )
@@ -461,7 +461,7 @@ class DispatchConstructionTests(unittest.TestCase):
     def test_campaign_prompt_opens_only_b_valid_gate_and_keeps_test_closed(self):
         prompt = build_role_prompt(
             role="B",
-            experiment_id="exp_003",
+            experiment_id="exp_010",
             gate_status="ALLOWED",
             allow_real_valid=False,
             campaign_public_valid_authorized=True,
@@ -470,7 +470,7 @@ class DispatchConstructionTests(unittest.TestCase):
         self.assertIn("never access, compute, print, or report test", prompt.lower())
         evaluator = build_role_prompt(
             role="E",
-            experiment_id="exp_003",
+            experiment_id="exp_010",
             gate_status="ALLOWED",
             allow_real_valid=False,
             campaign_public_valid_authorized=True,
@@ -478,7 +478,7 @@ class DispatchConstructionTests(unittest.TestCase):
         self.assertIn("Independently evaluate only B's immutable", evaluator)
         closed = build_role_prompt(
             role="C",
-            experiment_id="exp_003",
+            experiment_id="exp_010",
             gate_status="ALLOWED",
             allow_real_valid=False,
             campaign_public_valid_authorized=True,
@@ -493,7 +493,7 @@ class DispatchConstructionTests(unittest.TestCase):
             with self.subTest(gate_status=gate_status):
                 prompt = build_role_prompt(
                     role="B",
-                    experiment_id="exp_003",
+                    experiment_id="exp_010",
                     gate_status=gate_status,
                     allow_real_valid=False,
                     campaign_public_valid_authorized=True,
@@ -503,7 +503,7 @@ class DispatchConstructionTests(unittest.TestCase):
     def test_campaign_prompt_rejects_unrecognized_allowed_prefix(self):
         prompt = build_role_prompt(
             role="B",
-            experiment_id="exp_003",
+            experiment_id="exp_010",
             gate_status="ALLOWED_UNBOUNDED",
             allow_real_valid=False,
             campaign_public_valid_authorized=True,
@@ -513,7 +513,7 @@ class DispatchConstructionTests(unittest.TestCase):
     def test_campaign_prompt_gives_a_bounded_authority_and_frozen_data(self):
         prompt = build_role_prompt(
             role="A",
-            experiment_id="exp_003",
+            experiment_id="exp_010",
             gate_status="BLOCKED",
             allow_real_valid=False,
             bounded_campaign_authorized=True,
@@ -531,7 +531,7 @@ class CampaignAuthorizationTests(unittest.TestCase):
     def authorization(self, **overrides):
         value = {
             "status": "ALLOWED",
-            "experiment_ids": ["exp_003", "exp_004", "exp_005"],
+            "experiment_ids": ["exp_010", "exp_011", "exp_012"],
             "max_completed_experiments": 3,
             "max_role_steps": 24,
             "data_mode": "train_valid_only",
@@ -545,12 +545,12 @@ class CampaignAuthorizationTests(unittest.TestCase):
     def test_accepts_explicit_bounded_valid_only_campaign(self):
         authorization = validate_campaign_authorization(
             self.authorization(),
-            start_experiment_id="exp_003",
+            start_experiment_id="exp_010",
             requested_iterations=3,
             requested_role_steps=20,
         )
         self.assertEqual(
-            authorization.experiment_ids, ("exp_003", "exp_004", "exp_005")
+            authorization.experiment_ids, ("exp_010", "exp_011", "exp_012")
         )
         self.assertTrue(authorization.automatic_public_valid)
 
@@ -562,13 +562,13 @@ class CampaignAuthorizationTests(unittest.TestCase):
             self.authorization(test_access=True),
             self.authorization(final_approval_allowed=True),
             self.authorization(automatic_public_valid=False),
-            self.authorization(experiment_ids=["exp_003", "exp_005"]),
+            self.authorization(experiment_ids=["exp_010", "exp_012"]),
         ]
         for state in unsafe_states:
             with self.subTest(state=state), self.assertRaises(CycleError):
                 validate_campaign_authorization(
                     state,
-                    start_experiment_id="exp_003",
+                    start_experiment_id="exp_010",
                     requested_iterations=2,
                     requested_role_steps=None,
                 )
@@ -577,14 +577,14 @@ class CampaignAuthorizationTests(unittest.TestCase):
         with self.assertRaisesRegex(CycleError, "iterations exceed"):
             validate_campaign_authorization(
                 self.authorization(max_completed_experiments=2),
-                start_experiment_id="exp_003",
+                start_experiment_id="exp_010",
                 requested_iterations=3,
                 requested_role_steps=None,
             )
         with self.assertRaisesRegex(CycleError, "role steps exceed"):
             validate_campaign_authorization(
                 self.authorization(max_role_steps=4),
-                start_experiment_id="exp_003",
+                start_experiment_id="exp_010",
                 requested_iterations=2,
                 requested_role_steps=5,
             )
@@ -593,7 +593,7 @@ class CampaignAuthorizationTests(unittest.TestCase):
         args = build_parser().parse_args(
             [
                 "--experiment",
-                "exp_003",
+                "exp_010",
                 "--action",
                 "run",
                 "--max-iterations",
@@ -645,7 +645,7 @@ class WorktreeRefreshTests(unittest.TestCase):
             side_effect=["a" * 40, "b" * 40],
         ):
             refreshed = fast_forward_to_origin_main(
-                Path("/tmp/a-exp003"), label="existing A role worktree"
+                Path("/tmp/a-exp010"), label="existing A role worktree"
             )
         self.assertEqual(refreshed, "b" * 40)
         self.assertIn(("git", "merge", "--ff-only", "origin/main"), commands)
@@ -668,7 +668,7 @@ class WorktreeRefreshTests(unittest.TestCase):
             "tools.run_agent_cycle.require_clean_worktree", return_value="a" * 40
         ), self.assertRaisesRegex(CycleError, "refusing rebase or reset"):
             fast_forward_to_origin_main(
-                Path("/tmp/a-exp003"), label="existing A role worktree"
+                Path("/tmp/a-exp010"), label="existing A role worktree"
             )
         self.assertFalse(any(command[:2] == ("git", "rebase") for command in commands))
         self.assertFalse(any(command[:2] == ("git", "reset") for command in commands))
@@ -767,7 +767,7 @@ class ArtifactAndReportTests(unittest.TestCase):
 
             manifest = create_handoff_manifest(
                 root / "runtime",
-                experiment_id="exp_003",
+                experiment_id="exp_010",
                 recipient="E",
                 artifact_paths=[package],
             )
@@ -813,11 +813,11 @@ class ArtifactAndReportTests(unittest.TestCase):
                 + "\n",
                 encoding="utf-8",
             )
-            runtime = root / "artifacts" / "agent_cycle" / "exp_003"
+            runtime = root / "artifacts" / "agent_cycle" / "exp_010"
             report = generate_reports(
                 root,
                 runtime,
-                target="exp_003",
+                target="exp_010",
                 current_experiment={
                     "experiment_id": "exp_002",
                     "status": "COMPLETED_REJECTED",
@@ -845,14 +845,14 @@ class CampaignStateTests(unittest.TestCase):
         self.assertEqual(
             completed_experiment_ids(
                 [
-                    {"record_type": "experiment_plan", "experiment_id": "exp_003"},
+                    {"record_type": "experiment_plan", "experiment_id": "exp_010"},
                     {
                         "record_type": "experiment_decision",
-                        "experiment_id": "exp_003",
+                        "experiment_id": "exp_010",
                     },
                 ]
             ),
-            {"exp_003"},
+            {"exp_010"},
         )
 
     def test_stop_state_is_resumable_but_never_authorizes_test(self):
@@ -860,8 +860,8 @@ class CampaignStateTests(unittest.TestCase):
             runtime = Path(tmp)
             state = _load_or_initialize_campaign_state(
                 runtime,
-                start_experiment_id="exp_003",
-                authorized_experiment_ids=["exp_003", "exp_004"],
+                start_experiment_id="exp_010",
+                authorized_experiment_ids=["exp_010", "exp_011"],
                 max_iterations=2,
                 max_role_steps=12,
                 authorization_hash="a" * 64,
@@ -881,8 +881,8 @@ class CampaignStateTests(unittest.TestCase):
             self.assertFalse(saved["final_approval_created"])
             resumed = _load_or_initialize_campaign_state(
                 runtime,
-                start_experiment_id="exp_003",
-                authorized_experiment_ids=["exp_003", "exp_004"],
+                start_experiment_id="exp_010",
+                authorized_experiment_ids=["exp_010", "exp_011"],
                 max_iterations=2,
                 max_role_steps=12,
                 authorization_hash="a" * 64,
@@ -935,7 +935,7 @@ class CampaignStateTests(unittest.TestCase):
             prediction.write_bytes(b"row_id,score\n0,0.5\n")
             manifest = create_handoff_manifest(
                 root / "runtime",
-                experiment_id="exp_003",
+                experiment_id="exp_010",
                 recipient="E",
                 artifact_paths=[package],
                 local_read_only_access=True,
@@ -977,7 +977,7 @@ class CampaignStateTests(unittest.TestCase):
             )
             authorization = {
                 "status": "ALLOWED",
-                "experiment_ids": ["exp_003"],
+                "experiment_ids": ["exp_010"],
                 "max_completed_experiments": 1,
                 "max_role_steps": 10,
                 "data_mode": "train_valid_only",
@@ -1007,7 +1007,7 @@ class CampaignStateTests(unittest.TestCase):
                     json.dumps(state), encoding="utf-8"
                 )
 
-            write_state(active="exp_002", receiver="A", terminal=True)
+            write_state(active="exp_009", receiver="A", terminal=True)
             history = coordination / "experiment_history.jsonl"
             history.write_text("", encoding="utf-8")
             (governance / "policy.json").write_text(
@@ -1022,16 +1022,16 @@ class CampaignStateTests(unittest.TestCase):
                 nonlocal sync_count
                 sync_count += 1
                 if sync_count == 2:
-                    write_state(active="exp_003", receiver="C_AND_D")
+                    write_state(active="exp_010", receiver="C_AND_D")
                 elif sync_count == 5:
-                    write_state(active="exp_003", receiver="B", gate="ALLOWED")
+                    write_state(active="exp_010", receiver="B", gate="ALLOWED")
                 elif sync_count == 8:
-                    write_state(active="exp_003", receiver="A", terminal=True)
+                    write_state(active="exp_010", receiver="A", terminal=True)
                     history.write_text(
                         json.dumps(
                             {
                                 "record_type": "experiment_decision",
-                                "experiment_id": "exp_003",
+                                "experiment_id": "exp_010",
                             }
                         )
                         + "\n",
@@ -1046,7 +1046,7 @@ class CampaignStateTests(unittest.TestCase):
                 results.append(
                     safe_result(
                         role=role,
-                        experiment_id="exp_003",
+                        experiment_id="exp_010",
                         commit_sha="a" * 40,
                         pr_url=f"https://github.com/example/repo/pull/{index}",
                         role_worktree=str(root),
@@ -1056,7 +1056,7 @@ class CampaignStateTests(unittest.TestCase):
                     )
                 )
             args = SimpleNamespace(
-                experiment="exp_003",
+                experiment="exp_010",
                 max_iterations=1,
                 max_role_steps=10,
                 runtime_root=runtime,
@@ -1106,7 +1106,7 @@ class CampaignStateTests(unittest.TestCase):
                 (runtime / "campaign_state.json").read_text(encoding="utf-8")
             )
             self.assertEqual(saved["status"], "COMPLETED")
-            self.assertEqual(saved["completed_experiment_ids"], ["exp_003"])
+            self.assertEqual(saved["completed_experiment_ids"], ["exp_010"])
             self.assertFalse(saved["test_access"])
 
 
