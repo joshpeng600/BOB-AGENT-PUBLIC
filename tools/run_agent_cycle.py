@@ -75,6 +75,16 @@ class CampaignAuthorization:
     authorization_hash: str
 
 
+@dataclass(frozen=True)
+class PrivateRuntimeConfig:
+    """Validated paths that must remain outside every Git checkout."""
+
+    config_path: Path
+    dev_data_dir: Path
+    artifact_root: Path
+    fingerprint: str
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -161,6 +171,125 @@ def verify_protected(repo: Path) -> None:
         (sys.executable, "scripts/check_protected_files.py"), cwd=repo
     )
     require_success(result, "protected-file verification")
+
+
+def _is_within(path: Path, parent: Path) -> bool:
+    try:
+        path.relative_to(parent)
+    except ValueError:
+        return False
+    return True
+
+
+def load_private_runtime_config(
+    repo: Path, supplied_path: Path | None
+) -> PrivateRuntimeConfig:
+    """Load a local-only JSON config and fail if any private path enters Git."""
+
+    selected = supplied_path
+    if selected is None:
+        from_environment = os.environ.get("BOB_AGENT_LOCAL_CONFIG")
+        selected = Path(from_environment) if from_environment else None
+    if selected is None:
+        raise CycleError(
+            "continuous run requires --local-config or BOB_AGENT_LOCAL_CONFIG"
+        )
+    if not selected.is_absolute():
+        raise CycleError("private runtime config path must be absolute")
+    config_path = selected.resolve()
+    repo = repo.resolve()
+    if _is_within(config_path, repo):
+        raise CycleError("private runtime config must remain outside the Git checkout")
+    payload = load_json(config_path)
+    allowed = {"dev_data_dir", "artifact_root"}
+    unexpected = sorted(set(payload) - allowed)
+    missing = sorted(allowed - set(payload))
+    if unexpected or missing:
+        detail = []
+        if missing:
+            detail.append("missing " + ", ".join(missing))
+        if unexpected:
+            detail.append("unexpected " + ", ".join(unexpected))
+        raise CycleError("invalid private runtime config: " + "; ".join(detail))
+
+    resolved: dict[str, Path] = {}
+    for field in sorted(allowed):
+        value = payload.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise CycleError(f"private runtime config {field} must be a path string")
+        raw_path = Path(value)
+        if not raw_path.is_absolute():
+            raise CycleError(f"private runtime config {field} must be absolute")
+        resolved[field] = raw_path.resolve()
+        if _is_within(resolved[field], repo):
+            raise CycleError(
+                f"private runtime config {field} must remain outside the Git checkout"
+            )
+
+    dev_data_dir = resolved["dev_data_dir"]
+    artifact_root = resolved["artifact_root"]
+    if not dev_data_dir.is_dir():
+        raise CycleError(f"private dev data directory does not exist: {dev_data_dir}")
+    artifact_root.mkdir(parents=True, exist_ok=True)
+    if not artifact_root.is_dir():
+        raise CycleError(f"private artifact root is not a directory: {artifact_root}")
+    if _is_within(artifact_root, dev_data_dir) or _is_within(
+        dev_data_dir, artifact_root
+    ):
+        raise CycleError("dev_data_dir and artifact_root must be separate private trees")
+    canonical = json.dumps(
+        {
+            "dev_data_dir": str(dev_data_dir),
+            "artifact_root": str(artifact_root),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return PrivateRuntimeConfig(
+        config_path=config_path,
+        dev_data_dir=dev_data_dir,
+        artifact_root=artifact_root,
+        fingerprint=hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
+    )
+
+
+def validate_runtime_environment(repo: Path, config: PrivateRuntimeConfig) -> None:
+    """Fail before dispatch if the local data, GitHub, or Codex setup is unusable."""
+
+    require_clean_worktree(repo)
+    origin = require_success(
+        run_command(("git", "remote", "get-url", "origin"), cwd=repo),
+        "origin remote lookup",
+    )
+    if not re.search(
+        r"(?:github\.com[:/])joshpeng600/BOB-AGENT-PUBLIC(?:\.git)?$", origin
+    ):
+        raise CycleError(
+            "continuous run must use joshpeng600/BOB-AGENT-PUBLIC as origin"
+        )
+    find_codex_executable()
+    gh = shutil.which("gh")
+    if gh is None:
+        raise CycleError("GitHub CLI is missing; install gh and run gh auth login")
+    require_success(run_command((gh, "auth", "status"), cwd=repo), "GitHub CLI auth")
+    if not os.access(config.dev_data_dir, os.R_OK | os.X_OK):
+        raise CycleError(f"private dev data is not readable: {config.dev_data_dir}")
+    if not os.access(config.artifact_root, os.R_OK | os.W_OK | os.X_OK):
+        raise CycleError(f"private artifact root is not writable: {config.artifact_root}")
+    require_success(
+        run_command(
+            (
+                sys.executable,
+                "tools/preflight.py",
+                "--data-dir",
+                str(config.dev_data_dir),
+                "--mode",
+                "experiment",
+            ),
+            cwd=repo,
+        ),
+        "private train-valid data preflight",
+    )
 
 
 def normalize_receivers(value: Any) -> list[str]:
@@ -369,6 +498,7 @@ def build_role_prompt(
     campaign_public_valid_authorized: bool = False,
     handoff_context: str | None = None,
     integration_context: str | None = None,
+    private_runtime_context: str | None = None,
 ) -> str:
     formal_run_allowed = (
         role == "B"
@@ -412,6 +542,11 @@ def build_role_prompt(
             "\nAutomatic A-integration context:\n"
             f"{integration_context}\nReview the merged role evidence and advance only "
             "the canonical routing state justified by it.\n"
+        )
+    if private_runtime_context:
+        local_context += (
+            "\nPrivate runtime paths (read locally; never copy into Git):\n"
+            f"{private_runtime_context}\n"
         )
     return f"""You are Track 2 role {role} continuing {experiment_id} asynchronously.
 
@@ -637,6 +772,7 @@ def dispatch_role(
     execution_timeout_seconds: int | None = None,
     handoff_context: str | None = None,
     integration_context: str | None = None,
+    private_runtime_context: str | None = None,
 ) -> dict[str, Any]:
     worktree = prepare_role_worktree(
         repo, role=role, experiment_id=experiment_id, worktree_root=worktree_root
@@ -661,6 +797,7 @@ def dispatch_role(
         campaign_public_valid_authorized=campaign_public_valid_authorized,
         handoff_context=handoff_context,
         integration_context=integration_context,
+        private_runtime_context=private_runtime_context,
     )
     result = run_command(
         command,
@@ -716,6 +853,146 @@ def artifact_inventory(paths: Iterable[Path]) -> list[dict[str, Any]]:
     return inventory
 
 
+def _verify_private_store_package(package: Path, package_id: str) -> Path:
+    metadata = load_json(package / "package_manifest.json")
+    if metadata.get("package_id") != package_id:
+        raise CycleError("private artifact package identity does not match its path")
+    if metadata.get("git_upload_allowed") is not False:
+        raise CycleError("private artifact package must forbid Git upload")
+    if metadata.get("test_access") is not False:
+        raise CycleError("private artifact package must preserve test isolation")
+    records = metadata.get("files")
+    if not isinstance(records, list) or not records:
+        raise CycleError("private artifact package contains no file records")
+    canonical = json.dumps(records, sort_keys=True, separators=(",", ":"))
+    if hashlib.sha256(canonical.encode("utf-8")).hexdigest() != package_id:
+        raise CycleError("private artifact package manifest does not match package ID")
+    data_root = (package / "data").resolve()
+    expected_paths: set[str] = set()
+    for record in records:
+        if not isinstance(record, Mapping):
+            raise CycleError("private artifact package contains an invalid record")
+        relative = Path(str(record.get("stored_relative_path", "")))
+        if relative.is_absolute() or ".." in relative.parts:
+            raise CycleError("private artifact package contains an unsafe path")
+        expected_paths.add(relative.as_posix())
+        candidate = (data_root / relative).resolve()
+        try:
+            candidate.relative_to(data_root)
+        except ValueError as exc:
+            raise CycleError("private artifact package path escapes its root") from exc
+        if candidate.is_symlink() or not candidate.is_file():
+            raise CycleError(f"private artifact package file is unavailable: {candidate}")
+        if candidate.stat().st_size != record.get("size_bytes"):
+            raise CycleError(f"private artifact package size changed: {candidate}")
+        if sha256_file(candidate) != record.get("sha256"):
+            raise CycleError(f"private artifact package hash changed: {candidate}")
+    actual_paths = {
+        item.relative_to(data_root).as_posix()
+        for item in data_root.rglob("*")
+        if item.is_file()
+    }
+    if actual_paths != expected_paths:
+        raise CycleError("private artifact package file inventory changed")
+    return data_root
+
+
+def snapshot_artifacts_to_store(
+    artifact_root: Path,
+    *,
+    experiment_id: str,
+    artifact_paths: Sequence[Path],
+) -> list[Path]:
+    """Copy role outputs into a content-addressed local package outside Git."""
+
+    if not EXPERIMENT_RE.fullmatch(experiment_id):
+        raise CycleError(f"invalid artifact experiment identifier: {experiment_id}")
+    if not artifact_paths:
+        raise CycleError("private artifact snapshot requires at least one path")
+    store = artifact_root.resolve()
+    store.mkdir(parents=True, exist_ok=True)
+    records: list[dict[str, Any]] = []
+    sources: list[tuple[Path, Path]] = []
+    for root_index, supplied in enumerate(artifact_paths):
+        source_root = supplied.resolve()
+        if not source_root.exists() or source_root.is_symlink():
+            raise CycleError(f"artifact source is unavailable or a symlink: {source_root}")
+        files = (
+            [source_root]
+            if source_root.is_file()
+            else sorted(item for item in source_root.rglob("*") if item.is_file())
+        )
+        if not files:
+            raise CycleError(f"artifact source contains no files: {source_root}")
+        base = source_root.parent if source_root.is_file() else source_root
+        for file_path in files:
+            if file_path.is_symlink():
+                raise CycleError(f"symlink artifacts are not accepted: {file_path}")
+            source_relative = file_path.relative_to(base)
+            stored_relative = Path(f"root_{root_index:03d}") / source_relative
+            record = {
+                "source_label": source_root.name,
+                "source_relative_path": source_relative.as_posix(),
+                "stored_relative_path": stored_relative.as_posix(),
+                "size_bytes": file_path.stat().st_size,
+                "sha256": sha256_file(file_path),
+            }
+            records.append(record)
+            sources.append((file_path, stored_relative))
+    canonical = json.dumps(records, sort_keys=True, separators=(",", ":"))
+    package_id = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    experiment_root = store / experiment_id
+    experiment_root.mkdir(parents=True, exist_ok=True)
+    package = experiment_root / package_id
+    if package.exists():
+        return [_verify_private_store_package(package, package_id)]
+
+    stage = Path(tempfile.mkdtemp(prefix=".staging-", dir=experiment_root))
+    try:
+        data_root = stage / "data"
+        for (source, relative), record in zip(sources, records):
+            destination = data_root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, destination)
+            if destination.stat().st_size != record["size_bytes"]:
+                raise CycleError(f"artifact changed while copying: {source}")
+            if sha256_file(destination) != record["sha256"]:
+                raise CycleError(f"artifact hash changed while copying: {source}")
+        write_json(
+            stage / "package_manifest.json",
+            {
+                "schema_version": 1,
+                "package_id": package_id,
+                "experiment_id": experiment_id,
+                "git_upload_allowed": False,
+                "test_access": False,
+                "files": records,
+            },
+        )
+        try:
+            stage.replace(package)
+        except FileExistsError:
+            shutil.rmtree(stage)
+        data_root = _verify_private_store_package(package, package_id)
+        for file_path in data_root.rglob("*"):
+            if file_path.is_file():
+                file_path.chmod(0o444)
+        (package / "package_manifest.json").chmod(0o444)
+        for directory in sorted(
+            (item for item in data_root.rglob("*") if item.is_dir()),
+            key=lambda item: len(item.parts),
+            reverse=True,
+        ):
+            directory.chmod(0o555)
+        data_root.chmod(0o555)
+        package.chmod(0o555)
+        return [data_root]
+    except BaseException:
+        if stage.exists():
+            shutil.rmtree(stage, ignore_errors=True)
+        raise
+
+
 def create_handoff_manifest(
     runtime: Path,
     *,
@@ -723,6 +1000,7 @@ def create_handoff_manifest(
     recipient: str,
     artifact_paths: Sequence[Path],
     local_read_only_access: bool = False,
+    artifact_store_root: Path | None = None,
 ) -> Path:
     if recipient not in ROLES:
         raise CycleError(f"invalid recipient role: {recipient}")
@@ -735,6 +1013,9 @@ def create_handoff_manifest(
             "recipient": recipient,
             "manual_private_transfer_required": not local_read_only_access,
             "local_read_only_access": local_read_only_access,
+            "artifact_store_root": (
+                str(artifact_store_root.resolve()) if artifact_store_root else None
+            ),
             "git_upload_allowed": False,
             "created_at_utc": utc_now(),
             "files": artifact_inventory(artifact_paths),
@@ -744,7 +1025,12 @@ def create_handoff_manifest(
     return manifest_path
 
 
-def verify_handoff_manifest(path: Path, *, expected_recipient: str) -> dict[str, Any]:
+def verify_handoff_manifest(
+    path: Path,
+    *,
+    expected_recipient: str,
+    expected_artifact_root: Path | None = None,
+) -> dict[str, Any]:
     """Re-hash every private artifact immediately before the receiver reads it."""
 
     payload = load_json(path)
@@ -752,6 +1038,15 @@ def verify_handoff_manifest(path: Path, *, expected_recipient: str) -> dict[str,
         raise CycleError("artifact handoff recipient does not match dispatched role")
     if payload.get("git_upload_allowed") is not False:
         raise CycleError("artifact handoff must explicitly forbid Git upload")
+    if payload.get("test_access") is not False:
+        raise CycleError("artifact handoff must preserve test isolation")
+    verified_store: Path | None = None
+    if expected_artifact_root is not None:
+        verified_store = expected_artifact_root.resolve()
+        if payload.get("artifact_store_root") != str(verified_store):
+            raise CycleError("artifact handoff store root does not match runtime config")
+        if payload.get("local_read_only_access") is not True:
+            raise CycleError("artifact handoff does not permit same-host read-only access")
     files = payload.get("files")
     if not isinstance(files, list) or not files:
         raise CycleError("artifact handoff manifest contains no files")
@@ -762,6 +1057,8 @@ def verify_handoff_manifest(path: Path, *, expected_recipient: str) -> dict[str,
         if raw_source_root.is_symlink():
             raise CycleError("artifact handoff source root must not be a symlink")
         source_root = raw_source_root.resolve()
+        if verified_store is not None and not _is_within(source_root, verified_store):
+            raise CycleError("artifact handoff source is outside the private store")
         relative = Path(str(item.get("relative_path", "")))
         if relative.is_absolute() or ".." in relative.parts:
             raise CycleError("artifact handoff contains an unsafe relative path")
@@ -1122,6 +1419,7 @@ def _load_or_initialize_campaign_state(
     max_role_steps: int,
     authorization_hash: str,
     existing_decisions: set[str],
+    runtime_config_hash: str | None = None,
 ) -> dict[str, Any]:
     path = _campaign_state_path(runtime)
     expected_ids = list(authorized_experiment_ids)
@@ -1133,6 +1431,7 @@ def _load_or_initialize_campaign_state(
             "max_iterations": max_iterations,
             "max_role_steps": max_role_steps,
             "authorization_hash": authorization_hash,
+            "runtime_config_hash": runtime_config_hash,
         }
         mismatched = [key for key, item in expected.items() if value.get(key) != item]
         if mismatched:
@@ -1162,6 +1461,7 @@ def _load_or_initialize_campaign_state(
         "handoff_recipient": None,
         "decisions_present_at_start": sorted(existing_decisions),
         "authorization_hash": authorization_hash,
+        "runtime_config_hash": runtime_config_hash,
         "created_at_utc": utc_now(),
         "updated_at_utc": utc_now(),
         "test_access": False,
@@ -1211,6 +1511,10 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
 
     sync_main_checkout(repo)
     verify_protected(repo)
+    runtime_config = load_private_runtime_config(
+        repo, getattr(args, "local_config", None)
+    )
+    validate_runtime_environment(repo, runtime_config)
     current_experiment = load_json(repo / "coordination" / "current_experiment.json")
     current_state = load_json(repo / "coordination" / "current_state.json")
     start_target = select_target_experiment(
@@ -1242,6 +1546,7 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
         max_role_steps=effective_role_steps,
         authorization_hash=authorization.authorization_hash,
         existing_decisions=completed_experiment_ids(initial_records),
+        runtime_config_hash=runtime_config.fingerprint,
     )
     policy = load_json(repo / "governance" / "policy.json")
     execution_timeout = _positive_int(
@@ -1346,7 +1651,11 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
         handoff_manifest_value = campaign_state.get("handoff_manifest")
         if handoff_manifest_value and campaign_state.get("handoff_recipient") == role:
             handoff_path = Path(str(handoff_manifest_value))
-            verify_handoff_manifest(handoff_path, expected_recipient=role)
+            verify_handoff_manifest(
+                handoff_path,
+                expected_recipient=role,
+                expected_artifact_root=runtime_config.artifact_root,
+            )
             handoff_context = f"manifest={handoff_path.resolve()}"
         integration_context = None
         if role == "A" and campaign_state.get("integration_required_after_role"):
@@ -1354,6 +1663,13 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
                 f"previous_role={campaign_state['integration_required_after_role']}; "
                 f"previous_commit={campaign_state.get('last_role_commit')}; "
                 f"previous_pr={campaign_state.get('last_pr_number')}"
+            )
+        private_runtime_context = None
+        if role in {"B", "C", "E"}:
+            private_runtime_context = (
+                f"dev_data_dir={runtime_config.dev_data_dir}; "
+                f"artifact_root={runtime_config.artifact_root}; "
+                "the data path is train/public-valid only and hidden test is forbidden"
             )
         progress_before = repository_progress_fingerprint(repo)
         result = dispatch_role(
@@ -1369,6 +1685,7 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
             execution_timeout_seconds=execution_timeout,
             handoff_context=handoff_context,
             integration_context=integration_context,
+            private_runtime_context=private_runtime_context,
         )
         role_worktree = Path(result["role_worktree"])
         produced_head = require_clean_worktree(role_worktree)
@@ -1446,12 +1763,18 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
                     detail="large artifacts have no declared recipient",
                 )
                 raise CycleError("large artifacts have no declared recipient")
+            stored_paths = snapshot_artifacts_to_store(
+                runtime_config.artifact_root,
+                experiment_id=target,
+                artifact_paths=large_paths,
+            )
             manifest = create_handoff_manifest(
                 target_runtime,
                 experiment_id=target,
                 recipient=reported_receivers[0],
-                artifact_paths=large_paths,
+                artifact_paths=stored_paths,
                 local_read_only_access=True,
+                artifact_store_root=runtime_config.artifact_root,
             )
             campaign_state["handoff_manifest"] = str(manifest.resolve())
             campaign_state["handoff_recipient"] = reported_receivers[0]
@@ -1520,12 +1843,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--resume-session")
     parser.add_argument("--worktree-root", type=Path)
     parser.add_argument("--runtime-root", type=Path)
+    parser.add_argument(
+        "--local-config",
+        type=Path,
+        help=(
+            "absolute path to private JSON with dev_data_dir and artifact_root; "
+            "required for --action run unless BOB_AGENT_LOCAL_CONFIG is set"
+        ),
+    )
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
+        if args.action != "run" and args.local_config is not None:
+            raise CycleError("--local-config is valid only with --action run")
         repo = repository_root()
         if args.action == "run":
             incompatible = []
