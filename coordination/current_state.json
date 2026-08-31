@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "state": "EXP_002_CYCLE_REAL_VALID_RUN_ALLOWED",
+  "state": "EXP_002_COMPLETED_REJECTED",
   "owner": "A",
-  "next_receiver": "B",
+  "next_receiver": "A",
   "approved_against_commit_sha": "a673dbab096aabc19d3e3b8c877b80f03aaccdb3",
   "blocked_by": [
     "test and final release remain blocked pending a separate exact human final approval"
@@ -29,19 +29,19 @@
       "permits": "the merged one-batch synthetic baseline and candidate smoke only; synthetic evidence is never formal metric evidence"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "ALLOWED",
+      "status": "CONSUMED_BLOCKED",
       "evidence": "coordination/inbox/A/exp_002_cycle_gate_activation_20260831.md",
-      "permits": "exactly one fresh full-budget valid-only baseline/candidate pair on one clean descendant of a673dbab096aabc19d3e3b8c877b80f03aaccdb3; same commit, data hash, features, seed 0, and budget; max_batches=null; PR #25 evidence and test remain forbidden"
+      "permits": "no further exp_002 run; the single authorized pair was consumed and independently evaluated; PR #25 evidence and test remain forbidden"
     }
   },
   "role_statuses": {
-    "B": "READY_FOR_ONE_FRESH_FORMAL_PAIR",
+    "B": "FORMAL_PAIR_COMPLETED_PR_50",
     "C": "FEASIBILITY_PASS_PR_45",
     "D": "CONFIG_ONLY_DELIVERY_PASS_PR_46",
-    "E": "PRE_EVALUATION_READY_PR_48"
+    "E": "FORMAL_EVALUATION_REJECTED_PR_52"
   },
   "exp_002_planning": {
-    "status": "ONE_FRESH_FORMAL_VALID_PAIR_AUTHORIZED",
+    "status": "COMPLETED_REJECTED_KEEP_EXP_001",
     "approved_against_commit_sha": "a673dbab096aabc19d3e3b8c877b80f03aaccdb3",
     "current_champion_experiment_id": "exp_001",
     "current_champion_config_path": "configs/approved/exp_001.json",
@@ -55,9 +55,13 @@
     ],
     "smoke_batches": 1,
     "max_runtime_seconds": 3600,
-    "formal_run_authorization_active": true,
-    "authorized_attempts_active": 1,
-    "formal_metrics_produced": false,
+    "formal_run_authorization_active": false,
+    "authorized_attempts_active": 0,
+    "formal_metrics_produced": true,
+    "candidate_primary": 0.6032604702292279,
+    "primary_delta": -0.0006105369033990726,
+    "strict_improvement_pass": false,
+    "retained_champion_experiment_id": "exp_001",
     "pr_25_evidence_used": false,
     "test_access": false,
     "evidence": "coordination/inbox/A/exp_002_cycle_gate_activation_20260831.md"
@@ -75,7 +79,7 @@
     "evidence": "coordination/inbox/A/exp_002_cycle_gate_activation_20260831.md"
   },
   "exp_002_formal_gate": {
-    "status": "ALLOWED_ONE_FRESH_BASELINE_CANDIDATE_PAIR",
+    "status": "CONSUMED_COMPLETED_REJECTED",
     "authorized_at_utc": "2026-08-30T20:37:16Z",
     "approved_against_commit_sha": "a673dbab096aabc19d3e3b8c877b80f03aaccdb3",
     "c_pr": 45,
@@ -92,7 +96,7 @@
     "mode": "valid-only",
     "formal_max_batches": null,
     "max_runtime_seconds_per_run": 3600,
-    "authorized_attempts_active": 1,
+    "authorized_attempts_active": 0,
     "authorized_pair": [
       "baseline",
       "candidate"
@@ -378,34 +382,36 @@
     ]
   },
   "cycle_decision": {
-    "decision": "KEEP",
-    "result_classification": "IMPROVED",
-    "decided_at_utc": "2026-08-30T17:52:48Z",
-    "experiment_id": "exp_001",
-    "producing_commit_sha": "44fd36aa9b35b7fc9c01389e6dd453e972f16635",
-    "baseline_primary": 0.601468756352959,
-    "candidate_primary": 0.603871007132627,
-    "primary_delta": 0.0024022507796679,
+    "decision": "REJECT",
+    "result_classification": "NO_IMPROVEMENT",
+    "decided_at_utc": "2026-08-31T03:20:22Z",
+    "experiment_id": "exp_002",
+    "producing_commit_sha": "fced9a79ae3e06af69e06d319ee316e77fcce98a",
+    "evaluation_main_sha": "d843c2b93382c21baf99b7c9105e910621e8a299",
+    "baseline_primary": 0.603871007132627,
+    "candidate_primary": 0.6032604702292279,
+    "primary_delta": -0.0006105369033990726,
     "minimum_improvement": 0.002,
     "success_rule": "candidate_primary - baseline_primary > 0.002",
-    "success_rule_pass": true,
-    "candidate_primary_threshold": 0.6036,
-    "candidate_threshold_pass": true,
+    "success_rule_pass": false,
+    "candidate_primary_threshold": 0.605871007132627,
+    "candidate_threshold_pass": false,
+    "retained_champion_experiment_id": "exp_001",
     "champion_config_path": "configs/approved/exp_001.json",
     "formal_run_authorization_consumed": true,
-    "fresh_result_accepted_with_process_incident_disclosure": true,
     "final_approval_created": false,
+    "pr_25_evidence_used": false,
     "test_access": false,
-    "evidence": "coordination/inbox/A/exp_001_fresh_valid_cycle_decision_20260831.md"
+    "evidence": "coordination/inbox/A/exp_002_cycle_decision_20260831.md"
   },
   "formal_decision_artifacts": {
     "current_experiment": "coordination/current_experiment.json",
     "experiment_history": "coordination/experiment_history.jsonl",
     "latest_metrics": "coordination/results/latest_metrics.json",
-    "iteration_spec": "coordination/iterations/exp_001/experiment_spec.json",
+    "iteration_spec": "coordination/iterations/exp_002/experiment_spec.json",
     "approved_config": "configs/approved/exp_001.json",
-    "github_issue_draft": "coordination/issues/exp_001_keep_decision.md",
-    "recorded_at_utc": "2026-08-30T18:25:11Z"
+    "e_evaluation": "coordination/results/exp_002_evaluation.json",
+    "recorded_at_utc": "2026-08-31T03:20:22Z"
   },
   "github_branch_protection": {
     "status": "TEMPORARY_CHECKS_ONLY_PR_GATE_APPROVED",
@@ -428,6 +434,6 @@
       "repository-contracts / contracts"
     ]
   },
-  "last_completed_iteration": "exp_001",
-  "consecutive_no_improve": 0
+  "last_completed_iteration": "exp_002",
+  "consecutive_no_improve": 1
 }
