@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bob-agent.local/contracts/agent_cycle_result.schema.json",
+  "title": "Agent cycle role result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "role",
+    "phase",
+    "experiment_id",
+    "summary",
+    "commit_sha",
+    "pr_url",
+    "small_evidence_paths",
+    "large_artifact_paths",
+    "next_receiver",
+    "formal_metrics_produced",
+    "pr_25_evidence_used",
+    "final_approval_created",
+    "test_access"
+  ],
+  "properties": {
+    "status": {
+      "enum": ["COMPLETED", "WAITING", "BLOCKED", "FAILED"]
+    },
+    "role": {
+      "enum": ["A", "B", "C", "D", "E"]
+    },
+    "phase": {
+      "type": "string",
+      "minLength": 1
+    },
+    "experiment_id": {
+      "type": "string",
+      "pattern": "^exp_[0-9]{3,}$"
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "commit_sha": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "pr_url": {
+      "type": ["string", "null"]
+    },
+    "small_evidence_paths": {
+      "type": "array",
+      "items": {"type": "string"},
+      "uniqueItems": true
+    },
+    "large_artifact_paths": {
+      "type": "array",
+      "items": {"type": "string"},
+      "uniqueItems": true
+    },
+    "next_receiver": {
+      "type": ["string", "null"]
+    },
+    "formal_metrics_produced": {"type": "boolean"},
+    "pr_25_evidence_used": {"const": false},
+    "final_approval_created": {"const": false},
+    "test_access": {"const": false}
+  }
+}

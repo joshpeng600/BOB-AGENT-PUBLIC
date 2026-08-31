@@ -12,3 +12,13 @@ Run the E test suite:
 ```bash
 python3 -m unittest discover -s tests -v
 ```
+
+Coordinate asynchronous A-E experiment work with the safe, read-only default:
+
+```bash
+python tools/run_agent_cycle.py --experiment exp_003
+```
+
+See [docs/AGENT_CYCLE_AUTOMATION.md](docs/AGENT_CYCLE_AUTOMATION.md) for role
+dispatch, Codex quota recovery, PR/CI monitoring, artifact handoff, and the
+explicit real-validation gate.
