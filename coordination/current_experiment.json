@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "experiment_id": "exp_003",
-  "status": "IMPLEMENTATION_SETUP_APPROVED",
+  "status": "B_SYNTHETIC_PREFLIGHT_ALLOWED",
   "decision": "PLAN",
-  "approved_against_commit_sha": "4b0bea90b688cc064ddb8f08e572acd448826c87",
+  "approved_against_commit_sha": "1dc25ed52430df9291f74697c843e1d7d9eb81e0",
   "experiment_spec": "coordination/iterations/exp_003/experiment_spec.json",
   "repository_experiment_spec": "experiments/exp_003.json",
   "baseline_experiment_id": "exp_001",
@@ -26,5 +26,6 @@
   "pr_25_evidence_used": false,
   "final_approval_created": false,
   "test_access": false,
-  "next_action": "C and D return independent merged setup evidence; B and E remain blocked until their recorded prerequisites merge; A later reviews all C/D/B/E evidence before any exact valid-only gate"
+  "next_receiver": "B",
+  "next_action": "B verifies the exact merged baseline/candidate config binding and performs at most one one-batch synthetic smoke; real valid, formal metrics, hidden test, and final approval remain blocked"
 }
