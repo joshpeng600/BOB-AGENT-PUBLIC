@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "experiment_id": "exp_002",
-  "status": "ONE_FRESH_FORMAL_VALID_PAIR_AUTHORIZED",
-  "decision": "RUN_VALID_ONLY_PAIR",
+  "status": "COMPLETED_REJECTED",
+  "decision": "REJECT_KEEP_EXP_001",
   "approved_against_commit_sha": "a673dbab096aabc19d3e3b8c877b80f03aaccdb3",
   "experiment_spec": "coordination/iterations/exp_002/experiment_spec.json",
   "repository_experiment_spec": "experiments/exp_002.json",
@@ -19,10 +19,16 @@
   "baseline_primary": 0.603871007132627,
   "epsilon": 0.002,
   "candidate_primary_must_be_greater_than": 0.605871007132627,
-  "authorized_attempts_active": 1,
-  "real_valid_run_allowed": true,
-  "formal_metrics_produced": false,
+  "authorized_attempts_active": 0,
+  "real_valid_run_allowed": false,
+  "formal_metrics_produced": true,
+  "candidate_primary": 0.6032604702292279,
+  "primary_delta": -0.0006105369033990726,
+  "strict_improvement_pass": false,
+  "retained_champion_experiment_id": "exp_001",
+  "retained_champion_primary": 0.603871007132627,
+  "e_evidence": "coordination/inbox/E/exp_002_evaluation_result.md",
   "pr_25_evidence_used": false,
   "test_access": false,
-  "next_action": "B freezes one clean descendant of the gate merge and runs exactly one fresh full-budget valid-only baseline/candidate pair; E then independently audits and evaluates immutable predictions"
+  "next_action": "A may propose a new single-variable experiment from the retained exp_001 champion; no exp_002 rerun is authorized"
 }
