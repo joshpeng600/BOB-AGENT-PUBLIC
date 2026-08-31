@@ -46,24 +46,24 @@ python -m unittest discover -s tests -v
 Then render the next-cycle report:
 
 ```bash
-python tools/run_agent_cycle.py --experiment exp_003 --action report
+python tools/run_agent_cycle.py --experiment exp_002 --action report
 ```
 
 The report command is read-only with respect to tracked repository state and
 scientific execution. It reads the terminal `exp_002` state and recorded experiment
-memory, then writes ignored summaries under `artifacts/agent_cycle/exp_003/`. It does
-not create an exp_003 proposal or branch, invoke a role, train a model, produce formal
+memory, then writes ignored summaries under `artifacts/agent_cycle/exp_002/`. It does
+not create a new proposal or branch, invoke a role, train a model, produce formal
 metrics, open a PR, or access test data.
 
 The product also implements
-`python tools/run_agent_cycle.py --experiment exp_003 --action run --max-iterations 3`,
+`python tools/run_agent_cycle.py --experiment exp_010 --action run --max-iterations 3`,
 but this recording deliberately does **not** run it: continuous mode requires a clean
 `main` checkout and an A-recorded bounded campaign authorization, and may advance real
 role PRs and approved public-validation work.
 
 Expected facts—not a byte-for-byte terminal transcript—are:
 
-- target experiment: `exp_003`;
+- target experiment: `exp_002`;
 - current repository experiment: `exp_002`;
 - next legal receiver: `A`;
 - public-valid gate: `CONSUMED_BLOCKED`;
@@ -110,7 +110,7 @@ predictions. Point out the PR and CI boundary.
 
 Run the unit-test command, then the read-only report command. Highlight that A is the
 next legal receiver and the valid gate is consumed/closed. Say explicitly: “This
-report does not start exp_003, use real data, or access test.”
+report does not start a new experiment, use real data, or access test.”
 
 ### 1:35–2:10 — Learning from success and failure
 

@@ -8,7 +8,7 @@ write authority or independence into one role.
 
 1. Reads `coordination/current_state.json` and
    `coordination/current_experiment.json`, then selects only the legal next
-   receiver. A terminal `exp_002` plus `--experiment exp_003` routes first to A.
+   receiver. A terminal `exp_009` plus `--experiment exp_010` routes first to A.
 2. Invokes the local Codex CLI in a dedicated role worktree and saves the Codex
    session identifier. A stopped session can be continued after quota recovery
    with `--resume-session`.
@@ -31,7 +31,7 @@ already excluded from Git.
 The shortest command is read-only:
 
 ```powershell
-python tools/run_agent_cycle.py --experiment exp_003
+python tools/run_agent_cycle.py --experiment exp_010
 ```
 
 It shows the current legal receiver and creates the ignored status/demo files.
@@ -40,7 +40,7 @@ It does not invoke Codex or change GitHub.
 To let the currently legal role perform one step:
 
 ```powershell
-python tools/run_agent_cycle.py --experiment exp_003 --action step --execute
+python tools/run_agent_cycle.py --experiment exp_010 --action step --execute
 ```
 
 For five computers with different token-reset times, each member can run the
@@ -48,7 +48,7 @@ same command with their role. A non-matching worker exits safely and says which
 role is currently needed:
 
 ```powershell
-python tools/run_agent_cycle.py --experiment exp_003 --action step --execute --worker-role C
+python tools/run_agent_cycle.py --experiment exp_010 --action step --execute --worker-role C
 ```
 
 The process does not assume that A, B, C, D, and E are online together. Invoke
@@ -60,7 +60,7 @@ latest main.
 The continuous entry point is:
 
 ```powershell
-python tools/run_agent_cycle.py --experiment exp_003 --action run --max-iterations 3
+python tools/run_agent_cycle.py --experiment exp_010 --action run --max-iterations 3
 ```
 
 `--max-iterations` counts newly completed experiments, not individual role
@@ -75,7 +75,7 @@ committed a `bounded_campaign_authorization` in
 {
   "bounded_campaign_authorization": {
     "status": "ALLOWED",
-    "experiment_ids": ["exp_003", "exp_004", "exp_005"],
+    "experiment_ids": ["exp_010", "exp_011", "exp_012"],
     "max_completed_experiments": 3,
     "max_role_steps": 30,
     "data_mode": "train_valid_only",
@@ -108,13 +108,13 @@ resume after an external failure is resolved.
 Check a PR without merging it:
 
 ```powershell
-python tools/run_agent_cycle.py --experiment exp_003 --action watch-pr --pr 54
+python tools/run_agent_cycle.py --experiment exp_010 --action watch-pr --pr 54
 ```
 
 Wait for the exact four checks and merge an ordinary safe PR:
 
 ```powershell
-python tools/run_agent_cycle.py --experiment exp_003 --action watch-pr --pr 54 --timeout-seconds 1800 --auto-merge
+python tools/run_agent_cycle.py --experiment exp_010 --action watch-pr --pr 54 --timeout-seconds 1800 --auto-merge
 ```
 
 The merge is refused if the PR touches `starter/`, `.gitattributes`,
@@ -131,7 +131,7 @@ repository must record `REAL_VALID_RUN_ALLOWED.status=ALLOWED`, the next
 receiver must be B, and the operator must add the explicit flag:
 
 ```powershell
-python tools/run_agent_cycle.py --experiment exp_003 --action step --execute --worker-role B --allow-real-valid
+python tools/run_agent_cycle.py --experiment exp_010 --action step --execute --worker-role B --allow-real-valid
 ```
 
 Without all three conditions the role prompt forbids real-data training and
@@ -156,9 +156,9 @@ stops truthfully until the exact hashed package is privately transferred.
 Create a transfer manifest without copying or modifying the artifacts:
 
 ```powershell
-python tools/run_agent_cycle.py --experiment exp_003 --action handoff --recipient E `
-  --artifact-path C:\private\exp003_baseline `
-  --artifact-path C:\private\exp003_candidate
+python tools/run_agent_cycle.py --experiment exp_010 --action handoff --recipient E `
+  --artifact-path C:\private\exp010_baseline `
+  --artifact-path C:\private\exp010_candidate
 ```
 
 Send the listed folders privately by shared drive, encrypted storage, removable
@@ -174,7 +174,7 @@ If the stopped manifest contains a Codex session identifier, resume it after
 quota recovery:
 
 ```powershell
-python tools/run_agent_cycle.py --experiment exp_003 --action step --execute `
+python tools/run_agent_cycle.py --experiment exp_010 --action step --execute `
   --worker-role D --resume-session <session-id>
 ```
 

@@ -56,16 +56,16 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python -m unittest discover -s tests -v
-python tools/run_agent_cycle.py --experiment exp_003 --action report
+python tools/run_agent_cycle.py --experiment exp_002 --action report
 ```
 
 On Windows PowerShell, activate with `.venv\Scripts\Activate.ps1`.
 
 The final command is a **read-only demonstration** of the repository's recorded
-state. It does not propose, create, train, or evaluate `exp_003`. It reads the
+state. It does not propose, create, train, or evaluate a new experiment. It reads the
 completed `exp_001`/`exp_002` history, reports A as the next legal receiver, shows
 the closed public-valid gate and `test_access=false`, and writes only ignored runtime
-summaries below `artifacts/agent_cycle/exp_003/`.
+summaries below `artifacts/agent_cycle/exp_002/`.
 
 For a guided recording sequence, use [the demo guide](docs/DEMO.md).
 
@@ -111,7 +111,7 @@ After A records an explicit `bounded_campaign_authorization`, a clean `main` che
 can request up to three newly completed experiments:
 
 ```bash
-python tools/run_agent_cycle.py --experiment exp_003 --action run --max-iterations 3
+python tools/run_agent_cycle.py --experiment exp_010 --action run --max-iterations 3
 ```
 
 Continuous mode validates A's experiment and role-step bounds, dispatches only the
