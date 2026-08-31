@@ -1,4 +1,4 @@
-"""Deny test operations unless a clean frozen commit has human approval."""
+"""Authorize one frozen organizer-scored submission from a clean commit."""
 
 from __future__ import annotations
 
@@ -86,7 +86,7 @@ def main() -> int:
     except SecurityError as error:
         print(f"DENIED: {error}")
         return 1
-    print("APPROVED: commit_sha, clean worktree, protected hashes, and human approval verified")
+    print("APPROVED: one label-free final submission may be frozen; local test scoring remains denied")
     return 0
 
 

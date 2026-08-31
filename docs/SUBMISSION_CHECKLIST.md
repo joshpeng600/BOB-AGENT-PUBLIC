@@ -60,15 +60,15 @@ actions. Do not mark an item complete without evidence from the final merged com
 - [x] Review the final text for technical execution, innovation/problem insight,
   impact/relevance, feasibility/practicality, and presentation.
 - [x] Describe `--action run --max-iterations 3` as an implemented, A-authorized
-  bounded campaign with fail-closed stop/resume; do not claim absolute unattended
-  execution, unrestricted automatic public-valid, repository publication, or external
-  submission.
+  bounded campaign with automatic same-host A-E handoffs and fail-closed stop/resume;
+  do not claim unrestricted public-valid, cross-host artifact automation, repository
+  publication, or organizer upload.
 - [ ] Submit before `2026-09-01 12:00 SGT`, leaving time for link verification.
 
 ## Non-negotiable boundary
 
 - [x] Ordinary agent workflow reports `test_access=false`.
-- [ ] Final submission is checked for format and hashes only, then sent to the external
+- [x] Final submission is checked for format and hashes only, then sent to the external
   hidden-test evaluator without local hidden labels or metrics being exposed to agents.
 
 ## Human-only remaining actions

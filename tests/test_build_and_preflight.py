@@ -48,6 +48,10 @@ class BuildAndPreflightTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValidationError, "test .*request denied"):
                         inspect_data(data_dir, "experiment", config)
 
+    def test_preflight_has_no_hidden_test_mode(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "hidden-test labels"):
+            inspect_data(Path("unused"), "final")
+
 
 if __name__ == "__main__":
     unittest.main()

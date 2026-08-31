@@ -1,4 +1,8 @@
-"""Protected evaluation gate around the official KuaiRand evaluator."""
+"""Protected public-validation gate around the official KuaiRand evaluator.
+
+Hidden-test scoring is intentionally absent. Final release freezes a label-free
+submission for organizer-side scoring through ``tools.final_submission``.
+"""
 
 from __future__ import annotations
 
@@ -22,7 +26,6 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from starter import evaluate as official_evaluator
-from tools.final_approval import verify_final_approval
 from tools.official_rows import load_splits
 from tools.prediction_contract import (
     PredictionContractError,
@@ -359,18 +362,18 @@ def immutable_prediction_snapshot(source: Path) -> Iterator[tuple[Path, str]]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prediction", required=True, type=Path)
-    parser.add_argument("--split", required=True, choices=["valid", "test"])
+    parser.add_argument("--split", required=True)
     parser.add_argument("--data-dir", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument(
-        "--approval",
-        type=Path,
-        help="Human approval JSON; required for any test operation",
-    )
     args = parser.parse_args()
 
     published: PublishedEvidence | None = None
     try:
+        if args.split != "valid":
+            raise SecurityError(
+                "Only public validation can be scored locally; hidden-test "
+                "scoring is permanently disabled"
+            )
         protected_hashes = verify_protected_files()
         evaluation_commit = git_head()
         if git_is_dirty():
@@ -380,13 +383,6 @@ def main() -> int:
         ):
             raise SecurityError("Output path must not overwrite the immutable prediction")
         output_directory = _bind_output_directory(args.output)
-        if args.split == "test":
-            if args.approval is None:
-                raise SecurityError(
-                    "Normal mode only permits valid; test requires --approval"
-                )
-            verify_final_approval(args.approval)
-
         with immutable_prediction_snapshot(args.prediction) as (
             snapshot_path,
             prediction_hash,
@@ -419,7 +415,7 @@ def main() -> int:
                 "prediction_hash": prediction_hash,
                 "commit_sha": evaluation_commit,
                 "worktree_clean": True,
-                "test_access": args.split == "test",
+                "test_access": False,
                 "created_at": datetime.now(timezone.utc).isoformat(),
             }
             payload = (
