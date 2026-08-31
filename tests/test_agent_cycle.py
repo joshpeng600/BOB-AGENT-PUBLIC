@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,6 +12,7 @@ from unittest.mock import patch
 from tools.run_agent_cycle import (
     CommandResult,
     CycleError,
+    PrivateRuntimeConfig,
     REQUIRED_CHECKS,
     _load_or_initialize_campaign_state,
     _record_campaign_stop,
@@ -26,15 +28,18 @@ from tools.run_agent_cycle import (
     fast_forward_to_origin_main,
     generate_reports,
     is_terminal_state,
+    load_private_runtime_config,
     next_campaign_receivers,
     next_experiment_id,
     normalize_receivers,
     parse_pr_number,
     run_campaign,
     select_target_experiment,
+    snapshot_artifacts_to_store,
     validate_campaign_authorization,
     validate_campaign_data_dir,
     validate_agent_result,
+    validate_runtime_environment,
     verify_handoff_manifest,
     watch_pr,
 )
@@ -75,6 +80,223 @@ def successful_pr(files=None):
         "files": [{"path": path} for path in (files or ["tools/example.py"])],
         "statusCheckRollup": checks,
     }
+
+
+class PrivateRuntimeConfigTests(unittest.TestCase):
+    def write_config(self, root: Path, repo: Path, **overrides) -> Path:
+        private = root / "private"
+        data = private / "data" / "dev"
+        artifacts = private / "artifacts"
+        data.mkdir(parents=True)
+        value = {
+            "dev_data_dir": str(data),
+            "artifact_root": str(artifacts),
+        }
+        value.update(overrides)
+        path = private / "bob-agent.local.json"
+        path.write_text(json.dumps(value), encoding="utf-8")
+        return path
+
+    def test_loads_absolute_private_paths_and_creates_artifact_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "repo"
+            repo.mkdir()
+            path = self.write_config(root, repo)
+            config = load_private_runtime_config(repo, path)
+            self.assertTrue(config.dev_data_dir.is_dir())
+            self.assertTrue(config.artifact_root.is_dir())
+            self.assertEqual(len(config.fingerprint), 64)
+            self.assertFalse(str(config.config_path).startswith(str(repo)))
+
+    def test_rejects_config_or_private_paths_inside_git(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "repo"
+            repo.mkdir()
+            data = repo / "data" / "dev"
+            data.mkdir(parents=True)
+            outside_artifacts = root / "artifacts"
+            config_inside = repo / "local.json"
+            config_inside.write_text(
+                json.dumps(
+                    {
+                        "dev_data_dir": str(data),
+                        "artifact_root": str(outside_artifacts),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(CycleError, "outside the Git checkout"):
+                load_private_runtime_config(repo, config_inside)
+
+            private = root / "private"
+            private.mkdir()
+            outside_config = private / "local.json"
+            outside_config.write_text(
+                json.dumps(
+                    {
+                        "dev_data_dir": str(data),
+                        "artifact_root": str(outside_artifacts),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(CycleError, "dev_data_dir"):
+                load_private_runtime_config(repo, outside_config)
+
+    def test_rejects_unknown_fields_and_overlapping_private_trees(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "repo"
+            repo.mkdir()
+            private = root / "private"
+            data = private / "data"
+            data.mkdir(parents=True)
+            path = private / "local.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "dev_data_dir": str(data),
+                        "artifact_root": str(data / "artifacts"),
+                        "token": "must-not-be-accepted",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(CycleError, "unexpected token"):
+                load_private_runtime_config(repo, path)
+            path.write_text(
+                json.dumps(
+                    {
+                        "dev_data_dir": str(data),
+                        "artifact_root": str(data / "artifacts"),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(CycleError, "separate private trees"):
+                load_private_runtime_config(repo, path)
+
+    def test_snapshots_artifacts_into_content_addressed_private_store(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "role-output"
+            source.mkdir()
+            prediction = source / "valid_predictions.csv"
+            prediction.write_bytes(b"row_id,score\n0,0.5\n")
+            store = root / "private-store"
+            stored = snapshot_artifacts_to_store(
+                store,
+                experiment_id="exp_003",
+                artifact_paths=[source],
+            )
+            self.assertEqual(len(stored), 1)
+            stored_prediction = stored[0] / "root_000" / prediction.name
+            self.assertEqual(stored_prediction.read_bytes(), prediction.read_bytes())
+            prediction.write_bytes(b"source changed after snapshot\n")
+            manifest = create_handoff_manifest(
+                root / "runtime",
+                experiment_id="exp_003",
+                recipient="E",
+                artifact_paths=stored,
+                local_read_only_access=True,
+                artifact_store_root=store,
+            )
+            verify_handoff_manifest(
+                manifest,
+                expected_recipient="E",
+                expected_artifact_root=store,
+            )
+            stored_prediction.chmod(0o644)
+            stored_prediction.write_bytes(b"tampered store\n")
+            with self.assertRaisesRegex(CycleError, "changed"):
+                verify_handoff_manifest(
+                    manifest,
+                    expected_recipient="E",
+                    expected_artifact_root=store,
+                )
+
+    def test_environment_preflight_requires_gh_auth_and_train_valid_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            repo = root / "repo"
+            data = root / "data"
+            store = root / "store"
+            repo.mkdir()
+            data.mkdir()
+            store.mkdir()
+            config = PrivateRuntimeConfig(
+                config_path=root / "local.json",
+                dev_data_dir=data,
+                artifact_root=store,
+                fingerprint="f" * 64,
+            )
+            with (
+                patch("tools.run_agent_cycle.require_clean_worktree"),
+                patch("tools.run_agent_cycle.find_codex_executable"),
+                patch("tools.run_agent_cycle.shutil.which", return_value=None),
+                patch(
+                    "tools.run_agent_cycle.Path.home", return_value=root / "no-home"
+                ),
+                patch(
+                    "tools.run_agent_cycle.run_command",
+                    return_value=CommandResult(
+                        0,
+                        "https://github.com/joshpeng600/BOB-AGENT-PUBLIC.git\n",
+                        "",
+                    ),
+                ),
+            ):
+                with self.assertRaisesRegex(CycleError, "GitHub CLI is missing"):
+                    validate_runtime_environment(repo, config)
+
+            commands = []
+
+            def fake_run(argv, *, cwd, input_text=None, timeout_seconds=None):
+                commands.append(tuple(argv))
+                if tuple(argv) == ("git", "remote", "get-url", "origin"):
+                    return CommandResult(
+                        0,
+                        "git@github.com:joshpeng600/BOB-AGENT-PUBLIC.git\n",
+                        "",
+                    )
+                return CommandResult(0, "PREFLIGHT=PASS\n", "")
+
+            with (
+                patch("tools.run_agent_cycle.require_clean_worktree"),
+                patch("tools.run_agent_cycle.find_codex_executable"),
+                patch("tools.run_agent_cycle.shutil.which", return_value="/usr/bin/gh"),
+                patch("tools.run_agent_cycle.run_command", side_effect=fake_run),
+            ):
+                validate_runtime_environment(repo, config)
+            self.assertIn(("/usr/bin/gh", "auth", "status"), commands)
+            self.assertTrue(
+                any(command[:2] == (sys.executable, "tools/preflight.py") for command in commands)
+            )
+
+    def test_campaign_resume_rejects_changed_private_runtime_config(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime = Path(tmp)
+            common = {
+                "start_experiment_id": "exp_003",
+                "authorized_experiment_ids": ["exp_003"],
+                "max_iterations": 1,
+                "max_role_steps": 10,
+                "authorization_hash": "a" * 64,
+                "existing_decisions": {"exp_001", "exp_002"},
+            }
+            _load_or_initialize_campaign_state(
+                runtime,
+                runtime_config_hash="f" * 64,
+                **common,
+            )
+            with self.assertRaisesRegex(CycleError, "runtime_config_hash"):
+                _load_or_initialize_campaign_state(
+                    runtime,
+                    runtime_config_hash="e" * 64,
+                    **common,
+                )
 
 
 class ReceiverTests(unittest.TestCase):
@@ -433,6 +655,8 @@ class PullRequestGateTests(unittest.TestCase):
         with patch(
             "tools.run_agent_cycle.load_pr", side_effect=[opened, merged]
         ), patch(
+            "tools.run_agent_cycle.find_gh_executable", return_value="gh"
+        ), patch(
             "tools.run_agent_cycle.run_command",
             return_value=CommandResult(0, "", ""),
         ) as command:
@@ -669,6 +893,12 @@ class CampaignStateTests(unittest.TestCase):
             (package / "valid_predictions.csv").write_bytes(
                 b"row_id,user_id,video_id,score\n0,u,v,0.5\n"
             )
+            runtime_config = PrivateRuntimeConfig(
+                config_path=root / "private-config.json",
+                dev_data_dir=root / "private-dev-data",
+                artifact_root=root / "private-artifact-store",
+                fingerprint="f" * 64,
+            )
             authorization = {
                 "status": "ALLOWED",
                 "experiment_ids": ["exp_003"],
@@ -757,11 +987,15 @@ class CampaignStateTests(unittest.TestCase):
                 worktree_root=root / "worktrees",
                 timeout_seconds=1,
                 poll_seconds=5,
-                data_dir=root / "data",
             )
             with (
                 patch("tools.run_agent_cycle.sync_main_checkout", side_effect=sync_state),
                 patch("tools.run_agent_cycle.verify_protected"),
+                patch(
+                    "tools.run_agent_cycle.load_private_runtime_config",
+                    return_value=runtime_config,
+                ),
+                patch("tools.run_agent_cycle.validate_runtime_environment"),
                 patch(
                     "tools.run_agent_cycle.validate_campaign_data_dir",
                     return_value=(root / "data", "d" * 64),
@@ -784,6 +1018,9 @@ class CampaignStateTests(unittest.TestCase):
             )
             evaluator_call = dispatch.call_args_list[5]
             self.assertIn("manifest=", evaluator_call.kwargs["handoff_context"])
+            self.assertIn(
+                "dev_data_dir=", evaluator_call.kwargs["private_runtime_context"]
+            )
             self.assertTrue(evaluator_call.kwargs["bounded_campaign_authorized"])
             self.assertIn(
                 "dataset_manifest_sha256=" + "d" * 64,
