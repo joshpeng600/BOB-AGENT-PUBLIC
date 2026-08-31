@@ -97,13 +97,25 @@ coordinator. Its currently implemented actions are:
 | `status` | Show the current legal receiver and cycle state (default) | Only ignored runtime summaries |
 | `report` | Render state, experiment comparison, and demo summary | Only ignored runtime summaries |
 | `step` | Dispatch one legal role; requires `--execute` | Yes, through a role worktree and PR |
+| `run` | Advance an A-authorized bounded campaign across legal role/PR/CI transitions | Yes; fail-closed and resumable within recorded limits |
 | `watch-pr` | Inspect a PR and the four required checks | Read-only unless `--auto-merge` is explicitly supplied |
 | `handoff` | Hash large local artifacts for private transfer | Writes an ignored handoff manifest |
 
-The coordinator does **not** currently provide an `--action run` loop or a
-`--max-iterations` option. A cycle advances one legal `next_receiver` at a time,
-and the command is invoked again after reviewed evidence is merged. Full details are
-in [Agent cycle automation](docs/AGENT_CYCLE_AUTOMATION.md).
+After A records an explicit `bounded_campaign_authorization`, a clean `main` checkout
+can request up to three newly completed experiments:
+
+```bash
+python tools/run_agent_cycle.py --experiment exp_003 --action run --max-iterations 3
+```
+
+Continuous mode validates A's experiment and role-step bounds, dispatches only the
+legal receiver, binds each result to a clean commit and matching PR head, enforces role
+ownership and all four CI checks, and refreshes `main` after each merge. It records a
+resumable stop instead of bypassing a waiting/failed role, unsafe or missing PR,
+manual artifact transfer, unchanged routing state, authorization change, or policy
+limit. This is bounded stop/resume automation, not a promise of zero operator
+involvement. Full details are in
+[Agent cycle automation](docs/AGENT_CYCLE_AUTOMATION.md).
 
 ## Safety model
 
@@ -117,11 +129,14 @@ BOB-Agent separates three evidence tiers:
 
 The development split is fixed by date: train `20220408–20220421`, validation
 `20220422–20220428`; development is capped at `20220428`. Public-valid execution
-is double locked by repository state and the operator's explicit
-`--allow-real-valid` flag. The orchestrated workflow never accesses or scores test
-data and records `test_access=false`. A final submission is intended for an external
-hidden-test evaluator; local format/hash validation must not expose hidden labels or
-metrics to agents.
+is double locked. A one-step run needs repository gate state plus the operator's
+explicit `--allow-real-valid` flag. A continuous campaign instead needs both the
+current experiment's allowed gate and A's unchanged, explicit bounded authorization
+with `automatic_public_valid=true`. The orchestrated workflow never accesses or
+scores test data and records `test_access=false`. Hidden test and final approval are
+never authorized inside an ordinary campaign. A final submission is intended for an
+external hidden-test evaluator; local format/hash validation must not expose hidden
+labels or metrics to agents.
 
 Additional safeguards include:
 
@@ -179,9 +194,12 @@ contracts on every proposed integration.
 
 ## Current limitations
 
-- Orchestration is state-driven and step-based, not a fully unattended multi-round
-  `run/watch` loop.
-- Public-valid use still requires an explicit repository gate and operator flag.
+- Continuous orchestration is bounded and state-driven. It stops for manual artifact
+  transfer, unresolved role/PR/CI state, authorization changes, and policy limits, then
+  resumes only after the external condition is resolved.
+- Automatic public-valid is limited to experiments and budgets that A explicitly
+  records in a bounded campaign authorization; one-step execution still requires the
+  operator flag.
 - Large artifacts are transferred privately by hash manifest rather than through an
   artifact service.
 - Hidden-test submission/upload is intentionally outside the agent cycle.
@@ -190,8 +208,8 @@ contracts on every proposed integration.
 
 ## Roadmap
 
-1. Add a policy-bounded continuous `run/watch` loop with automatic stopping.
-2. Allow policy-based public-valid activation once all auditable prerequisites pass.
+1. Add managed notification and artifact-transfer services around campaign stop/resume.
+2. Broaden policy-based public-valid authorization while preserving A-defined bounds.
 3. Integrate a one-shot external hidden-test submission that returns no labels or
    local test metrics.
 4. Add a managed artifact store while preserving immutable hashes and role isolation.
@@ -215,25 +233,3 @@ speed matters but leakage and silent regressions are costly.
 
 The repository currently has no license file. A license is a human legal decision;
 see the submission checklist before making the repository public.
-
-Coordinate asynchronous A-E experiment work with the safe, read-only default:
-
-```bash
-python tools/run_agent_cycle.py --experiment exp_003
-```
-
-After A records an explicit bounded valid-only campaign, run up to three newly
-completed experiments with separate role worktrees, PRs, and CI gates:
-
-```bash
-python tools/run_agent_cycle.py --experiment exp_003 --action run --max-iterations 3
-```
-
-The continuous runner stops rather than bypassing missing evidence, manual
-artifact transfer, stale routing state, failed PR checks, or policy limits.
-Public validation can be automated only inside A's recorded bounds. Hidden-test
-access and final approval remain outside every ordinary campaign.
-
-See [docs/AGENT_CYCLE_AUTOMATION.md](docs/AGENT_CYCLE_AUTOMATION.md) for role
-dispatch, continuous campaign authorization, stop/resume behavior, Codex quota
-recovery, PR/CI monitoring, artifact handoff, and validation gates.

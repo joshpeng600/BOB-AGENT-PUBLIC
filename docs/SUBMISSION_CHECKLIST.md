@@ -57,8 +57,10 @@ actions. Do not mark an item complete without evidence from the final merged com
 - [ ] Replace `[REPOSITORY_URL]` and `[YOUTUBE_URL]` in the submission copy.
 - [ ] Review the final text for technical execution, innovation/problem insight,
   impact/relevance, feasibility/practicality, and presentation.
-- [ ] Do not claim fully unattended multi-round execution, automatic public-valid
-  authorization, repository publication, or external submission unless completed.
+- [ ] Describe `--action run --max-iterations 3` as an implemented, A-authorized
+  bounded campaign with fail-closed stop/resume; do not claim absolute unattended
+  execution, unrestricted automatic public-valid, repository publication, or external
+  submission.
 - [ ] Submit before `2026-09-01 12:00 SGT`, leaving time for link verification.
 
 ## Non-negotiable boundary

@@ -45,6 +45,12 @@ memory, then writes ignored summaries under `artifacts/agent_cycle/exp_003/`. It
 not create an exp_003 proposal or branch, invoke a role, train a model, produce formal
 metrics, open a PR, or access test data.
 
+The product also implements
+`python tools/run_agent_cycle.py --experiment exp_003 --action run --max-iterations 3`,
+but this recording deliberately does **not** run it: continuous mode requires a clean
+`main` checkout and an A-recorded bounded campaign authorization, and may advance real
+role PRs and approved public-validation work.
+
 Expected facts—not a byte-for-byte terminal transcript—are:
 
 - target experiment: `exp_003`;
@@ -111,9 +117,9 @@ selects research changes, and hidden test is reserved for external evaluation.
 ### 2:40–3:00 — Value and next step
 
 Close with: “BOB-Agent makes autonomous ML experimentation reviewable. It remembers
-failed ideas, preserves the best result, and applies the same governance pattern to
-ranking, search, and ads. Next, we will add a policy-bounded continuous run/watch
-loop without weakening hidden-test isolation.”
+failed ideas, preserves the best result, and can advance an A-authorized bounded
+campaign through clean commits, PRs, and CI. It stops and can resume when human or
+external evidence is required, without weakening hidden-test isolation.”
 
 ## Recording checklist
 
@@ -122,5 +128,6 @@ loop without weakening hidden-test isolation.”
 - Do not display local paths containing personal information, credentials, private
   artifact locations, or untracked files.
 - Do not show or discuss quarantined PR #25 metrics.
-- Do not run `step --execute`, real validation, final approval, or test operations.
+- Do not run `step --execute`, `--action run`, real validation, final approval, or test
+  operations.
 - Verify the uploaded YouTube video in a signed-out browser before Devpost submission.

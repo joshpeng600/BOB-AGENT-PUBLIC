@@ -34,10 +34,11 @@ comparison, independently evaluates immutable predictions, and applies a predecl
 ACCEPT/REJECT rule. Every decision is appended to experiment memory, and a failed
 candidate cannot displace the verified champion.
 
-The current asynchronous coordinator reads repository state, identifies the only
-legal next role, can invoke one role in an isolated worktree, monitors pull requests
-and CI, resumes interrupted sessions, and creates SHA-256 manifests for private large
-artifact handoff. Status and report modes provide a dataset-free demonstration.
+The coordinator reads repository state, identifies the only legal next role, invokes
+roles in isolated worktrees, monitors pull requests and CI, resumes interrupted
+sessions, and creates SHA-256 manifests for private large-artifact handoff. Its
+bounded continuous mode can advance up to A's recorded experiment and role-step
+limits; status and report modes provide a dataset-free demonstration.
 
 ## How it works
 
@@ -53,9 +54,12 @@ artifact handoff. Status and report modes provide a dataset-free demonstration.
 7. GitHub pull requests, four CI checks, JSON/JSONL contracts, full commit SHAs, and
    SHA-256 manifests make the trajectory reviewable.
 
-The orchestrator currently advances one legal role at a time. It does not yet offer a
-fully unattended multi-iteration `run` mode, and public validation retains an explicit
-safety gate.
+`--action run --max-iterations 3` is implemented, but it is deliberately bounded. It
+starts only from clean `main` with A's explicit valid-only campaign authorization,
+keeps every role/commit/PR/CI decision separate, and grants public-validation work
+only when the experiment gate also allows it. Waiting or failed roles, missing or
+unsafe PRs, manual artifact transfer, stale routing state, changed authorization, and
+stop limits all produce a recorded, resumable fail-closed stop.
 
 ## Five-agent architecture
 
@@ -109,8 +113,8 @@ members and resumable Codex sessions while preserving role independence.
 - Found and accepted a valid BPR improvement.
 - Rejected a follow-up regression and retained the champion in recorded experiment
   state.
-- Built a five-role, state-driven coordinator with PR/CI monitoring and hashed artifact
-  handoff.
+- Built a five-role coordinator with bounded continuous campaigns, PR/CI enforcement,
+  resumable fail-closed stops, and hashed artifact handoff.
 - Protected canonical starter files and enforced clean-commit, data-date, prediction,
   and provenance contracts.
 - Created a dataset-free quick start that demonstrates the control plane without
@@ -120,8 +124,9 @@ members and resumable Codex sessions while preserving role independence.
 
 Agents become more useful when they can say “no” with evidence. Explicit role
 boundaries and immutable handoffs made failures informative instead of ambiguous.
-We also learned that autonomy is not a binary property: safe asynchronous step
-automation can deliver value before a completely unattended loop is ready.
+We also learned that autonomy is not a binary property: bounded continuous execution
+is useful precisely because it stops truthfully when human or external evidence is
+required.
 
 ## Safety and hidden-test isolation
 
@@ -137,10 +142,10 @@ clear separation between public-valid research and external hidden-test evaluati
 
 ## Known limitations
 
-- The coordinator is state-driven and step-based, not yet a fully unattended
-  multi-round loop.
-- Public-validation execution still requires an explicit recorded gate and operator
-  flag.
+- Continuous campaigns require an A-recorded authorization and clean `main`, and stop
+  for manual artifact transfer, unresolved role/PR/CI state, or policy limits.
+- Automatic public validation is limited to the authorized experiment range and still
+  requires each current experiment's recorded gate.
 - Large artifacts use a manual private transfer with hashes.
 - Formal reproduction requires the external KuaiRand dataset.
 - Repository publication, licensing, video upload, and Devpost submission remain
@@ -148,9 +153,8 @@ clear separation between public-valid research and external hidden-test evaluati
 
 ## What's next
 
-We plan to add a policy-bounded continuous run/watch mode with automatic stopping,
-allow automatic public-validation activation after all auditable prerequisites pass,
-connect an artifact store that preserves byte-level identity, and integrate a one-shot
+We plan to add managed notification and artifact-transfer services around campaign
+stop/resume, broaden bounded public-validation policy where safe, and integrate a one-shot
 external hidden-test submission path that never returns labels or local test metrics
 to agents.
 

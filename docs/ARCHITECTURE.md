@@ -100,8 +100,10 @@ flowchart LR
 ```
 
 - **Synthetic:** bounded smoke for operability; it is never metric evidence.
-- **Public validation:** the only source for research selection and champion updates;
-  it requires a recorded gate and an explicit B invocation flag.
+- **Public validation:** the only source for research selection and champion updates.
+  One-step mode requires a recorded gate and explicit B invocation flag. Continuous
+  mode requires that same experiment gate plus A's bounded campaign authorization;
+  only then may it grant B public-valid execution and E independent valid evaluation.
 - **Hidden test:** ordinary orchestration never accesses or scores it. Final submission
   is designed for external evaluation after a human freezes the commit, config, and
   artifact hashes.
@@ -123,8 +125,17 @@ hypothesis, without overwriting the best known system.
 
 ## Current automation boundary
 
-The coordinator supports `status`, `report`, one-role `step`, `watch-pr`, and hashed
-`handoff`. It resumes interrupted Codex sessions and can wait for CI. It does not yet
-run a fully unattended sequence of experiments or automatically open public-valid
-after policy checks. The operator invokes the next step after merged evidence updates
-the repository state.
+The coordinator supports `status`, `report`, one-role `step`, bounded continuous
+`run`, `watch-pr`, and hashed `handoff`. `run --max-iterations N` is accepted only on
+a clean `main` checkout and cannot exceed A's recorded experiment or role-step limits.
+Every role still produces a separate clean commit and matching PR; the runner checks
+role ownership, the four CI gates, mergeability, protected paths, and fresh canonical
+state before advancing.
+
+Continuous mode can automatically advance a valid-only campaign, including B and E
+when both the experiment gate and A authorization allow it. It records a resumable,
+fail-closed stop when a role waits/fails, a PR or check is unsafe, a private artifact
+transfer is required, A-owned routing state does not advance, authorization changes,
+or a configured stopping rule is reached. Hidden-test access and final approval are
+never part of an ordinary campaign. This is bounded automation with explicit stop and
+resume points, not absolute unattended execution.
