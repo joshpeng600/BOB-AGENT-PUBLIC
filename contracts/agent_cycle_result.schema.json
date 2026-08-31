@@ -22,9 +22,11 @@
   ],
   "properties": {
     "status": {
+      "type": "string",
       "enum": ["COMPLETED", "WAITING", "BLOCKED", "FAILED"]
     },
     "role": {
+      "type": "string",
       "enum": ["A", "B", "C", "D", "E"]
     },
     "phase": {
@@ -58,8 +60,8 @@
       "type": ["string", "null"]
     },
     "formal_metrics_produced": {"type": "boolean"},
-    "pr_25_evidence_used": {"const": false},
-    "final_approval_created": {"const": false},
-    "test_access": {"const": false}
+    "pr_25_evidence_used": {"type": "boolean", "const": false},
+    "final_approval_created": {"type": "boolean", "const": false},
+    "test_access": {"type": "boolean", "const": false}
   }
 }

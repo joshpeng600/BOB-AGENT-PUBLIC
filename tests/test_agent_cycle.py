@@ -134,6 +134,17 @@ class ResultContractTests(unittest.TestCase):
 
 
 class DispatchConstructionTests(unittest.TestCase):
+    def test_output_schema_declares_every_property_type(self):
+        schema_path = (
+            Path(__file__).resolve().parents[1]
+            / "contracts"
+            / "agent_cycle_result.schema.json"
+        )
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        for name, definition in schema["properties"].items():
+            with self.subTest(property=name):
+                self.assertIn("type", definition)
+
     def test_codex_command_uses_reviewable_sandbox(self):
         command = build_codex_command(
             executable="codex",
