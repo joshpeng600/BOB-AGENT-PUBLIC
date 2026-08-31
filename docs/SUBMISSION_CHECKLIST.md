@@ -10,7 +10,7 @@ actions. Do not mark an item complete without evidence from the final merged com
 - [x] Architecture, demo, and Devpost draft documents exist.
 - [ ] Packaging PR #56 is merged; confirm its four required Actions checks in the
   signed-in GitHub UI before submission.
-- [ ] Clean-clone quick start verified on a machine/environment that does not contain
+- [x] Clean-clone quick start verified on a machine/environment that does not contain
   the development dataset.
 - [ ] Final merged SHA recorded in the Devpost notes.
 
@@ -81,3 +81,23 @@ actions. Do not mark an item complete without evidence from the final merged com
    playback while signed out.
 6. Submit the Devpost entry and, only through the external evaluator, the final hidden-
    test package.
+
+## Release-candidate evidence
+
+The `release/final-submission-readiness` candidate was checked before its final PR:
+
+- pytest: 155 passed, 56 subtests passed;
+- unittest: 155 of 155 passed;
+- repository contracts: PASS, 45 JSON files plus JSONL/TOML;
+- protected files: PASS, all seven canonical files;
+- prediction contract: PASS, 9 of 9;
+- clean clone without `data/dev`: unittest 155 of 155 and read-only report PASS;
+- history secret-pattern findings: 0;
+- unsafe tracked data/artifact/credential paths: 0;
+- Git blobs at least 5 MB: 0;
+- `starter/` diff: empty;
+- report result: exp_001 KEEP, exp_002 REJECT, champion exp_001, next receiver A,
+  gate CONSUMED_BLOCKED, `test_access=false`.
+
+The unchecked Verification items above deliberately require the same commands to be
+repeated on the final merged `main` SHA.
