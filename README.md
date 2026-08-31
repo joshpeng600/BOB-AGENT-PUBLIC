@@ -107,22 +107,6 @@ coordinator. Its currently implemented actions are:
 | `watch-pr` | Inspect a PR and the four required checks | Read-only unless `--auto-merge` is explicitly supplied |
 | `handoff` | Hash large local artifacts for private transfer | Writes an ignored handoff manifest |
 
-After A records an explicit `bounded_campaign_authorization`, a clean `main` checkout
-can request up to three newly completed experiments:
-
-```bash
-python tools/run_agent_cycle.py --experiment exp_010 --action run --max-iterations 3
-```
-
-Continuous mode validates A's experiment and role-step bounds, dispatches only the
-legal receiver, binds each result to a clean commit and matching PR head, enforces role
-ownership and all four CI checks, and refreshes `main` after each merge. Composite
-C/D work is queued, non-A evidence is automatically routed through A integration,
-and same-host B artifacts are re-hashed before E receives their read-only manifest.
-It still records a resumable stop for waiting/failed roles, unsafe or missing PRs,
-changed artifacts, authorization changes, and policy limits. Full details are in
-[Agent cycle automation](docs/AGENT_CYCLE_AUTOMATION.md).
-
 ## Safety model
 
 BOB-Agent separates three evidence tiers:
