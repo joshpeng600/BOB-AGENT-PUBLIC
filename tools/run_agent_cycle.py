@@ -268,9 +268,7 @@ def validate_runtime_environment(repo: Path, config: PrivateRuntimeConfig) -> No
             "continuous run must use joshpeng600/BOB-AGENT-PUBLIC as origin"
         )
     find_codex_executable()
-    gh = shutil.which("gh")
-    if gh is None:
-        raise CycleError("GitHub CLI is missing; install gh and run gh auth login")
+    gh = find_gh_executable()
     require_success(run_command((gh, "auth", "status"), cwd=repo), "GitHub CLI auth")
     if not os.access(config.dev_data_dir, os.R_OK | os.X_OK):
         raise CycleError(f"private dev data is not readable: {config.dev_data_dir}")
@@ -580,6 +578,16 @@ def find_codex_executable() -> str:
         if found:
             return found
     raise CycleError("Codex CLI was not found on PATH")
+
+
+def find_gh_executable() -> str:
+    found = shutil.which("gh")
+    if found:
+        return found
+    user_local = Path.home() / ".local" / "bin" / "gh"
+    if user_local.is_file() and os.access(user_local, os.X_OK):
+        return str(user_local)
+    raise CycleError("GitHub CLI is missing; install gh and run gh auth login")
 
 
 def build_codex_command(
@@ -1321,7 +1329,15 @@ def load_pr(repo: Path, pr_number: int) -> dict[str, Any]:
     fields = "number,url,state,mergeable,mergeStateStatus,headRefOid,files,statusCheckRollup"
     stdout = require_success(
         run_command(
-            ("gh", "pr", "view", str(pr_number), "--json", fields), cwd=repo
+            (
+                find_gh_executable(),
+                "pr",
+                "view",
+                str(pr_number),
+                "--json",
+                fields,
+            ),
+            cwd=repo,
         ),
         "GitHub PR lookup",
     )
@@ -1353,7 +1369,13 @@ def watch_pr(
             if auto_merge:
                 require_success(
                     run_command(
-                        ("gh", "pr", "merge", str(pr_number), "--merge"),
+                        (
+                            find_gh_executable(),
+                            "pr",
+                            "merge",
+                            str(pr_number),
+                            "--merge",
+                        ),
                         cwd=repo,
                     ),
                     "GitHub PR merge",

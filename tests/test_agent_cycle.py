@@ -235,6 +235,9 @@ class PrivateRuntimeConfigTests(unittest.TestCase):
                 patch("tools.run_agent_cycle.find_codex_executable"),
                 patch("tools.run_agent_cycle.shutil.which", return_value=None),
                 patch(
+                    "tools.run_agent_cycle.Path.home", return_value=root / "no-home"
+                ),
+                patch(
                     "tools.run_agent_cycle.run_command",
                     return_value=CommandResult(
                         0,
@@ -612,6 +615,8 @@ class PullRequestGateTests(unittest.TestCase):
         merged = dict(opened, state="MERGED")
         with patch(
             "tools.run_agent_cycle.load_pr", side_effect=[opened, merged]
+        ), patch(
+            "tools.run_agent_cycle.find_gh_executable", return_value="gh"
         ), patch(
             "tools.run_agent_cycle.run_command",
             return_value=CommandResult(0, "", ""),
