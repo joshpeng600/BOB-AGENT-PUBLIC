@@ -458,7 +458,6 @@ def build_codex_command(
         str(worktree),
         "-s",
         "workspace-write",
-        "--approve-for-me",
         "--output-schema",
         str(schema),
         "--json",
@@ -760,6 +759,7 @@ def render_status_markdown(report: Mapping[str, Any]) -> str:
         "",
         f"- Generated: `{report['generated_at_utc']}`",
         f"- Current repository experiment: `{report['repository_experiment_id']}`",
+        f"- Current champion: `{report['champion_experiment_id']}`",
         f"- Next receiver(s): `{', '.join(report['next_receivers']) or 'none'}`",
         f"- REAL_VALID gate: `{report['real_valid_gate_status']}`",
         f"- Test access: `{str(report['test_access']).lower()}`",
@@ -781,6 +781,9 @@ def render_status_markdown(report: Mapping[str, Any]) -> str:
             "",
             "The coordinator reads governance state, dispatches only the legal next role, "
             "waits for reviewable PR evidence, and keeps large artifacts outside Git.",
+            f"The verified champion is {report['champion_experiment_id']}; "
+            "the next experiment remains uncreated until A proposes it.",
+            "Hidden test was never accessed by this report or the recorded ordinary cycle.",
             "",
         ]
     )
@@ -805,6 +808,10 @@ def generate_reports(
         "target_experiment_id": target,
         "repository_experiment_id": current_experiment.get("experiment_id"),
         "repository_status": current_experiment.get("status"),
+        "champion_experiment_id": current_experiment.get(
+            "retained_champion_experiment_id",
+            current_experiment.get("experiment_id"),
+        ),
         "next_receivers": receivers,
         "real_valid_gate_status": real_valid_gate_status(current_state),
         "experiment_comparison": comparison,
@@ -820,6 +827,7 @@ def generate_reports(
         {
             "experiment_id": target,
             "current_status": current_experiment.get("status"),
+            "champion_experiment_id": report["champion_experiment_id"],
             "next_receivers": receivers,
             "completed_experiments": len(comparison),
             "capabilities": [

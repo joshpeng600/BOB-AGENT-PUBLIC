@@ -25,6 +25,16 @@ Windows PowerShell activation:
 Do not download data for this demo. Do not pass `--execute`,
 `--allow-real-valid`, or `--auto-merge`.
 
+### Beginner setup in VS Code
+
+1. Open the final `BOB-AGENT` folder in VS Code.
+2. Choose **Terminal → New Terminal** and make the terminal text large enough to read
+   in a 1080p recording.
+3. Confirm the terminal is on clean `main` with `git status --short --branch`.
+4. Activate `.venv`, or create it with the commands above if this is a clean clone.
+5. Copy the two commands in the next section exactly. Do not add any execution,
+   real-validation, merge, or test-related flags.
+
 ## Live commands
 
 Run the complete repository test suite:
@@ -60,6 +70,10 @@ Expected facts—not a byte-for-byte terminal transcript—are:
 - `exp_001`: `KEEP`, delta `+0.0024022507796679`;
 - `exp_002`: `REJECT`, delta `-0.0006105369033990726`;
 - `test_access=false`.
+
+In plain language, the screen should communicate: **exp_001 improved and was kept;
+exp_002 regressed and was rejected; exp_001 is still the champion; A is the next
+legal role; hidden test was never accessed.**
 
 Terminal formatting and the generated UTC timestamp may vary. Do not paste a fabricated
 transcript into the video; show the actual command output.
