@@ -385,7 +385,9 @@ class DispatchConstructionTests(unittest.TestCase):
         self.assertIn("--output-schema", command)
         self.assertIn("shell_environment_policy.inherit=all", command)
         self.assertIn("sandbox_workspace_write.network_access=true", command)
-        self.assertEqual(command[command.index("--add-dir") + 1], "/repo/.git")
+        self.assertEqual(
+            command[command.index("--add-dir") + 1], str(Path("/repo/.git"))
+        )
         self.assertNotIn("--dangerously-bypass-approvals-and-sandbox", command)
 
     def test_role_environment_preserves_exact_python_runtime(self):
@@ -456,6 +458,31 @@ class DispatchConstructionTests(unittest.TestCase):
             campaign_public_valid_authorized=True,
         )
         self.assertIn("Do not run real data training", closed)
+
+    def test_campaign_prompt_accepts_exact_one_pair_gate_status(self):
+        for gate_status in (
+            "ALLOWED_EXACTLY_ONE_VALID_ONLY_PAIR",
+            "ALLOWED_EXACTLY_ONE_FULL_BUDGET_VALID_ONLY_PAIR",
+        ):
+            with self.subTest(gate_status=gate_status):
+                prompt = build_role_prompt(
+                    role="B",
+                    experiment_id="exp_003",
+                    gate_status=gate_status,
+                    allow_real_valid=False,
+                    campaign_public_valid_authorized=True,
+                )
+                self.assertIn("bounded train-valid-only campaign", prompt)
+
+    def test_campaign_prompt_rejects_unrecognized_allowed_prefix(self):
+        prompt = build_role_prompt(
+            role="B",
+            experiment_id="exp_003",
+            gate_status="ALLOWED_UNBOUNDED",
+            allow_real_valid=False,
+            campaign_public_valid_authorized=True,
+        )
+        self.assertIn("Do not run real data training", prompt)
 
     def test_campaign_prompt_gives_a_bounded_authority_and_frozen_data(self):
         prompt = build_role_prompt(
