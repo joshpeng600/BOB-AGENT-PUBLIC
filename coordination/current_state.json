@@ -18,6 +18,24 @@
     "implementation_reference": "implementation_commit_sha",
     "producing_git_commit": "commit_sha"
   },
+  "bounded_campaign_authorization": {
+    "status": "ALLOWED",
+    "experiment_ids": [
+      "exp_003",
+      "exp_004",
+      "exp_005"
+    ],
+    "max_completed_experiments": 3,
+    "max_role_steps": 30,
+    "data_mode": "train_valid_only",
+    "automatic_public_valid": true,
+    "operator_allow_required_each_round": false,
+    "requires_per_experiment_a_evidence_gate": true,
+    "approved_against_commit_sha": "6fbd1ec2d7dcaf15852dc058946088d4fb8bf547",
+    "authorization_basis": "the human repository owner explicitly authorized three automatic Track 2 public-validation iterations via Codex conversation",
+    "test_access": false,
+    "final_approval_allowed": false
+  },
   "stage_gates": {
     "IMPLEMENTATION_ALLOWED": {
       "status": "ALLOWED",
