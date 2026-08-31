@@ -148,8 +148,8 @@ clear separation between public-valid research and external hidden-test evaluati
   requires each current experiment's recorded gate.
 - Large artifacts use a manual private transfer with hashes.
 - Formal reproduction requires the external KuaiRand dataset.
-- Repository publication, licensing, video upload, and Devpost submission remain
-  human-controlled release actions.
+- Repository publication and MIT licensing were completed under explicit repository-owner
+  authorization. Video upload and Devpost submission remain human-controlled release actions.
 
 ## What's next
 
@@ -160,5 +160,5 @@ to agents.
 
 ## Links
 
-- Public repository: `[REPOSITORY_URL]`
+- Public repository: https://github.com/joshpeng600/BOB-AGENT-PUBLIC
 - Public YouTube demo (under three minutes): `[YOUTUBE_URL]`

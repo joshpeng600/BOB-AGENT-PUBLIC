@@ -37,11 +37,11 @@ actions. Do not mark an item complete without evidence from the final merged com
   credential files.
 - [ ] PR #51 status manually confirmed. If it remains open and is superseded by the
   merged exp_002 decision and PR #54, close it with a clear superseded note.
-- [ ] `HUMAN_LICENSE_DECISION_REQUIRED`: choose and add a license only after the
-  repository owner makes an explicit legal decision.
-- [ ] Repository owner explicitly authorizes visibility change; agents must not make
-  the repository public without that authorization.
-- [ ] Public repository is accessible in a signed-out/private browser window.
+- [x] Repository owner explicitly selected the MIT License; the license and authorization
+  record are committed.
+- [x] Repository owner explicitly authorized public visibility.
+- [x] Public repository is accessible without authentication at
+  https://github.com/joshpeng600/BOB-AGENT-PUBLIC.
 
 ## Video
 
@@ -54,7 +54,8 @@ actions. Do not mark an item complete without evidence from the final merged com
 
 ## Devpost
 
-- [ ] Replace `[REPOSITORY_URL]` and `[YOUTUBE_URL]` in the submission copy.
+- [ ] Replace the remaining `[YOUTUBE_URL]` placeholder in the submission copy; the public
+  repository URL is already populated.
 - [ ] Review the final text for technical execution, innovation/problem insight,
   impact/relevance, feasibility/practicality, and presentation.
 - [ ] Describe `--action run --max-iterations 3` as an implemented, A-authorized

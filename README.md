@@ -50,8 +50,8 @@ See [Architecture](docs/ARCHITECTURE.md) for the role and evidence boundaries.
 Python 3.10+ is recommended.
 
 ```bash
-git clone https://github.com/joshpeng600/BOB-AGENT.git
-cd BOB-AGENT
+git clone https://github.com/joshpeng600/BOB-AGENT-PUBLIC.git
+cd BOB-AGENT-PUBLIC
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
