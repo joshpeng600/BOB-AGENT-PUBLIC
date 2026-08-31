@@ -8,24 +8,24 @@ actions. Do not mark an item complete without evidence from the final merged com
 - [x] README explains the product, five-agent architecture, quick start, verified
   trajectory, safety boundaries, limitations, and roadmap.
 - [x] Architecture, demo, and Devpost draft documents exist.
-- [ ] Packaging PR #56 is merged; confirm its four required Actions checks in the
-  signed-in GitHub UI before submission.
+- [x] Public packaging and migration are merged through public PR #3; public PRs
+  #1, #4, and #6 also passed all four required Actions checks.
 - [x] Clean-clone quick start verified on a machine/environment that does not contain
   the development dataset.
 - [ ] Final merged SHA recorded in the Devpost notes.
 
 ## Verification
 
-- [ ] `python -m pytest -q` passes on the final merged commit.
-- [ ] `python -m unittest discover -s tests -v` passes on the final merged commit.
-- [ ] `python scripts/check_repository_contracts.py` passes.
-- [ ] `python scripts/check_protected_files.py` passes.
-- [ ] `python scripts/check_prediction_contract.py` passes.
-- [ ] `python tools/run_agent_cycle.py --experiment exp_003 --action report` shows A
+- [x] `python -m pytest -q` passes on the final merged code commit.
+- [x] `python -m unittest discover -s tests -v` passes on the final merged code commit.
+- [x] `python scripts/check_repository_contracts.py` passes.
+- [x] `python scripts/check_protected_files.py` passes.
+- [x] `python scripts/check_prediction_contract.py` passes.
+- [x] `python tools/run_agent_cycle.py --experiment exp_003 --action report` shows A
   as next receiver, exp_001 KEEP, exp_002 REJECT, and `test_access=false` without
   creating an experiment or formal metrics.
-- [ ] `git diff -- starter/` is empty.
-- [ ] Final tracked worktree is clean.
+- [x] `git diff -- starter/` is empty.
+- [x] Final tracked worktree is clean before this documentation-only polish.
 
 ## Public-release safety
 
@@ -36,11 +36,12 @@ actions. Do not mark an item complete without evidence from the final merged com
 - [x] Full Git history scanned for unexpectedly large blobs or committed artifacts.
 - [x] `.gitignore` covers data, artifacts, checkpoints, predictions, environments, and
   credential files.
-- [ ] PR #51 status manually confirmed. If it remains open and is superseded by the
-  merged exp_002 decision and PR #54, close it with a clear superseded note.
-- [x] Human-approved MIT License added in PR #58.
-- [x] Repository owner explicitly authorized visibility change in the manual release
-  record merged with PR #58.
+- [x] Legacy private-repository PR tracking is not required for the public release;
+  the public migration and verification chain is recorded in public PRs #3, #1, #4,
+  and #6.
+- [x] Human-approved MIT License is present on public `main`.
+- [x] Repository owner explicitly authorized publication in the manual release record
+  carried into public `main`.
 - [x] Public repository is accessible without authentication at
   https://github.com/joshpeng600/BOB-AGENT-PUBLIC.
 
@@ -73,24 +74,25 @@ actions. Do not mark an item complete without evidence from the final merged com
 
 ## Human-only remaining actions
 
-1. Confirm PR #51 is closed or clearly marked superseded.
-2. Merge public-repository PR #1 after all four checks pass.
-3. Record the final merged SHA in the Devpost notes.
-4. Record and upload the public three-minute video, replace `[YOUTUBE_URL]`, and verify
+1. Record the final merged SHA in the Devpost notes after this documentation polish is
+   merged.
+2. Record and upload the public three-minute video, replace `[YOUTUBE_URL]`, and verify
    playback while signed out.
-5. Submit the Devpost entry and, only through the external evaluator, the final hidden-
+3. Submit the Devpost entry and, only through the external evaluator, the final hidden-
    test package.
 
-## Release-candidate evidence
+## Final public-main evidence
 
-The `release/final-submission-readiness` candidate was checked before its final PR:
+Public `main` at `6fbd1ec2d7dcaf15852dc058946088d4fb8bf547` was checked before
+this documentation-only polish:
 
-- pytest: 155 passed, 56 subtests passed;
-- unittest: 155 of 155 passed;
+- pytest: 165 passed, 70 subtests passed;
+- unittest: 165 of 165 passed;
 - repository contracts: PASS, 45 JSON files plus JSONL/TOML;
 - protected files: PASS, all seven canonical files;
 - prediction contract: PASS, 9 of 9;
-- clean clone without `data/dev`: unittest 155 of 155 and read-only report PASS;
+- historical release-candidate clean clone without `data/dev`: unittest 155 of 155
+  and read-only report PASS;
 - history secret-pattern findings: 0;
 - unsafe tracked data/artifact/credential paths: 0;
 - Git blobs at least 5 MB: 0;
@@ -98,5 +100,5 @@ The `release/final-submission-readiness` candidate was checked before its final 
 - report result: exp_001 KEEP, exp_002 REJECT, champion exp_001, next receiver A,
   gate CONSUMED_BLOCKED, `test_access=false`.
 
-The unchecked Verification items above deliberately require the same commands to be
-repeated on the final merged `main` SHA.
+The remaining unchecked items are human-controlled final-SHA, video, and Devpost
+submission actions.
