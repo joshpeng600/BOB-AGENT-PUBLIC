@@ -138,6 +138,51 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def validate_campaign_data_dir(supplied: Path | None) -> tuple[Path, str]:
+    """Freeze one complete, test-free development dataset for the campaign."""
+
+    if supplied is None:
+        raise CycleError("--data-dir is required for a train-valid-only campaign")
+    if supplied.is_symlink() or not supplied.is_dir():
+        raise CycleError(f"campaign data directory is missing or unsafe: {supplied}")
+    data_dir = supplied.resolve()
+    manifest_path = data_dir / "dataset_manifest.json"
+    if manifest_path.is_symlink() or not manifest_path.is_file():
+        raise CycleError("campaign data directory has no regular dataset_manifest.json")
+    manifest = load_json(manifest_path)
+    if manifest.get("max_date") != 20220428:
+        raise CycleError("campaign dataset manifest max_date must equal 20220428")
+    if manifest.get("test_rows") != 0:
+        raise CycleError("campaign dataset manifest must record test_rows=0")
+    files = manifest.get("files")
+    if not isinstance(files, Mapping) or not files:
+        raise CycleError("campaign dataset manifest files must be a non-empty object")
+    for relative, metadata in files.items():
+        if not isinstance(relative, str) or not isinstance(metadata, Mapping):
+            raise CycleError("campaign dataset manifest contains an invalid file entry")
+        relative_path = Path(relative)
+        if relative_path.is_absolute() or ".." in relative_path.parts:
+            raise CycleError(f"campaign dataset path is not relative: {relative}")
+        supplied_candidate = data_dir / relative_path
+        if supplied_candidate.is_symlink():
+            raise CycleError(f"campaign dataset file is a symlink: {relative}")
+        candidate = supplied_candidate.resolve()
+        try:
+            candidate.relative_to(data_dir)
+        except ValueError as exc:
+            raise CycleError(
+                f"campaign dataset path escapes data directory: {relative}"
+            ) from exc
+        if not candidate.is_file():
+            raise CycleError(f"campaign dataset file is missing or unsafe: {relative}")
+        expected = metadata.get("sha256")
+        if not isinstance(expected, str) or len(expected) != 64:
+            raise CycleError(f"campaign dataset file has no valid SHA-256: {relative}")
+        if sha256_file(candidate) != expected.lower():
+            raise CycleError(f"campaign dataset file hash mismatch: {relative}")
+    return data_dir, sha256_file(manifest_path)
+
+
 def repository_root(start: Path | None = None) -> Path:
     start = (start or Path.cwd()).resolve()
     result = run_command(("git", "rev-parse", "--show-toplevel"), cwd=start)
@@ -366,7 +411,9 @@ def build_role_prompt(
     experiment_id: str,
     gate_status: str,
     allow_real_valid: bool,
+    bounded_campaign_authorized: bool = False,
     campaign_public_valid_authorized: bool = False,
+    data_context: str | None = None,
     handoff_context: str | None = None,
     integration_context: str | None = None,
 ) -> str:
@@ -402,6 +449,20 @@ def build_role_prompt(
             "Do not run real data training or produce formal validation metrics."
         )
     local_context = ""
+    if bounded_campaign_authorized and role == "A":
+        local_context += (
+            "\nBounded campaign authority:\n"
+            "The repository owner already authorized this exact bounded campaign. "
+            "Do not request repeated per-experiment operator approval. A must still "
+            "verify every recorded C/D/B/E prerequisite before opening or consuming "
+            "REAL_VALID_RUN_ALLOWED, and must stop on any governance stop condition.\n"
+        )
+    if data_context:
+        local_context += (
+            "\nPrivate read-only development dataset (never copy into Git):\n"
+            f"{data_context}\nUse only this exact path and verify the frozen manifest "
+            "hash before data-dependent work.\n"
+        )
     if handoff_context:
         local_context += (
             "\nPrivate read-only artifact handoff (never commit these files):\n"
@@ -633,8 +694,10 @@ def dispatch_role(
     allow_real_valid: bool,
     worktree_root: Path | None,
     resume_session: str | None,
+    bounded_campaign_authorized: bool = False,
     campaign_public_valid_authorized: bool = False,
     execution_timeout_seconds: int | None = None,
+    data_context: str | None = None,
     handoff_context: str | None = None,
     integration_context: str | None = None,
 ) -> dict[str, Any]:
@@ -658,7 +721,9 @@ def dispatch_role(
         experiment_id=experiment_id,
         gate_status=gate_status,
         allow_real_valid=allow_real_valid,
+        bounded_campaign_authorized=bounded_campaign_authorized,
         campaign_public_valid_authorized=campaign_public_valid_authorized,
+        data_context=data_context,
         handoff_context=handoff_context,
         integration_context=integration_context,
     )
@@ -1122,6 +1187,8 @@ def _load_or_initialize_campaign_state(
     max_role_steps: int,
     authorization_hash: str,
     existing_decisions: set[str],
+    campaign_data_dir: str | None = None,
+    campaign_data_manifest_sha256: str | None = None,
 ) -> dict[str, Any]:
     path = _campaign_state_path(runtime)
     expected_ids = list(authorized_experiment_ids)
@@ -1133,6 +1200,8 @@ def _load_or_initialize_campaign_state(
             "max_iterations": max_iterations,
             "max_role_steps": max_role_steps,
             "authorization_hash": authorization_hash,
+            "campaign_data_dir": campaign_data_dir,
+            "campaign_data_manifest_sha256": campaign_data_manifest_sha256,
         }
         mismatched = [key for key, item in expected.items() if value.get(key) != item]
         if mismatched:
@@ -1162,6 +1231,8 @@ def _load_or_initialize_campaign_state(
         "handoff_recipient": None,
         "decisions_present_at_start": sorted(existing_decisions),
         "authorization_hash": authorization_hash,
+        "campaign_data_dir": campaign_data_dir,
+        "campaign_data_manifest_sha256": campaign_data_manifest_sha256,
         "created_at_utc": utc_now(),
         "updated_at_utc": utc_now(),
         "test_access": False,
@@ -1222,6 +1293,9 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
         requested_iterations=args.max_iterations,
         requested_role_steps=args.max_role_steps,
     )
+    campaign_data_dir, campaign_data_manifest_sha256 = validate_campaign_data_dir(
+        args.data_dir
+    )
     start_index = authorization.experiment_ids.index(start_target)
     authorized_ids = authorization.experiment_ids[
         start_index : start_index + args.max_iterations
@@ -1242,6 +1316,8 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
         max_role_steps=effective_role_steps,
         authorization_hash=authorization.authorization_hash,
         existing_decisions=completed_experiment_ids(initial_records),
+        campaign_data_dir=str(campaign_data_dir),
+        campaign_data_manifest_sha256=campaign_data_manifest_sha256,
     )
     policy = load_json(repo / "governance" / "policy.json")
     execution_timeout = _positive_int(
@@ -1342,6 +1418,11 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
         queued_after_role = receivers[1:]
         gate_status = report["real_valid_gate_status"]
         campaign_public_valid = gate_status == "ALLOWED"
+        data_context = (
+            f"development_data_dir={campaign_data_dir}\n"
+            f"dataset_manifest={campaign_data_dir / 'dataset_manifest.json'}\n"
+            f"dataset_manifest_sha256={campaign_data_manifest_sha256}"
+        )
         handoff_context: str | None = None
         handoff_manifest_value = campaign_state.get("handoff_manifest")
         if handoff_manifest_value and campaign_state.get("handoff_recipient") == role:
@@ -1365,8 +1446,10 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
             allow_real_valid=False,
             worktree_root=args.worktree_root,
             resume_session=None,
+            bounded_campaign_authorized=True,
             campaign_public_valid_authorized=campaign_public_valid,
             execution_timeout_seconds=execution_timeout,
+            data_context=data_context,
             handoff_context=handoff_context,
             integration_context=integration_context,
         )
@@ -1520,6 +1603,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--resume-session")
     parser.add_argument("--worktree-root", type=Path)
     parser.add_argument("--runtime-root", type=Path)
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        help="complete test-free development dataset required by --action run",
+    )
     return parser
 
 
