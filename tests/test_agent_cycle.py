@@ -451,6 +451,7 @@ class ArtifactAndReportTests(unittest.TestCase):
                 current_experiment={
                     "experiment_id": "exp_002",
                     "status": "COMPLETED_REJECTED",
+                    "retained_champion_experiment_id": "exp_001",
                 },
                 current_state={
                     "next_receiver": "A",
@@ -460,9 +461,13 @@ class ArtifactAndReportTests(unittest.TestCase):
                 },
             )
             self.assertEqual(report["next_receivers"], ["A"])
+            self.assertEqual(report["champion_experiment_id"], "exp_001")
             self.assertTrue((runtime / "cycle_state.json").exists())
             self.assertTrue((runtime / "status.md").exists())
             self.assertTrue((runtime / "demo_summary.json").exists())
+            status = (runtime / "status.md").read_text(encoding="utf-8")
+            self.assertIn("Current champion: `exp_001`", status)
+            self.assertIn("Hidden test was never accessed", status)
 
 
 class CampaignStateTests(unittest.TestCase):

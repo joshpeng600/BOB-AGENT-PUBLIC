@@ -87,6 +87,12 @@ The numbers above come from committed, independent E valid-only evidence:
 [exp_002](coordination/inbox/E/exp_002_evaluation_result.md). Quarantined PR #25
 evidence is not used.
 
+**The product is the learning loop, not a single score.** The two scores are evidence
+that the agent can remember a successful change, test a plausible follow-up, reject a
+regression, and keep the verified champion. `exp_001` and `exp_002` are therefore the
+first two recorded learning steps of BOB-Agent rather than two standalone leaderboard
+submissions.
+
 ## Agent-cycle interface
 
 `tools/run_agent_cycle.py` is a conservative, state-driven asynchronous
@@ -231,5 +237,6 @@ speed matters but leakage and silent regressions are costly.
 - [Submission checklist](docs/SUBMISSION_CHECKLIST.md)
 - [Devpost draft](docs/DEVPOST_DRAFT.md)
 
-The repository currently has no license file. A license is a human legal decision;
-see the submission checklist before making the repository public.
+Released under the [MIT License](LICENSE). Repository publication, video upload, and
+Devpost submission remain human-controlled release actions; see the submission
+checklist before the final submission.
