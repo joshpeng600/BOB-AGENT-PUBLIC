@@ -57,9 +57,10 @@ limits; status and report modes provide a dataset-free demonstration.
 `--action run --max-iterations 3` is implemented, but it is deliberately bounded. It
 starts only from clean `main` with A's explicit valid-only campaign authorization,
 keeps every role/commit/PR/CI decision separate, and grants public-validation work
-only when the experiment gate also allows it. Waiting or failed roles, missing or
-unsafe PRs, manual artifact transfer, stale routing state, changed authorization, and
-stop limits all produce a recorded, resumable fail-closed stop.
+only when the experiment gate also allows it. Composite work is queued, non-A
+evidence is automatically integrated by A, and same-host artifacts reach E through
+re-verified private manifests. Waiting or failed roles, unsafe PRs, changed artifacts,
+changed authorization, and stop limits still produce a resumable fail-closed stop.
 
 ## Five-agent architecture
 
@@ -143,20 +144,20 @@ clear separation between public-valid research and external hidden-test evaluati
 ## Known limitations
 
 - Continuous campaigns require an A-recorded authorization and clean `main`, and stop
-  for manual artifact transfer, unresolved role/PR/CI state, or policy limits.
+  for unresolved role/PR/CI failures, cross-host transfer, or policy limits.
 - Automatic public validation is limited to the authorized experiment range and still
   requires each current experiment's recorded gate.
-- Large artifacts use a manual private transfer with hashes.
+- Same-host artifacts use automatic read-only hash manifests; cross-host artifacts
+  still require a private transfer service or human handoff.
 - Formal reproduction requires the external KuaiRand dataset.
 - Repository publication, licensing, video upload, and Devpost submission remain
   human-controlled release actions.
 
 ## What's next
 
-We plan to add managed notification and artifact-transfer services around campaign
-stop/resume, broaden bounded public-validation policy where safe, and integrate a one-shot
-external hidden-test submission path that never returns labels or local test metrics
-to agents.
+We plan to add managed notification and cross-host artifact-transfer services,
+broaden bounded public-validation policy where safe, and connect the existing
+label-free final-submission freeze to organizer upload.
 
 ## Links
 

@@ -41,9 +41,11 @@ PROTECTED_AUTOMERGE_PATHS = {
 RELEASE_ONLY_AUTOMERGE_PATHS = {
     "contracts/final_approval.template.json",
     "tools/final_approval.py",
+    "tools/final_submission.py",
 }
 E_OWNED_TOOL_PATHS = {
     "tools/audit_run.py",
+    "tools/final_submission.py",
     "tools/safe_evaluate.py",
 }
 TERMINAL_WORDS = ("COMPLETED", "REJECTED", "ACCEPTED", "CLOSED")
@@ -365,6 +367,8 @@ def build_role_prompt(
     gate_status: str,
     allow_real_valid: bool,
     campaign_public_valid_authorized: bool = False,
+    handoff_context: str | None = None,
+    integration_context: str | None = None,
 ) -> str:
     formal_run_allowed = (
         role == "B"
@@ -397,6 +401,18 @@ def build_role_prompt(
         formal_instruction = (
             "Do not run real data training or produce formal validation metrics."
         )
+    local_context = ""
+    if handoff_context:
+        local_context += (
+            "\nPrivate read-only artifact handoff (never commit these files):\n"
+            f"{handoff_context}\nVerify the manifest hashes before use.\n"
+        )
+    if integration_context:
+        local_context += (
+            "\nAutomatic A-integration context:\n"
+            f"{integration_context}\nReview the merged role evidence and advance only "
+            "the canonical routing state justified by it.\n"
+        )
     return f"""You are Track 2 role {role} continuing {experiment_id} asynchronously.
 
 Read AGENTS.md, .codex/agents/{role}.toml, coordination/current_state.json,
@@ -411,8 +427,9 @@ Safety constraints:
 - Never create final approval.
 - {formal_instruction}
 - Small evidence may be committed through the PR. Large artifacts must remain
-  local and be listed in large_artifact_paths for manual private transfer.
+  local and be listed in large_artifact_paths for a private hashed handoff.
 - If a prerequisite is absent, return BLOCKED instead of inventing evidence.
+{local_context}
 
 Complete only role {role}'s currently legal next step for {experiment_id}, run
 the repository checks required by AGENTS.md, push the role branch, and create a
@@ -617,6 +634,8 @@ def dispatch_role(
     resume_session: str | None,
     campaign_public_valid_authorized: bool = False,
     execution_timeout_seconds: int | None = None,
+    handoff_context: str | None = None,
+    integration_context: str | None = None,
 ) -> dict[str, Any]:
     worktree = prepare_role_worktree(
         repo, role=role, experiment_id=experiment_id, worktree_root=worktree_root
@@ -639,6 +658,8 @@ def dispatch_role(
         gate_status=gate_status,
         allow_real_valid=allow_real_valid,
         campaign_public_valid_authorized=campaign_public_valid_authorized,
+        handoff_context=handoff_context,
+        integration_context=integration_context,
     )
     result = run_command(
         command,
@@ -700,6 +721,7 @@ def create_handoff_manifest(
     experiment_id: str,
     recipient: str,
     artifact_paths: Sequence[Path],
+    local_read_only_access: bool = False,
 ) -> Path:
     if recipient not in ROLES:
         raise CycleError(f"invalid recipient role: {recipient}")
@@ -710,7 +732,8 @@ def create_handoff_manifest(
             "schema_version": 1,
             "experiment_id": experiment_id,
             "recipient": recipient,
-            "manual_private_transfer_required": True,
+            "manual_private_transfer_required": not local_read_only_access,
+            "local_read_only_access": local_read_only_access,
             "git_upload_allowed": False,
             "created_at_utc": utc_now(),
             "files": artifact_inventory(artifact_paths),
@@ -718,6 +741,51 @@ def create_handoff_manifest(
         },
     )
     return manifest_path
+
+
+def verify_handoff_manifest(path: Path, *, expected_recipient: str) -> dict[str, Any]:
+    """Re-hash every private artifact immediately before the receiver reads it."""
+
+    payload = load_json(path)
+    if payload.get("recipient") != expected_recipient:
+        raise CycleError("artifact handoff recipient does not match dispatched role")
+    if payload.get("git_upload_allowed") is not False:
+        raise CycleError("artifact handoff must explicitly forbid Git upload")
+    files = payload.get("files")
+    if not isinstance(files, list) or not files:
+        raise CycleError("artifact handoff manifest contains no files")
+    for item in files:
+        if not isinstance(item, Mapping):
+            raise CycleError("artifact handoff contains an invalid file record")
+        raw_source_root = Path(str(item.get("source_root", "")))
+        if raw_source_root.is_symlink():
+            raise CycleError("artifact handoff source root must not be a symlink")
+        source_root = raw_source_root.resolve()
+        relative = Path(str(item.get("relative_path", "")))
+        if relative.is_absolute() or ".." in relative.parts:
+            raise CycleError("artifact handoff contains an unsafe relative path")
+        if source_root.is_file():
+            if relative.as_posix() != source_root.name:
+                raise CycleError("artifact handoff file record does not match source root")
+            raw_candidate = raw_source_root
+        else:
+            raw_candidate = raw_source_root / relative
+        if raw_candidate.is_symlink() or not raw_candidate.is_file():
+            raise CycleError(f"artifact handoff file is unavailable: {raw_candidate}")
+        candidate = raw_candidate.resolve()
+        if not source_root.is_file():
+            try:
+                candidate.relative_to(source_root)
+            except ValueError as exc:
+                raise CycleError("artifact handoff file escapes its source root") from exc
+        if not candidate.is_file():
+            raise CycleError(f"artifact handoff file is unavailable: {candidate}")
+        expected_size = item.get("size_bytes")
+        if candidate.stat().st_size != expected_size:
+            raise CycleError(f"artifact handoff size changed: {candidate}")
+        if sha256_file(candidate) != item.get("sha256"):
+            raise CycleError(f"artifact handoff hash changed: {candidate}")
+    return payload
 
 
 def parse_history(path: Path) -> list[dict[str, Any]]:
@@ -935,7 +1003,7 @@ def assess_pr(
         full = f"{workflow} / {name}" if workflow and name else str(name or workflow or "")
         observed[full] = str(check.get("conclusion") or check.get("state") or "")
     for required in sorted(REQUIRED_CHECKS):
-        if observed.get(required) not in {"SUCCESS", "NEUTRAL", "SKIPPED"}:
+        if observed.get(required) != "SUCCESS":
             reasons.append(
                 f"required check not successful: {required}={observed.get(required, 'MISSING')}"
             )
@@ -991,10 +1059,15 @@ def watch_pr(
                         "pr": pr,
                     }
             return {"ready": True, "reasons": [], "pr": pr}
-        pending_only = reasons and all(
-            reason.startswith("required check not successful") for reason in reasons
+        terminal_block = any(
+            reason.startswith("protected paths require human review")
+            or reason.startswith("role ")
+            or reason.startswith("PR state is")
+            or reason == "PR mergeable is CONFLICTING"
+            or reason.startswith("PR head does not match")
+            for reason in reasons
         )
-        if not pending_only or time.monotonic() >= deadline:
+        if terminal_block or time.monotonic() >= deadline:
             return {"ready": False, "reasons": reasons, "pr": pr}
         time.sleep(poll_seconds)
 
@@ -1074,6 +1147,9 @@ def _load_or_initialize_campaign_state(
         "max_role_steps": max_role_steps,
         "role_steps_completed": 0,
         "completed_experiment_ids": [],
+        "pending_receivers": [],
+        "handoff_manifest": None,
+        "handoff_recipient": None,
         "decisions_present_at_start": sorted(existing_decisions),
         "authorization_hash": authorization_hash,
         "created_at_utc": utc_now(),
@@ -1098,6 +1174,26 @@ def _refresh_campaign_completion(
     campaign_state["completed_experiment_ids"] = completed
     campaign_state["updated_at_utc"] = utc_now()
     return completed
+
+
+def next_campaign_receivers(
+    *,
+    role: str,
+    queued_after_role: Sequence[str],
+    reported_receivers: Sequence[str],
+    progress_changed: bool,
+) -> list[str]:
+    """Route role evidence through A without trusting non-A roles to edit A state."""
+
+    if role == "A" and not progress_changed:
+        raise CycleError("A integration did not advance canonical campaign state")
+    if queued_after_role:
+        return list(queued_after_role)
+    if not progress_changed and role == "B" and reported_receivers:
+        return list(reported_receivers)
+    if not progress_changed and role != "A":
+        return ["A"]
+    return []
 
 
 def run_campaign(repo: Path, args: argparse.Namespace) -> int:
@@ -1220,7 +1316,10 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
             current_experiment=current_experiment,
             current_state=current_state,
         )
-        receivers = report["next_receivers"]
+        pending_receivers = normalize_receivers(
+            campaign_state.get("pending_receivers")
+        )
+        receivers = pending_receivers or report["next_receivers"]
         if not receivers:
             _record_campaign_stop(
                 runtime,
@@ -1230,8 +1329,22 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
             )
             raise CycleError("repository state has no legal next receiver")
         role = receivers[0]
+        queued_after_role = receivers[1:]
         gate_status = report["real_valid_gate_status"]
         campaign_public_valid = gate_status == "ALLOWED"
+        handoff_context: str | None = None
+        handoff_manifest_value = campaign_state.get("handoff_manifest")
+        if handoff_manifest_value and campaign_state.get("handoff_recipient") == role:
+            handoff_path = Path(str(handoff_manifest_value))
+            verify_handoff_manifest(handoff_path, expected_recipient=role)
+            handoff_context = f"manifest={handoff_path.resolve()}"
+        integration_context = None
+        if role == "A" and campaign_state.get("integration_required_after_role"):
+            integration_context = (
+                f"previous_role={campaign_state['integration_required_after_role']}; "
+                f"previous_commit={campaign_state.get('last_role_commit')}; "
+                f"previous_pr={campaign_state.get('last_pr_number')}"
+            )
         progress_before = repository_progress_fingerprint(repo)
         result = dispatch_role(
             repo,
@@ -1244,6 +1357,8 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
             resume_session=None,
             campaign_public_valid_authorized=campaign_public_valid,
             execution_timeout_seconds=execution_timeout,
+            handoff_context=handoff_context,
+            integration_context=integration_context,
         )
         role_worktree = Path(result["role_worktree"])
         produced_head = require_clean_worktree(role_worktree)
@@ -1260,6 +1375,7 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
             raise CycleError("role result commit does not match its clean worktree HEAD")
         campaign_state["role_steps_completed"] += 1
         campaign_state["last_role"] = role
+        campaign_state["last_role_commit"] = result.get("commit_sha")
         campaign_state["last_experiment_id"] = target
         campaign_state["updated_at_utc"] = utc_now()
         write_json(_campaign_state_path(runtime), campaign_state)
@@ -1299,6 +1415,7 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
                 detail=detail,
             )
             raise CycleError(f"PR gate blocked continuous campaign: {detail}")
+        campaign_state["last_pr_number"] = pr_number
 
         sync_main_checkout(repo)
         verify_protected(repo)
@@ -1309,9 +1426,9 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
                 Path(path) for path in result.get("large_artifact_paths", [])
             )
         ]
+        reported_receivers = normalize_receivers(result.get("next_receiver"))
         if large_paths:
-            next_receivers = normalize_receivers(result.get("next_receiver"))
-            if not next_receivers:
+            if not reported_receivers:
                 _record_campaign_stop(
                     runtime,
                     campaign_state,
@@ -1322,27 +1439,41 @@ def run_campaign(repo: Path, args: argparse.Namespace) -> int:
             manifest = create_handoff_manifest(
                 target_runtime,
                 experiment_id=target,
-                recipient=next_receivers[0],
+                recipient=reported_receivers[0],
                 artifact_paths=large_paths,
+                local_read_only_access=True,
             )
-            _record_campaign_stop(
-                runtime,
-                campaign_state,
-                reason="MANUAL_ARTIFACT_TRANSFER_REQUIRED",
-                detail=str(manifest),
-            )
-            raise CycleError("manual private artifact transfer is required")
-        if progress_after == progress_before:
+            campaign_state["handoff_manifest"] = str(manifest.resolve())
+            campaign_state["handoff_recipient"] = reported_receivers[0]
+
+        progress_changed = progress_after != progress_before
+        if role == "A" and not progress_changed:
             _record_campaign_stop(
                 runtime,
                 campaign_state,
                 reason="NO_STATE_PROGRESS",
                 detail=(
-                    f"role {role} PR merged, but A-owned routing/decision state did not change; "
-                    "A must integrate or advance state before resume"
+                    "A role PR merged, but canonical routing/decision state did not change"
                 ),
             )
-            raise CycleError("merged role PR did not advance canonical campaign state")
+            raise CycleError("A integration did not advance canonical campaign state")
+
+        next_pending = next_campaign_receivers(
+            role=role,
+            queued_after_role=queued_after_role,
+            reported_receivers=reported_receivers,
+            progress_changed=progress_changed,
+        )
+
+        if role == campaign_state.get("handoff_recipient"):
+            campaign_state["handoff_manifest"] = None
+            campaign_state["handoff_recipient"] = None
+        campaign_state["pending_receivers"] = next_pending
+        campaign_state["integration_required_after_role"] = (
+            role if next_pending == ["A"] else None
+        )
+        campaign_state["updated_at_utc"] = utc_now()
+        write_json(_campaign_state_path(runtime), campaign_state)
 
 
 def build_parser() -> argparse.ArgumentParser:

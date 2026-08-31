@@ -110,11 +110,11 @@ python tools/run_agent_cycle.py --experiment exp_003 --action run --max-iteratio
 
 Continuous mode validates A's experiment and role-step bounds, dispatches only the
 legal receiver, binds each result to a clean commit and matching PR head, enforces role
-ownership and all four CI checks, and refreshes `main` after each merge. It records a
-resumable stop instead of bypassing a waiting/failed role, unsafe or missing PR,
-manual artifact transfer, unchanged routing state, authorization change, or policy
-limit. This is bounded stop/resume automation, not a promise of zero operator
-involvement. Full details are in
+ownership and all four CI checks, and refreshes `main` after each merge. Composite
+C/D work is queued, non-A evidence is automatically routed through A integration,
+and same-host B artifacts are re-hashed before E receives their read-only manifest.
+It still records a resumable stop for waiting/failed roles, unsafe or missing PRs,
+changed artifacts, authorization changes, and policy limits. Full details are in
 [Agent cycle automation](docs/AGENT_CYCLE_AUTOMATION.md).
 
 ## Safety model
@@ -134,9 +134,9 @@ explicit `--allow-real-valid` flag. A continuous campaign instead needs both the
 current experiment's allowed gate and A's unchanged, explicit bounded authorization
 with `automatic_public_valid=true`. The orchestrated workflow never accesses or
 scores test data and records `test_access=false`. Hidden test and final approval are
-never authorized inside an ordinary campaign. A final submission is intended for an
-external hidden-test evaluator; local format/hash validation must not expose hidden
-labels or metrics to agents.
+never authorized inside an ordinary campaign. A final approval can only freeze a
+label-free submission with `tools/final_submission.py`; hidden-test scoring is absent
+locally and must occur on the organizer side.
 
 Additional safeguards include:
 
@@ -194,24 +194,23 @@ contracts on every proposed integration.
 
 ## Current limitations
 
-- Continuous orchestration is bounded and state-driven. It stops for manual artifact
-  transfer, unresolved role/PR/CI state, authorization changes, and policy limits, then
-  resumes only after the external condition is resolved.
+- Continuous orchestration is bounded and state-driven. It stops for unresolved
+  role/PR/CI failures, cross-host artifact transfer, authorization changes, and policy
+  limits, then resumes only after the external condition is resolved.
 - Automatic public-valid is limited to experiments and budgets that A explicitly
   records in a bounded campaign authorization; one-step execution still requires the
   operator flag.
-- Large artifacts are transferred privately by hash manifest rather than through an
-  artifact service.
+- Same-host artifacts use a re-verified read-only hash manifest; cross-host execution
+  still needs a private artifact service or human transfer.
 - Hidden-test submission/upload is intentionally outside the agent cycle.
 - KuaiRand is required for formal reproduction, though not for the synthetic/read-only
   demo.
 
 ## Roadmap
 
-1. Add managed notification and artifact-transfer services around campaign stop/resume.
+1. Add managed notification and cross-host artifact-transfer services.
 2. Broaden policy-based public-valid authorization while preserving A-defined bounds.
-3. Integrate a one-shot external hidden-test submission that returns no labels or
-   local test metrics.
+3. Connect the existing label-free final-submission freeze to organizer upload.
 4. Add a managed artifact store while preserving immutable hashes and role isolation.
 
 ## Why it matters

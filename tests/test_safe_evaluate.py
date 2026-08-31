@@ -134,7 +134,7 @@ class SafeEvaluateIntegrationTests(unittest.TestCase):
             text=True,
         )
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Normal mode only permits valid", result.stdout)
+        self.assertIn("hidden-test scoring is permanently disabled", result.stdout)
 
     def test_dirty_worktree_is_denied_before_evaluation(self):
         argv = [

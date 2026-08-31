@@ -103,5 +103,18 @@ will reject placeholders, shortened SHAs, dirty worktrees, and changed hashes:
 python3 -m tools.final_approval --approval path/to/final_approval.json
 ```
 
-No test command is documented here. Approval verification is deliberately a
-separate manual release step.
+Approval never permits local hidden-test scoring. The organizer provides an
+identity-only file with the exact header `row_id,user_id,video_id`; label
+columns are rejected. Freeze one final submission without evaluating it:
+
+```bash
+python3 -m tools.final_submission \
+  --approval path/to/final_approval.json \
+  --candidate artifacts/final/candidate.csv \
+  --identities path/to/hidden_test_identities.csv \
+  --output artifacts/final/submission.csv \
+  --manifest artifacts/final/submission_manifest.json
+```
+
+The manifest binds submission and identity SHA-256 values. Scoring occurs only
+on the organizer side.

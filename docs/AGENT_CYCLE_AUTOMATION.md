@@ -94,14 +94,14 @@ Reusing a role in the same experiment is safe only when its clean worktree can
 fast-forward to the newly merged `origin/main`; divergence stops the campaign
 without rebase, reset, or force-push.
 
-Continuous mode stops and records `campaign_state.json` when a role waits,
-blocks, or fails; a PR is missing, conflicting, unsafe, or fails CI; a private
-artifact transfer is needed; A-owned routing state does not advance; the
-authorization changes; or either the role-step or consecutive-no-improvement
-limit is reached. After the external condition is resolved, repeat the same
-command to resume the recorded campaign. This is truthful stop/resume behavior:
-the runner does not claim an end-to-end continuation when a manual transfer or
-A integration is still required.
+Continuous mode queues composite C/D receivers and automatically sends completed
+non-A evidence through A for canonical state integration. On one host, B's private
+artifacts remain outside Git and are passed to E through a byte-reverified read-only
+manifest. It stops and records `campaign_state.json` when a role waits, blocks, or
+fails; a PR is missing, conflicting, unsafe, or fails CI; artifact bytes change; a
+cross-host transfer is required; A fails to advance state; authorization changes; or
+a role-step/consecutive-no-improvement limit is reached. Repeat the same command to
+resume after an external failure is resolved.
 
 ## PR and CI monitoring
 
@@ -141,11 +141,17 @@ In continuous mode the explicit operator flag is replaced by the A-recorded
 bounded campaign authorization above. B receives public-validation permission
 only when both that campaign record and the current experiment's
 `REAL_VALID_RUN_ALLOWED.status=ALLOWED` are present. Other roles never receive
-training permission. No ordinary or continuous cycle command authorizes hidden
-test access or final approval, and release-only/final-approval PR paths cannot
-be auto-merged by this coordinator.
+training permission. No ordinary or continuous cycle command authorizes hidden-test
+access or final approval. Local hidden-test scoring does not exist; release-only
+approval can only freeze a label-free organizer-scored submission, and release paths
+cannot be auto-merged by this coordinator.
 
 ## Large artifact handoff
+
+During a same-host continuous campaign this handoff is automatic: the manifest
+records every byte hash, the runner re-verifies it immediately before dispatching E,
+and E receives read-only paths in its prompt. For different computers, the runner
+stops truthfully until the exact hashed package is privately transferred.
 
 Create a transfer manifest without copying or modifying the artifacts:
 

@@ -67,11 +67,14 @@ def _check_config(config: Any, mode: str) -> None:
 
 
 def inspect_data(data_dir: Path, mode: str = "experiment", config: Any = None) -> dict[str, Any]:
+    if mode != "experiment":
+        raise ValidationError(
+            "preflight only accepts train/public-valid data; hidden-test labels "
+            "must never be mounted or inspected"
+        )
     data_dir = data_dir.resolve()
     if not data_dir.is_dir():
         raise ValidationError(f"data directory does not exist: {data_dir}")
-    if mode not in {"experiment", "final"}:
-        raise ValidationError(f"unsupported mode: {mode}")
     _check_config(config, mode)
 
     for name in (*OFFICIAL_LOG_FILES, *REQUIRED_STATIC_FILES):
@@ -153,14 +156,14 @@ def inspect_data(data_dir: Path, mode: str = "experiment", config: Any = None) -
         "max_date": max(dates),
         "label_values": sorted(labels),
         "split_rows": split_rows,
-        "final_approval_required": mode == "final",
+        "final_approval_required": False,
     }
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate data and configuration before execution.")
     parser.add_argument("--data-dir", required=True, type=Path)
-    parser.add_argument("--mode", choices=("experiment", "final"), required=True)
+    parser.add_argument("--mode", choices=("experiment",), required=True)
     parser.add_argument("--config", type=Path)
     return parser.parse_args()
 
@@ -179,8 +182,6 @@ def main() -> int:
     print(f"MIN_DATE={result['min_date']}")
     print(f"MAX_DATE={result['max_date']}")
     print(f"LABEL_VALUES={result['label_values']}")
-    if result["final_approval_required"]:
-        print("FINAL_APPROVAL_REQUIRED=1")
     print("PREFLIGHT=PASS")
     return 0
 

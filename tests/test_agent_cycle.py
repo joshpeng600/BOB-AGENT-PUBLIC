@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from tools.run_agent_cycle import (
@@ -24,12 +25,15 @@ from tools.run_agent_cycle import (
     fast_forward_to_origin_main,
     generate_reports,
     is_terminal_state,
+    next_campaign_receivers,
     next_experiment_id,
     normalize_receivers,
     parse_pr_number,
+    run_campaign,
     select_target_experiment,
     validate_campaign_authorization,
     validate_agent_result,
+    verify_handoff_manifest,
     watch_pr,
 )
 
@@ -351,6 +355,13 @@ class PullRequestGateTests(unittest.TestCase):
         self.assertFalse(ready)
         self.assertTrue(any("MISSING" in reason for reason in reasons))
 
+    def test_rejects_skipped_required_check(self):
+        pr = successful_pr()
+        pr["statusCheckRollup"][0]["conclusion"] = "SKIPPED"
+        ready, reasons = assess_pr(pr)
+        self.assertFalse(ready)
+        self.assertTrue(any("SKIPPED" in reason for reason in reasons))
+
     def test_parses_pr_number(self):
         self.assertEqual(
             parse_pr_number("https://github.com/example/repo/pull/123"), 123
@@ -514,6 +525,202 @@ class CampaignStateTests(unittest.TestCase):
                 existing_decisions={"exp_001", "exp_002"},
             )
             self.assertEqual(resumed["stop_reason"], "NO_STATE_PROGRESS")
+
+    def test_non_a_roles_route_through_integrator_without_stopping(self):
+        self.assertEqual(
+            next_campaign_receivers(
+                role="C",
+                queued_after_role=["D"],
+                reported_receivers=["A"],
+                progress_changed=False,
+            ),
+            ["D"],
+        )
+        self.assertEqual(
+            next_campaign_receivers(
+                role="D",
+                queued_after_role=[],
+                reported_receivers=["A"],
+                progress_changed=False,
+            ),
+            ["A"],
+        )
+        self.assertEqual(
+            next_campaign_receivers(
+                role="E",
+                queued_after_role=[],
+                reported_receivers=["A"],
+                progress_changed=False,
+            ),
+            ["A"],
+        )
+        with self.assertRaisesRegex(CycleError, "A integration"):
+            next_campaign_receivers(
+                role="A",
+                queued_after_role=[],
+                reported_receivers=[],
+                progress_changed=False,
+            )
+
+    def test_b_artifacts_route_to_e_and_are_rehashed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package = root / "package"
+            package.mkdir()
+            prediction = package / "valid_predictions.csv"
+            prediction.write_bytes(b"row_id,score\n0,0.5\n")
+            manifest = create_handoff_manifest(
+                root / "runtime",
+                experiment_id="exp_003",
+                recipient="E",
+                artifact_paths=[package],
+                local_read_only_access=True,
+            )
+            payload = verify_handoff_manifest(manifest, expected_recipient="E")
+            self.assertTrue(payload["local_read_only_access"])
+            self.assertFalse(payload["manual_private_transfer_required"])
+            self.assertEqual(
+                next_campaign_receivers(
+                    role="B",
+                    queued_after_role=[],
+                    reported_receivers=["E"],
+                    progress_changed=False,
+                ),
+                ["E"],
+            )
+            prediction.write_bytes(b"tampered\n")
+            with self.assertRaisesRegex(CycleError, "changed"):
+                verify_handoff_manifest(manifest, expected_recipient="E")
+
+    def test_full_same_host_cycle_routes_a_c_d_a_b_e_a_without_manual_stop(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            coordination = root / "coordination"
+            governance = root / "governance"
+            coordination.mkdir()
+            governance.mkdir()
+            runtime = root / "artifacts" / "campaign"
+            package = root / "private-package"
+            package.mkdir()
+            (package / "valid_predictions.csv").write_bytes(
+                b"row_id,user_id,video_id,score\n0,u,v,0.5\n"
+            )
+            authorization = {
+                "status": "ALLOWED",
+                "experiment_ids": ["exp_003"],
+                "max_completed_experiments": 1,
+                "max_role_steps": 10,
+                "data_mode": "train_valid_only",
+                "automatic_public_valid": True,
+                "test_access": False,
+                "final_approval_allowed": False,
+            }
+
+            def write_state(*, active, receiver, gate="BLOCKED", terminal=False):
+                current = {
+                    "experiment_id": active,
+                    "status": "COMPLETED_REJECTED" if terminal else "IMPLEMENTING",
+                }
+                state = {
+                    "active_experiment_id": active,
+                    "next_receiver": receiver,
+                    "bounded_campaign_authorization": authorization,
+                    "consecutive_no_improve": 1,
+                    "stage_gates": {
+                        "REAL_VALID_RUN_ALLOWED": {"status": gate}
+                    },
+                }
+                (coordination / "current_experiment.json").write_text(
+                    json.dumps(current), encoding="utf-8"
+                )
+                (coordination / "current_state.json").write_text(
+                    json.dumps(state), encoding="utf-8"
+                )
+
+            write_state(active="exp_002", receiver="A", terminal=True)
+            history = coordination / "experiment_history.jsonl"
+            history.write_text("", encoding="utf-8")
+            (governance / "policy.json").write_text(
+                json.dumps(
+                    {"max_single_round_seconds": 3600, "consecutive_no_improve": 3}
+                ),
+                encoding="utf-8",
+            )
+            sync_count = 0
+
+            def sync_state(_repo):
+                nonlocal sync_count
+                sync_count += 1
+                if sync_count == 2:
+                    write_state(active="exp_003", receiver="C_AND_D")
+                elif sync_count == 5:
+                    write_state(active="exp_003", receiver="B", gate="ALLOWED")
+                elif sync_count == 8:
+                    write_state(active="exp_003", receiver="A", terminal=True)
+                    history.write_text(
+                        json.dumps(
+                            {
+                                "record_type": "experiment_decision",
+                                "experiment_id": "exp_003",
+                            }
+                        )
+                        + "\n",
+                        encoding="utf-8",
+                    )
+                return "a" * 40
+
+            roles = ["A", "C", "D", "A", "B", "E", "A"]
+            next_roles = ["C_AND_D", "A", "A", "B", "E", "A", "A"]
+            results = []
+            for index, (role, next_role) in enumerate(zip(roles, next_roles), 1):
+                results.append(
+                    safe_result(
+                        role=role,
+                        experiment_id="exp_003",
+                        commit_sha="a" * 40,
+                        pr_url=f"https://github.com/example/repo/pull/{index}",
+                        role_worktree=str(root),
+                        next_receiver=next_role,
+                        large_artifact_paths=[str(package)] if role == "B" else [],
+                        formal_metrics_produced=role == "E",
+                    )
+                )
+            args = SimpleNamespace(
+                experiment="exp_003",
+                max_iterations=1,
+                max_role_steps=10,
+                runtime_root=runtime,
+                worktree_root=root / "worktrees",
+                timeout_seconds=1,
+                poll_seconds=5,
+            )
+            with (
+                patch("tools.run_agent_cycle.sync_main_checkout", side_effect=sync_state),
+                patch("tools.run_agent_cycle.verify_protected"),
+                patch(
+                    "tools.run_agent_cycle.dispatch_role", side_effect=results
+                ) as dispatch,
+                patch(
+                    "tools.run_agent_cycle.require_clean_worktree",
+                    return_value="a" * 40,
+                ),
+                patch(
+                    "tools.run_agent_cycle.watch_pr",
+                    return_value={"ready": True, "reasons": [], "pr": {}},
+                ),
+            ):
+                self.assertEqual(run_campaign(root, args), 0)
+            self.assertEqual(
+                [call.kwargs["role"] for call in dispatch.call_args_list], roles
+            )
+            evaluator_call = dispatch.call_args_list[5]
+            self.assertIn("manifest=", evaluator_call.kwargs["handoff_context"])
+            saved = json.loads(
+                (runtime / "campaign_state.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(saved["status"], "COMPLETED")
+            self.assertEqual(saved["completed_experiment_ids"], ["exp_003"])
+            self.assertFalse(saved["test_access"])
 
 
 if __name__ == "__main__":

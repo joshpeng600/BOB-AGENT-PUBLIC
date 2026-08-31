@@ -52,6 +52,10 @@
     "ordinary_experiments_allowed": false,
     "release_only": true,
     "requires_human_approval": true,
-    "requires_manual_intervention_record": true
+    "requires_manual_intervention_record": true,
+    "local_scoring_allowed": false,
+    "organizer_side_scoring_only": true,
+    "label_free_identity_contract_required": true,
+    "single_frozen_submission_required": true
   }
 }
