@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "state": "EXP_003_E_PRE_EVALUATION_REVIEW_REQUIRED",
+  "state": "EXP_003_REAL_VALID_RUN_ALLOWED",
   "owner": "A",
-  "next_receiver": "E",
-  "approved_against_commit_sha": "0b0ab600d835c32c2bfa49c74863048b66e5bd5a",
+  "next_receiver": "B",
+  "approved_against_commit_sha": "58962df016da5808236b73d135a7abdd1d3fe879",
   "blocked_by": [
-    "E must independently review the merged C, D, and B setup evidence and fail-closed evaluation contracts",
-    "real valid runs remain blocked pending merged E readiness plus a later exact A gate",
+    "B must produce exactly one full-budget valid-only baseline/candidate pair under the active exact gate",
+    "E must independently audit and evaluate the immutable B packages before A may decide the experiment",
     "test and final release remain blocked"
   ],
   "active_experiment_id": "exp_003",
@@ -50,16 +50,16 @@
       "permits": "no further synthetic run is authorized by this consumed gate; the completed smoke is interface evidence only"
     },
     "REAL_VALID_RUN_ALLOWED": {
-      "status": "BLOCKED_PENDING_MERGED_E_READINESS_AND_EXACT_A_GATE",
-      "evidence": "coordination/inbox/A/exp_003_b_setup_integration_20260831.md",
-      "permits": "none; no real-data training or formal metrics, and test remains forbidden"
+      "status": "ALLOWED_EXACTLY_ONE_FULL_BUDGET_VALID_ONLY_PAIR",
+      "evidence": "coordination/inbox/A/exp_003_cycle_gate_activation_20260831.md",
+      "permits": "B may execute one baseline/candidate pair on the bound train/valid data from one clean producing commit; test and final release remain forbidden"
     }
   },
   "role_statuses": {
-    "B": "PASS_MERGED_PR_17_ONE_BATCH_SYNTHETIC_ONLY",
+    "B": "ACTION_REQUIRED_ONE_FORMAL_VALID_ONLY_BASELINE_CANDIDATE_PAIR",
     "C": "PASS_MERGED_PR_13",
     "D": "PASS_MERGED_PR_15_CONFIG_ONLY",
-    "E": "ACTION_REQUIRED_INDEPENDENT_PRE_EVALUATION_REVIEW"
+    "E": "PASS_PRE_EVALUATION_READY_MERGED_PR_19_WAIT_FOR_B_PACKAGES"
   },
   "exp_003_planning": {
     "status": "IMPLEMENTATION_SETUP_APPROVED",
@@ -76,8 +76,8 @@
     "smoke_batches": 1,
     "max_runtime_seconds": 3600,
     "consecutive_no_improve_before": 1,
-    "formal_run_authorization_active": false,
-    "authorized_attempts_active": 0,
+    "formal_run_authorization_active": true,
+    "authorized_attempts_active": 1,
     "formal_metrics_produced": false,
     "pr_25_evidence_used": false,
     "final_approval_created": false,
@@ -104,13 +104,52 @@
     "config_diff_check": "PASS_EXACTLY_ONE_SCIENTIFIC_FIELD",
     "b_synthetic_smoke_allowed": false,
     "b_synthetic_smoke_consumed": true,
-    "real_valid_run_authorization_active": false,
-    "authorized_real_attempts_active": 0,
+    "e_source_pr": 19,
+    "e_source_commit_sha": "8c629bc3842b0ad6f2437eaed1be30c04f3afe44",
+    "e_merge_commit_sha": "58962df016da5808236b73d135a7abdd1d3fe879",
+    "e_status": "PASS_PRE_EVALUATION_READY",
+    "real_valid_run_authorization_active": true,
+    "authorized_real_attempts_active": 1,
     "formal_metrics_produced": false,
     "pr_25_evidence_used": false,
     "final_approval_created": false,
     "test_access": false,
     "evidence": "coordination/inbox/A/exp_003_cd_setup_integration_20260831.md"
+  },
+  "exp_003_formal_gate": {
+    "status": "ALLOWED_EXACTLY_ONE_VALID_ONLY_PAIR",
+    "authorized_at_utc": "2026-08-31T13:07:24Z",
+    "approved_against_commit_sha": "58962df016da5808236b73d135a7abdd1d3fe879",
+    "c_pr": 13,
+    "d_pr": 15,
+    "b_pr": 17,
+    "e_pr": 19,
+    "required_checks": "PASS_4_OF_4_EACH",
+    "experiment_spec_hash": "79c0e54f962c84213c0150474894ff695d5d6acfed85aa2955abb173b425f20c",
+    "baseline_config_hash": "5221e0efdaace6f0aaa196da3cfdf51a4fdb154cf3043cd6b71252a62cf0823c",
+    "candidate_config_hash": "e185476e13a0976ac227e84c486bd798ce0e6ae8753f98ead4d48a24036ac1a2",
+    "data_hash": "69e5a6f656356832f7e1fa6a9774bc404030f32874e18e57e0f38b6a309a1002",
+    "single_scientific_change": "model.embedding_dim: 16 -> 32",
+    "seed": 0,
+    "mode": "valid-only",
+    "formal_max_batches": null,
+    "max_runtime_seconds_per_run": 3600,
+    "authorized_attempts_active": 1,
+    "authorized_pair": [
+      "baseline",
+      "candidate"
+    ],
+    "same_clean_producing_commit_required": true,
+    "same_data_hash_required": true,
+    "same_feature_set_required": true,
+    "same_seed_required": true,
+    "same_training_budget_required": true,
+    "automatic_repair_attempts": 1,
+    "automatic_repair_scope": "whitelisted transient infrastructure failure only; identical inputs required",
+    "pr_25_evidence_used": false,
+    "final_approval_created": false,
+    "test_access": false,
+    "evidence": "coordination/inbox/A/exp_003_cycle_gate_activation_20260831.md"
   },
   "exp_002_planning": {
     "status": "COMPLETED_REJECTED_KEEP_EXP_001",
