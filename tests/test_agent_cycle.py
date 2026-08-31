@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -27,12 +28,14 @@ from tools.run_agent_cycle import (
     experiment_comparison,
     fast_forward_to_origin_main,
     generate_reports,
+    git_common_dir,
     is_terminal_state,
     load_private_runtime_config,
     next_campaign_receivers,
     next_experiment_id,
     normalize_receivers,
     parse_pr_number,
+    role_command_environment,
     run_campaign,
     select_target_experiment,
     snapshot_artifacts_to_store,
@@ -375,11 +378,30 @@ class DispatchConstructionTests(unittest.TestCase):
             worktree=Path("worktree"),
             schema=Path("schema.json"),
             last_message=Path("last.json"),
+            git_metadata_dir=Path("/repo/.git"),
         )
         self.assertIn("workspace-write", command)
         self.assertNotIn("--approve-for-me", command)
         self.assertIn("--output-schema", command)
+        self.assertIn("shell_environment_policy.inherit=all", command)
+        self.assertEqual(command[command.index("--add-dir") + 1], "/repo/.git")
         self.assertNotIn("--dangerously-bypass-approvals-and-sandbox", command)
+
+    def test_role_environment_preserves_exact_python_runtime(self):
+        environment = role_command_environment()
+        expected = str(Path(sys.executable).absolute())
+        self.assertEqual(environment["BOB_AGENT_PYTHON"], expected)
+        self.assertEqual(environment["PATH"].split(os.pathsep)[0], str(Path(expected).parent))
+
+    def test_prompt_requires_preflighted_python_runtime(self):
+        prompt = build_role_prompt(
+            role="C",
+            experiment_id="exp_003",
+            gate_status="BLOCKED",
+            allow_real_valid=False,
+            python_executable="/private/runtime/bin/python",
+        )
+        self.assertIn("Use /private/runtime/bin/python for every Python command", prompt)
 
     def test_resume_command_contains_session(self):
         command = build_codex_command(

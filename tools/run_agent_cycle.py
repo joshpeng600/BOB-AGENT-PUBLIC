@@ -95,6 +95,7 @@ def run_command(
     cwd: Path,
     input_text: str | None = None,
     timeout_seconds: int | None = None,
+    env: Mapping[str, str] | None = None,
 ) -> CommandResult:
     try:
         completed = subprocess.run(
@@ -107,6 +108,7 @@ def run_command(
             capture_output=True,
             check=False,
             timeout=timeout_seconds,
+            env=dict(env) if env is not None else None,
         )
     except subprocess.TimeoutExpired as exc:
         stdout = exc.stdout.decode("utf-8", "replace") if isinstance(exc.stdout, bytes) else (exc.stdout or "")
@@ -211,6 +213,38 @@ def require_clean_worktree(repo: Path) -> str:
     )
 
 
+def git_common_dir(worktree: Path) -> Path:
+    """Return the exact writable Git metadata tree for a linked worktree."""
+
+    value = require_success(
+        run_command(
+            ("git", "rev-parse", "--path-format=absolute", "--git-common-dir"),
+            cwd=worktree,
+        ),
+        "git common-dir lookup",
+    )
+    common_dir = Path(value).resolve()
+    if not common_dir.is_dir():
+        raise CycleError(f"Git common-dir is missing: {common_dir}")
+    return common_dir
+
+
+def role_command_environment() -> dict[str, str]:
+    """Preserve the runner's Python environment for Codex role subprocesses."""
+
+    environment = dict(os.environ)
+    python_executable = Path(sys.executable).absolute()
+    python_bin = str(python_executable.parent)
+    current_path = environment.get("PATH", "")
+    environment["PATH"] = (
+        python_bin if not current_path else python_bin + os.pathsep + current_path
+    )
+    environment["BOB_AGENT_PYTHON"] = str(python_executable)
+    if sys.prefix != getattr(sys, "base_prefix", sys.prefix):
+        environment["VIRTUAL_ENV"] = str(Path(sys.prefix).absolute())
+    return environment
+
+
 def verify_protected(repo: Path) -> None:
     result = run_command(
         (sys.executable, "scripts/check_protected_files.py"), cwd=repo
@@ -313,6 +347,10 @@ def validate_runtime_environment(repo: Path, config: PrivateRuntimeConfig) -> No
             "continuous run must use joshpeng600/BOB-AGENT-PUBLIC as origin"
         )
     find_codex_executable()
+    require_success(
+        run_command((sys.executable, "-c", "import numpy"), cwd=repo),
+        "NumPy runtime verification",
+    )
     gh = find_gh_executable()
     require_success(run_command((gh, "auth", "status"), cwd=repo), "GitHub CLI auth")
     if not os.access(config.dev_data_dir, os.R_OK | os.X_OK):
@@ -544,6 +582,7 @@ def build_role_prompt(
     handoff_context: str | None = None,
     integration_context: str | None = None,
     private_runtime_context: str | None = None,
+    python_executable: str | None = None,
 ) -> str:
     formal_run_allowed = (
         role == "B"
@@ -607,6 +646,13 @@ def build_role_prompt(
             "\nPrivate runtime paths (read locally; never copy into Git):\n"
             f"{private_runtime_context}\n"
         )
+    if python_executable:
+        local_context += (
+            "\nRepository Python runtime:\n"
+            f"Use {python_executable} for every Python command; do not replace it "
+            "with a bare python or another interpreter. NumPy was preflighted in "
+            "this exact runtime.\n"
+        )
     return f"""You are Track 2 role {role} continuing {experiment_id} asynchronously.
 
 Read AGENTS.md, .codex/agents/{role}.toml, coordination/current_state.json,
@@ -658,6 +704,7 @@ def build_codex_command(
     schema: Path,
     last_message: Path,
     session_id: str | None = None,
+    git_metadata_dir: Path | None = None,
 ) -> list[str]:
     if session_id:
         return [
@@ -672,20 +719,27 @@ def build_codex_command(
             str(last_message),
             "-",
         ]
-    return [
+    command = [
         executable,
         "exec",
+        "-c",
+        "shell_environment_policy.inherit=all",
         "-C",
         str(worktree),
         "-s",
         "workspace-write",
+    ]
+    if git_metadata_dir is not None:
+        command.extend(("--add-dir", str(git_metadata_dir)))
+    command.extend([
         "--output-schema",
         str(schema),
         "--json",
         "-o",
         str(last_message),
         "-",
-    ]
+    ])
+    return command
 
 
 def validate_agent_result(
@@ -848,6 +902,10 @@ def dispatch_role(
     worktree = prepare_role_worktree(
         repo, role=role, experiment_id=experiment_id, worktree_root=worktree_root
     )
+    repository_git_dir = git_common_dir(repo)
+    role_git_dir = git_common_dir(worktree)
+    if role_git_dir != repository_git_dir:
+        raise CycleError("role worktree does not share the coordinator Git metadata")
     role_runtime = runtime / role.lower()
     role_runtime.mkdir(parents=True, exist_ok=True)
     schema = repo / "contracts" / "agent_cycle_result.schema.json"
@@ -859,6 +917,7 @@ def dispatch_role(
         schema=schema,
         last_message=last_message,
         session_id=resume_session,
+        git_metadata_dir=role_git_dir,
     )
     prompt = build_role_prompt(
         role=role,
@@ -871,12 +930,14 @@ def dispatch_role(
         handoff_context=handoff_context,
         integration_context=integration_context,
         private_runtime_context=private_runtime_context,
+        python_executable=str(Path(sys.executable).absolute()),
     )
     result = run_command(
         command,
         cwd=worktree,
         input_text=prompt,
         timeout_seconds=execution_timeout_seconds,
+        env=role_command_environment(),
     )
     events.write_text(result.stdout, encoding="utf-8")
     session_id = extract_session_id(result.stdout)
