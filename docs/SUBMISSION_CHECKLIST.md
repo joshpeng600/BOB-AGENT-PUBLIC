@@ -41,7 +41,8 @@ actions. Do not mark an item complete without evidence from the final merged com
 - [x] Human-approved MIT License added in PR #58.
 - [x] Repository owner explicitly authorized visibility change in the manual release
   record merged with PR #58.
-- [ ] Public repository is accessible in a signed-out/private browser window.
+- [x] Public repository is accessible without authentication at
+  https://github.com/joshpeng600/BOB-AGENT-PUBLIC.
 
 ## Video
 
@@ -73,13 +74,11 @@ actions. Do not mark an item complete without evidence from the final merged com
 ## Human-only remaining actions
 
 1. Confirm PR #51 is closed or clearly marked superseded.
-2. Merge the final submission-readiness PR after all four checks pass.
-3. Change the repository visibility to public, then verify the repository while signed
-   out.
-4. Record the final merged SHA in the Devpost notes.
-5. Record and upload the public three-minute video, replace `[YOUTUBE_URL]`, and verify
+2. Merge public-repository PR #1 after all four checks pass.
+3. Record the final merged SHA in the Devpost notes.
+4. Record and upload the public three-minute video, replace `[YOUTUBE_URL]`, and verify
    playback while signed out.
-6. Submit the Devpost entry and, only through the external evaluator, the final hidden-
+5. Submit the Devpost entry and, only through the external evaluator, the final hidden-
    test package.
 
 ## Release-candidate evidence

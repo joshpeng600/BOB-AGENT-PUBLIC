@@ -50,8 +50,8 @@ See [Architecture](docs/ARCHITECTURE.md) for the role and evidence boundaries.
 Python 3.10+ is recommended.
 
 ```bash
-git clone https://github.com/joshpeng600/BOB-AGENT.git
-cd BOB-AGENT
+git clone https://github.com/joshpeng600/BOB-AGENT-PUBLIC.git
+cd BOB-AGENT-PUBLIC
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -237,6 +237,6 @@ speed matters but leakage and silent regressions are costly.
 - [Submission checklist](docs/SUBMISSION_CHECKLIST.md)
 - [Devpost draft](docs/DEVPOST_DRAFT.md)
 
-Released under the [MIT License](LICENSE). Repository publication, video upload, and
-Devpost submission remain human-controlled release actions; see the submission
-checklist before the final submission.
+Released under the [MIT License](LICENSE). Repository publication was completed under
+explicit repository-owner authorization. Video upload and Devpost submission remain
+human-controlled release actions; see the submission checklist before the final submission.
