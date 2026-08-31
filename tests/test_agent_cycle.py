@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
 import unittest
@@ -32,6 +33,7 @@ from tools.run_agent_cycle import (
     run_campaign,
     select_target_experiment,
     validate_campaign_authorization,
+    validate_campaign_data_dir,
     validate_agent_result,
     verify_handoff_manifest,
     watch_pr,
@@ -210,6 +212,22 @@ class DispatchConstructionTests(unittest.TestCase):
         )
         self.assertIn("Do not run real data training", closed)
 
+    def test_campaign_prompt_gives_a_bounded_authority_and_frozen_data(self):
+        prompt = build_role_prompt(
+            role="A",
+            experiment_id="exp_003",
+            gate_status="BLOCKED",
+            allow_real_valid=False,
+            bounded_campaign_authorized=True,
+            data_context=(
+                "development_data_dir=C:/private/data/dev\n"
+                "dataset_manifest_sha256=" + "d" * 64
+            ),
+        )
+        self.assertIn("Do not request repeated per-experiment operator approval", prompt)
+        self.assertIn("development_data_dir=C:/private/data/dev", prompt)
+        self.assertIn("never copy into Git", prompt)
+
 
 class CampaignAuthorizationTests(unittest.TestCase):
     def authorization(self, **overrides):
@@ -289,6 +307,27 @@ class CampaignAuthorizationTests(unittest.TestCase):
         self.assertEqual(args.action, "run")
         self.assertEqual(args.max_iterations, 3)
         self.assertEqual(args.max_role_steps, 20)
+
+    def test_campaign_data_is_hash_bound_and_test_free(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data_dir = Path(tmp)
+            source = data_dir / "train.csv"
+            source.write_bytes(b"date,user_id,video_id,long_view\n")
+            source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
+            manifest = {
+                "max_date": 20220428,
+                "test_rows": 0,
+                "files": {"train.csv": {"sha256": source_hash}},
+            }
+            manifest_path = data_dir / "dataset_manifest.json"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            resolved, digest = validate_campaign_data_dir(data_dir)
+            self.assertEqual(resolved, data_dir.resolve())
+            self.assertEqual(digest, hashlib.sha256(manifest_path.read_bytes()).hexdigest())
+
+            source.write_bytes(b"tampered")
+            with self.assertRaisesRegex(CycleError, "hash mismatch"):
+                validate_campaign_data_dir(data_dir)
 
 
 class WorktreeRefreshTests(unittest.TestCase):
@@ -718,10 +757,15 @@ class CampaignStateTests(unittest.TestCase):
                 worktree_root=root / "worktrees",
                 timeout_seconds=1,
                 poll_seconds=5,
+                data_dir=root / "data",
             )
             with (
                 patch("tools.run_agent_cycle.sync_main_checkout", side_effect=sync_state),
                 patch("tools.run_agent_cycle.verify_protected"),
+                patch(
+                    "tools.run_agent_cycle.validate_campaign_data_dir",
+                    return_value=(root / "data", "d" * 64),
+                ),
                 patch(
                     "tools.run_agent_cycle.dispatch_role", side_effect=results
                 ) as dispatch,
@@ -740,6 +784,11 @@ class CampaignStateTests(unittest.TestCase):
             )
             evaluator_call = dispatch.call_args_list[5]
             self.assertIn("manifest=", evaluator_call.kwargs["handoff_context"])
+            self.assertTrue(evaluator_call.kwargs["bounded_campaign_authorized"])
+            self.assertIn(
+                "dataset_manifest_sha256=" + "d" * 64,
+                evaluator_call.kwargs["data_context"],
+            )
             saved = json.loads(
                 (runtime / "campaign_state.json").read_text(encoding="utf-8")
             )
