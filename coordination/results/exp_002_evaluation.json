@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "evidence_type": "independent_valid_evaluation_result",
+  "experiment_id": "exp_002",
+  "role": "E",
+  "phase": "FORMAL_VALID_EVALUATION",
+  "status": "VALID_IMPROVEMENT_REJECTED",
+  "evaluation_commit_sha": "a5bd90a2f25dc39bc8bffb2c5003afce59a59f9c",
+  "baseline_run_commit_sha": "fced9a79ae3e06af69e06d319ee316e77fcce98a",
+  "candidate_run_commit_sha": "fced9a79ae3e06af69e06d319ee316e77fcce98a",
+  "data_hash": "69e5a6f656356832f7e1fa6a9774bc404030f32874e18e57e0f38b6a309a1002",
+  "baseline": {
+    "GAUC": 0.6705350761953585,
+    "nDCG@5": 0.5372069380698954,
+    "primary": 0.603871007132627,
+    "prediction_hash": "5bd21e55d1720efa77f9b4c5c76c9cfd0bbc816a29cd0dcd65e2e13ad4de587b",
+    "checkpoint_hash": "a8c232704c417c8493bce12fc7f27a31431eabfc85d08fc076669df528b63f85",
+    "config_input_hash": "5221e0efdaace6f0aaa196da3cfdf51a4fdb154cf3043cd6b71252a62cf0823c",
+    "resolved_config_hash": "6ba29a9cd553ccdaf6624ac7835a8143603329504b03b6c2f40d376f35988ed8"
+  },
+  "candidate": {
+    "GAUC": 0.6699810327038805,
+    "nDCG@5": 0.5365399077545753,
+    "primary": 0.6032604702292279,
+    "prediction_hash": "4b4105631ffff4543f7e66965138b8ecd2bd44151da9ccac90d4282ea616ed9e",
+    "checkpoint_hash": "1f0934e5e758896ac595c8e8ae26791b0a36dd479c6fc4fdc6a70d9b61aeb997",
+    "config_input_hash": "4ae653c2a68c1dc461ff2149540920e009355637e22e557b70c68e41460d2b61",
+    "resolved_config_hash": "5ee103e57bdf6b1679a21f671869f937e76e6f4b5439bb2f0db271b5b20e3a3f"
+  },
+  "comparison": {
+    "primary_delta_candidate_minus_baseline": -0.0006105369033990726,
+    "absolute_primary_delta": 0.0006105369033990726,
+    "candidate_primary_must_be_greater_than": 0.605871007132627,
+    "candidate_minus_acceptance_threshold": -0.0026105369033990744,
+    "strict_threshold_pass": false,
+    "retained_champion_experiment_id": "exp_001",
+    "retained_champion_primary": 0.603871007132627
+  },
+  "artifact_audit": "PASS_BOTH",
+  "immutable_snapshot": "PASS_BOTH",
+  "evaluator_role": "E",
+  "predictions_modified": false,
+  "training_performed": false,
+  "pr_25_evidence_used": false,
+  "runner_metrics_values_used": false,
+  "final_approval_created": false,
+  "test_access": false
+}
